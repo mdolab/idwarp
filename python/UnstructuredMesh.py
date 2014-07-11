@@ -27,20 +27,50 @@ History
 # Standard Python modules
 # =============================================================================
 import sys, os, time
+import subprocess,re
 
 # =============================================================================
 # External Python modules
 # =============================================================================
 import numpy
+try:
+    # import the necessary modules from PyFoam
+    from PyFoam.RunDictionary.ParsedParameterFile import ParsedParameterFile
+    from PyFoam.RunDictionary.ListFile import ListFile
+    from PyFoam.RunDictionary.MeshInformation import MeshInformation
+except:
+    print('PyFoam is unavailable, OpenFOAM case will not run...')
+# end
+
 
 # =============================================================================
 # Extension modules
 # =============================================================================
 from pygeo import geo_utils
-from mdo_import_helper import MPI, mpiPrint, MExt
+from mpi4py import MPI
+from MExt import MExt
+
+class Error(Exception):
+    """
+    Format the error message in a box to make it clear this
+    was a expliclty raised exception.
+    """
+    def __init__(self, message):
+        msg = '\n+'+'-'*78+'+'+'\n' + '| pyWarpUstruct Error: '
+        i = 23
+        for word in message.split():
+            if len(word) + i + 1 > 78: # Finish line and start new one
+                msg += ' '*(78-i)+'|\n| ' + word + ' '
+                i = 1 + len(word)+1
+            else:
+                msg += word + ' '
+                i += len(word)+1
+        msg += ' '*(78-i) + '|\n' + '+'+'-'*78+'+'+'\n'
+        print(msg)
+        Exception.__init__(self)
 
 # =============================================================================
-# MultiBlockMesh class
+# UnstructuredMesh class
 # =============================================================================
 
 class USMesh(object):
@@ -50,7 +80,7 @@ class USMesh(object):
     interface functions.
  
     """
-    def __init__(self, fileName, comm=None, meshOptions=None):
+    def __init__(self, fileName, comm=None, meshOptions=None,*args,**kwargs):
         """
         Create the USMesh object. 
 
@@ -74,13 +104,18 @@ class USMesh(object):
         else:
             self.comm = comm
             
-        # # Check if warp has already been set if this is this has been
-        # # interhited to complex version
-        # try: 
-        #     self.warp
-        # except:
-        #     self.warp = MExt('warp')._module
-        # # end try
+        # Check if warp has already been set if this is this has been
+        # interhited to complex version
+        try: 
+            self.warp
+        except:
+            if 'debug' in kwargs:
+                debug = kwargs['debug']
+            else:
+                debug = False
+            curDir = os.path.dirname(os.path.realpath(__file__))
+            self.warp = MExt('warpustruct',path=[curDir], debug=debug)._module
+        # end try
 
         if meshOptions is not None:
             self.solverOptions = meshOptions
@@ -92,28 +127,22 @@ class USMesh(object):
         # MultiBlockMesh_C.py
         self.dtype = 'd'
 
-        # Read the grid from the CGNS file
-        fileName, ext = os.path.splitext(fileName)
-        if ext == 'cgns':
-            self.warp.readcgnsgrid(fileName+'.cgns', self.comm.py2f())
-        else:
-            # we are dealing with an OpenFOAM case
-            casedir = fileName
-            self.readOpenFOAMGrid(fileName)
-        # end if
-
         # Defalut options for mesh warping
         self.solverOptionsDefault = {
             # Warp Type
             'warpType':'inversedistance',#alt: rbf
             'aExp': 3,
             'bExp': 5,
+            'binaryPointsFile':False,
+            'binaryFacesFile':False,
+            'binaryCellsFile':False,
+            'binaryOwnersFile':False,
             }
         
         # # Set remaining default values
         # self.FETopo = None
-        # self._checkOptions(self.solverOptions)
-        # self._setMeshOptions()
+        self._checkOptions(self.solverOptions)
+        #self._setMeshOptions()
         # self.warpMeshDOF = self.warp.block.nnodeslocal*3
         # self.solverMeshDOF = 0
         # self.warpInitialized = False
@@ -124,7 +153,380 @@ class USMesh(object):
         # self.familyGroup = {}
         # self.addFamilyGroup('all')
 
+        # Read the grid from the CGNS file
+        print(fileName)
+        fileName, ext = os.path.splitext(fileName)
+        print('filename after',fileName,ext)
+       
+        if 'cgns' in ext:
+            self.warp.readunstructuredcgnsfile(fileName+'.cgns', self.comm.py2f())
+
+        else:
+            # we are dealing with an OpenFOAM case
+            self._readOpenFOAMGrid(fileName)
+        # end if
+
+
         return
+
+# =========================================================================
+#                  Local mesh reading functionality
+# =========================================================================
+
+    def _readOpenFOAMGrid(self,caseDir):
+        '''
+        Read in the mesh points and connectivity from the polyMesh directory
+        '''
+        
+        # Copy the reference points file to points to ensure consistant starting
+        # point
+        self.refPointsFile = os.path.join(caseDir,'constant/polyMesh/points_orig')
+        self.pointsFile = os.path.join(caseDir,'constant/polyMesh/points')
+
+        status = subprocess.call("cp " + "%s %s"%(self.refPointsFile,self.pointsFile), shell=True)
+        if status != 0:
+            raise Error('pyWarpUstruct: status %d: Unable to copy points_orig to points.'%status)
+
+        # Create an instance of mesh info
+        self.mInfo = MeshInformation(caseDir)
+
+        # Read in the volume points
+        self.nodes = self._readVolumeMeshPoints()
+
+        # Read the boundary info
+        self._readBoundaryInfo()
+        
+        # Read the face info for the mesh
+        self._readFaceInfo()
+
+        # Read the cell info for the mesh
+        self._readCellInfo()
+
+        return
+
+    def _readVolumeMeshPoints(self):
+        '''
+        return an numpy array of the mesh points
+        '''
+
+        # use PyFoam to determine the number of points in the file
+        self.nPoints = self.mInfo.nrOfPoints()
+        #print 'nPoints',self.nPoints
+       
+        # Open the points file for reading
+        pointHandle = open(self.pointsFile,'r')
+
+        self._parseHeaderNumerical(pointHandle,self.nPoints)
+      
+        # now read the points into x
+        print (self.solverOptions)
+        print ('binaryPointsFile?',self.solverOptions['binaryPointsFile'])
+        if self.solverOptions['binaryPointsFile']:
+            # read the points in binary using fromfile
+            x = numpy.fromfile(pointHandle, dtype='float', count=self.nPoints*3, sep="").reshape((self.nPoints,3))
+
+        else:
+            # read the file in as ascii
+            x = numpy.zeros([self.nPoints,3])
+            counter = 0
+            for line in pointHandle.readlines():
+                #print 'before',line
+                line = re.sub('[)(]', '', line)
+                #print 'after',line
+                vals = line.split()
+                #print len(vals),vals
+                if len(vals)==3 and counter<self.nPoints:
+                    #print 'points found',counter
+                    x[counter,0] = float(vals[0])
+                    x[counter,1] = float(vals[1])
+                    x[counter,2] = float(vals[2])
+                    counter += 1
+                # end
+            # end
+        # end
+                    
+        pointHandle.close()
+
+        return x
+
+    def _readBoundaryInfo(self):
+        '''
+        read the boundary file information for this case and store in a dict.
+        '''
+        dirName = os.getcwd()
+        
+        boundaryFile = os.path.join(dirName,'constant/polyMesh/boundary')
+        meshDir = os.path.join(dirName,'constant/polyMesh/')
+
+        boundary=ListFile(meshDir,"boundary")
+        
+        nBoundaries = boundary.getSize()
+
+        boundaryHandle = open(boundaryFile, 'r')
+
+        self._parseHeaderNumerical(boundaryHandle,nBoundaries)
+
+        print ('boundary',dir(boundary),boundary.getSize())
+        
+        boundaries = {}
+        boundaryKeys = []
+        boundaryCounter = 0
+        startDict = True
+        for line in boundaryHandle.readlines():
+            #print line
+            vals = line.split()
+            if len(vals)==0:
+                continue
+            else:
+                if startDict:
+                    boundaries[vals[0]] = {}
+                    boundaryKeys.append(vals[0])
+                   
+                    startDict = False
+                elif boundaryCounter<nBoundaries-1:
+                    if '{' in line:
+                        continue
+                    elif '}' in line:
+                        startDict=True
+                        boundaryCounter+=1
+                        print(boundaryCounter,nBoundaries)
+                    else:
+                        boundaries[boundaryKeys[boundaryCounter]][vals[0]] = vals[1]
+                    # end
+                # end
+                #print vals
+
+            # end
+        # end
+        print(boundaries.keys())
+
+        boundaryHandle.close()
+        for key in boundaries.keys():
+            print(boundaries[key])
+                
+        sys.exit(0)
+        return
+
+    def _readFaceInfo(self):
+        '''
+        Read the face info for this case.
+        '''
+        dirName = os.getcwd()
+        
+        faceFile = os.path.join(dirName,'constant/polyMesh/faces')
+        #faceFile2 = os.path.join(dirName,'constant/polyMesh/faces_test')
+        meshDir = os.path.join(dirName,'constant/polyMesh/')
+
+        faces=ListFile(meshDir,"faces")
+
+        self.nFaces = faces.getSize()
+
+        faceHandle = open(faceFile, 'r')
+        #faceHandle2 = open(faceFile2, 'rb')
+
+        # parse through the header to get to the start of the binary data
+        self._parseHeaderNumerical(faceHandle,self.nFaces)
+
+        if self.solverOptions['binaryFacesFile']:
+            for  i in range(30):
+                print(ord(faceHandle2.read(1)))
+            # end
+
+            for i in range(2):
+                value = numpy.fromfile(faceHandle2, dtype='short', count=1, sep="")
+                print('val',value)
+                # values = numpy.fromfile(faceHandle2, dtype='<i4', count=value, sep="")
+                # print values
+            sys.exit(0)
+            for i in range(80):#5):#nFaces):
+                print(ord(faceHandle2.read(1)))
+
+            # for i in range(50):
+            #     #value = faceHandle2.read(8)
+            #     value = numpy.fromfile(faceHandle, dtype='int', count=1, sep="")
+            #     print 'val',value
+            
+            # for i in range(2):#5):#nFaces):
+            #     print faceHandle.read(1)
+            # for i in range(6):#5):#nFaces):
+            #     nFacePoints = numpy.fromfile(faceHandle, dtype='int', count=nFaces, sep="")
+            #     print nFacePoints
+            #     # print nFacePoints
+                
+            #     # pointIndices = numpy.fromfile(faceHandle, dtype=numpy.int32, count=nFacePoints, sep="")
+            #     # print pointIndices
+
+
+            # end
+            sys.exit(0)
+        else:
+            # read the file in as ascii
+            faces = {}
+            counter = 0
+            for line in faceHandle.readlines():
+                line = re.sub('[)(]', ' ', line)
+                vals = line.split()
+                if len(vals)==0:
+                    continue
+                elif "//" in line:
+                    continue
+                elif counter<self.nFaces:
+                    nPoints = int(vals[0])
+                    faces[counter]= numpy.zeros(nPoints,int)
+                    for i in range(nPoints):
+                        faces[counter][i] = int(vals[i+1])
+                    # end
+                    counter += 1
+                # end
+            # end
+
+        self.faces = faces
+        #print 'faces',dir(faces),faces.getSize()
+        
+        # tmp = faces.readFile()
+        # print tmp
+        # self.faces=faces.getSize()
+
+        faceHandle.close()
+        return
+
+    def _readCellInfo(self):
+        '''
+        read the boundary file information for this case and store in a dict.
+        '''
+        dirName = os.getcwd()
+        
+        cellFile = os.path.join(dirName,'constant/polyMesh/cells')
+        ownerFile = os.path.join(dirName,'constant/polyMesh/owner')
+        meshDir = os.path.join(dirName,'constant/polyMesh/')
+
+        cells=ListFile(meshDir,"cells")
+        owners = ListFile(meshDir,"owner")
+        
+        self.nOwners = owners.getSize()
+        self.nCells = cells.getSize()
+
+        cellHandle = open(cellFile, 'r')
+        ownerHandle = open(ownerFile, 'r')
+
+        # parse through the header to get to the start of the binary data
+        self._parseHeaderNumerical(cellHandle,self.nCells)
+        self._parseHeaderNumerical(ownerHandle,self.nOwners)
+
+        # read the cells
+        if self.solverOptions['binaryCellsFile']:
+            pass
+        else:
+            # read the file in as ascii
+            cells = {}
+            counter = 0
+            for line in cellHandle.readlines():
+                line = re.sub('[)(]', ' ', line)
+                vals = line.split()
+                if len(vals)==0:
+                    continue
+                elif "//" in line:
+                    continue
+                elif counter<self.nCells:
+                    nFacesPerCell = int(vals[0])
+                    cells[counter]= numpy.zeros(nFacesPerCell,int)
+                    for i in range(nFacesPerCell):
+                        cells[counter][i] = int(vals[i+1])
+                    # end
+                    counter += 1
+                # end
+            # end
+
+        # read the owners
+        if self.solverOptions['binaryOwnersFile']:
+            pass
+        else:
+            # read the file in as ascii
+            owners = {}
+            self.owners = numpy.zeros(self.nOwners,int)
+            counter = 0
+            for line in ownerHandle.readlines():
+                line = re.sub('[)(]', ' ', line)
+                vals = line.split()
+                if len(vals)==0:
+                    continue
+                elif "//" in line:
+                    continue
+                elif counter<self.nOwners:
+                    self.owners[counter]=int(vals[0])
+                    counter += 1
+                # end
+            # end
+
+        
+
+    def _parseHeaderNumerical(self,handle,stopValue):
+        '''
+        a generic function to parse through a file and return when a certain
+        number is detected in the file
+        '''
+
+        # Setup a character based check to find the start of the list entries
+        # Turn the number of entries into a string
+        nEntriesChar = '%d'%stopValue
+        # determine the length of the string
+        lenNEntries = len(nEntriesChar)
+        # create a boolean array with an entry for each character of the string
+        # if we match all of the characters consecutively, we will set a logical
+        # which will combine with the '(' character to indicate the start of the list
+        entriesCheck = numpy.zeros(lenNEntries,bool)
+
+        # set and index for the character boolean and create the logical to indicate
+        # when we have found the consecutive string of characters that represent the
+        # number of points
+        eIdx = 0
+        nEntriesFound = False
+        # loop over the characters in the file one byte at a time
+        while True:
+            c = handle.read(1)
+            if not nEntriesFound:
+                # check to see if the current character matches the required 
+                # character in the sequence
+                if c == nEntriesChar[eIdx]:
+                    # if they match, set the current entry in the boolean array 
+                    # to true and increment the index to the next entry in the 
+                    # array
+                    print(c)
+                    entriesCheck[eIdx] = True
+                    eIdx += 1
+
+                else:
+                    # Otherwise we haven't found the string so we need to start over
+                    # reset everything
+                    entriesCheck[:] = False
+                    eIdx = 0
+
+                # end
+
+                # check if all of the entries in the boolean array are True
+                # if so we have found the nEntries string and we can start searching
+                # for the start of the list of entries
+                if all(entriesCheck):
+                    nEntriesFound = True
+                # end
+                        
+            else:
+                # Now that we have found the nEntries Character string, we can start
+                # looking for the '(' that represents the start of the entries list
+                # once we have found that character, exit the loop.
+                if c=='(':
+                    print("final Character",c)
+                    print("End of header")
+                    break
+                # end
+            # end
+            #print "Read a character:", c
+        # end
+
+        return
+        
+
+
 
 # =========================================================================
 #                  Local Multi-disciplinary Surface Functionality
@@ -475,7 +877,71 @@ class USMesh(object):
 # # ==========================================================================
 # #                        Output Functionality
 # # ==========================================================================
+    def writeGridTecplot(self,fileName):
+        '''
+        write the current grid coordinates in a tecplot FE
+        File.
+        '''
+        f = open(fileName+'.dat','w')
+        
+        nPoints = self.nPoints
+        nFaces = self.nFaces
+        nCells = self.nCells
 
+        # write the node numbers for each face
+        faceNodeSum = 0
+        for i in range(nFaces):   
+            nPointsFace = len(self.faces[i])
+            faceNodeSum+=nPointsFace
+        # end
+
+        f.write('TITLE = "Example Grid File"\n')
+        f.write('FILETYPE = GRID\n')
+        f.write('VARIABLES = "X" "Y" "Z"\n')
+        f.write('Zone\n')
+        f.write('ZoneType=FEPOLYHEDRON\n')
+        f.write('NODES=%d\n'%nPoints)
+        f.write('FACES=%d\n'%nFaces)
+        f.write('ELEMENTS=%d\n'%nCells)
+        f.write('TotalNumFaceNodes=%d\n'%faceNodeSum)
+        f.write('NumConnectedBoundaryFaces=%d\n'%0)
+        f.write('TotalNumBoundaryConnections=%d\n'%0)
+        # Write the points to file in block data format
+        for i in range(3):
+            for j in range(nPoints):
+                f.write('%f\n'%self.nodes[j,i])
+            # end
+        # end
+        # Write the number of nodes in each face to the
+        # file
+        counter = 0
+        for i in range(nFaces):
+            nPointsFace = len(self.faces[i])
+            f.write('%d '%nPointsFace)
+            counter += 1
+            if counter>300:
+                f.write('\n')
+                counter=0
+        # end
+        f.write('\n')
+        # write the node numbers for each face
+        for i in range(nFaces):   
+            nPointsFace = len(self.faces[i])
+            for j in range(nPointsFace):
+                f.write('%d '%(self.faces[i][j]+1))
+            # end
+            f.write('\n')
+        # end
+        # write left elements
+        for i in range(nFaces):
+            f.write('%d\n'%0)#self.owners[i])
+        # write right elements
+        for i in range(nFaces):
+            f.write('%d\n'%1)#self.owners[nFaces-i-1])
+            
+
+        f.close()
+        return
 #     def writeVolumeGrid(self, fileName):
 #         """
 #         Write the current state the mesh to a volume CGNS file
@@ -755,127 +1221,65 @@ class USMesh(object):
 
 #         return
 
-#     def _initializeSolidWarping(self):
-#         """
-#         Internal function to setup the necessary data for solid warping
-#         """
+    def _initializeIDWarping(self):
+        """
+        Internal function to setup the necessary data for the inverse distance warping
+        """
         
-#         if not self.solidWarpInitialized and \
-#                 self.solverOptions['warpType'] == 'solid':
+        if not self.IDWarpInitialized and \
+                self.solverOptions['warpType'] == 'inverseDistance':
 
-#             mpiPrint('\nInitializating Solid Mesh Warping...',
-#                      comm=self.comm)
-             
-#             # Get the orientation fo the symmetry Plane (Collective)
-#             sym = self.warp.getsymmetryplane()
+            mpiPrint('\nInitializating InverseDistance Mesh Warping...',
+                     comm=self.comm)
 
-#             # Call the pre-processing step to get the corners and face
-#             # boundary conditions
+            # Determine the Boundary nodes
 
-#             nBlocks, coords, BCs, blockDims = self._getCGNSCoords()
-
-#             # Pull out the sizes of each block -- note result only
-#             # applicable on root proc so bcast after
-
-#             if self.solverOptions['solidWarpType'] == 'n':
-#                 # Compute topology
-#                 self.FETopo = geo_utils.BlockTopology(coords)
-#                 n = self.solverOptions['n']
-#                 sizes = n*numpy.ones((nBlocks, 3), 'intc')
-#                 sizes = self._checkSizes(sizes, blockDims)
-
-#             elif self.solverOptions['solidWarpType'] == 'm':
-#                 self.FETopo = geo_utils.BlockTopology(coords)
-#                 # These are a little more complex since we have to go
-#                 # through block dims and determine the sizes from the
-#                 # sizes of the edges
-
-#                 sizes = blockDims.copy()
-#                 for i in xrange(len(sizes)):
-#                     for idim in xrange(3):
-#                         if numpy.mod(sizes[i, idim]-1, 2) == 0:
-#                             sizes[i, idim] = (sizes[i, idim]-1)/2+1
-
-#                 for i in xrange(len(sizes)):
-#                     for idim in xrange(3):
-#                         if numpy.mod(sizes[i, idim]-1, 2) == 0:
-#                             sizes[i, idim] = (sizes[i, idim]-1)/2+1
-
-                
-#                 sizes = self._checkSizes(sizes, blockDims)
-                
-#             else:
-#                 self.FETopo = geo_utils.BlockTopology(
-#                     file=self.solverOptions['topo'])
-                
-#                 sizes = numpy.zeros((nBlocks, 3), 'intc')
-#                 for ivol in xrange(nBlocks):
-#                     sizes[ivol][0] = self.FETopo.edges[
-#                         self.FETopo.edge_link[ivol][0]].N
-#                     sizes[ivol][1] = self.FETopo.edges[
-#                         self.FETopo.edge_link[ivol][2]].N
-#                     sizes[ivol][2] = self.FETopo.edges[
-#                         self.FETopo.edge_link[ivol][8]].N
-#                 # end for
-#                 sizes = self._checkSizes(sizes, blockDims)
-#             # end if
-
-#             self.FETopo.calcGlobalNumbering(sizes)
-
-#             # Re-order numbering to account for constrained dof
-#             nuu, nus, lIndexFlat, lPtr, lSizes = \
-#                 self._reOrderIndices(self.FETopo, BCs, sym) 
+            # compute Ldef
             
-#             # Set the required data in the module
-#             self.warp.solidwarpmodule.nuu      = nuu
-#             self.warp.solidwarpmodule.nus      = nus
-#             self.warp.solidwarpmodule.l_index  = lIndexFlat
-#             self.warp.solidwarpmodule.lptr     = lPtr
-#             self.warp.solidwarpmodule.l_sizes  = lSizes
-         
-#             # Do a sanity check on nuu...if nuu is zero can't do solid
-#             # warping
-#             if nuu == 0:
-#                 if self.comm.rank == 0:
-#                     print('#'*80)
-#                     print('Erorr: No unknown super node degrees of freedom!')
-#                     print('       Increae n or use a topo.con file')
-#                     print('#'*80)
-#                 # end if
-#                 sys.exit(1)
-#             # end if
+            # Compute Alpha
+            
+            # Compute the area weighting of the boundary nodes
+                         
 
-#             # Run Fortran Solid Mesh Warpnig Initialization
-#             self.warp.initializesolidwarping()
+            mpiPrint('  -> Inverse Distance Mesh Warping Initialized.', comm=self.comm)
+            self.IDWarpInitialized = True
+        # end if
 
-#             mpiPrint('  -> Solid Mesh Warping Initialized.', comm=self.comm)
-#             self.solidWarpInitialized = True
-#         # end if
+        return
 
-#         return
+    def warpMesh(self):
+        """ 
+        Run the applicable mesh warping strategy.
 
-#     def warpMesh(self):
-#         """ 
-#         Run the applicable mesh warping strategy.
-
-#         This will update the volume coordinates to match surface
-#         coordinates set with setSurfaceCoordinates()
+        This will update the volume coordinates to match surface
+        coordinates set with setSurfaceCoordinates()
         
-#         """
+        """
 
-#         # Initialize internal surface if one isn't set
-#         self._setInternalSurface()
+        # Initialize internal surface if one isn't set
+        self._setInternalSurface()
 
-#         # Set Options
-#         self._setMeshOptions()
+        # Set Options
+        self._setMeshOptions()
 
-#         # Make sure solid warping is initialized if necessary
-#         self._initializeSolidWarping()
+        # Make sure solid warping is initialized if necessary
+        self._initializeIDWarping()
 
-#         # Now run mesh warp command
-#         self.warp.warpmesh()
+        # Warp the mesh
+        # loop over the surface to compute the rotations and
+        # displacements
+        
+        # compute Si for eache surface node
 
-#         return
+        # compute Smean
+
+        # Compute alpha for current displacement
+
+        # For each volume node not on the boundary
+        # loop over the surface and compute wi and si
+        # Sum s(r) on the fly
+        
+        return
 
 #     def resetWarping(self):
 #         """
@@ -1315,19 +1719,19 @@ class USMesh(object):
 
 #         return nBlocks, coords, BCs, blockDims
       
-#     def _checkOptions(self, solverOptions):
-#         """
-#         Check the solver options against the default ones
-#         and add opt
-#         ion iff it is NOT in solverOptions
+    def _checkOptions(self, solverOptions):
+        """
+        Check the solver options against the default ones
+        and add opt
+        ion iff it is NOT in solverOptions
 
-#         """
-#         for key in self.solverOptionsDefault.keys():
-#             if not(key in solverOptions.keys()):
-#                 solverOptions[key] = self.solverOptionsDefault[key]
-#             else:
-#                 self.solverOptionsDefault[key] = solverOptions[key]	
-#             # end if
-#         # end for
-
-#         return solverOptions
+        """
+        for key in self.solverOptionsDefault.keys():
+            if not(key in solverOptions.keys()):
+                solverOptions[key] = self.solverOptionsDefault[key]
+            else:
+                self.solverOptionsDefault[key] = solverOptions[key]	
+            # end if
+        # end for
+        print('solveroptions',solverOptions)
+        return solverOptions
