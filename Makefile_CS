@@ -1,0 +1,123 @@
+# Makefile for pymissionanalysis
+
+REAL_SRC    =   src/modules\
+		src/common\
+		src/kriging\
+		src/rbf\
+		src/engine\
+		src/weightAndBalance\
+		src/missionAnalysis\
+
+
+SUBDIR_SRC1   = src_cs/modules\
+	        src_cs/common\
+		src_cs/kriging\
+		src_cs/rbf\
+		src_cs/engine\
+		src_cs/weightAndBalance\
+		src_cs/missionAnalysis
+
+SUBDIR_SRC2   =	src_cs/derivativeRoutines
+
+
+#      ******************************************************************
+#      *                                                                *
+#      * General targets.                                               *
+#      *                                                                *
+#      ******************************************************************
+
+default:
+	@echo "Usage: make <arch>"
+	@echo "Supported architectures: LINUX_INTEL"
+	@echo "                         LINUX_GFORTRAN"
+	@echo "                         LINUX_INTEL_SCINET"
+	@echo "                         BASALT"
+
+all:	 default
+
+dirs:	
+
+	mkdir -p obj_cs
+	mkdir -p mod_cs
+	@for subdir in $(SUBDIR_SRC1) ; \
+	     do \
+	     	 echo "Creating Complex Directory $$subdir"; \
+	         (mkdir -p $$subdir) || exit 1;  \
+	     done
+
+
+clean:
+	ln -sf Common_CS.mk Common.mk
+	@echo " Making clean ... "
+
+	@for subdir in $(SUBDIR_SRC1) ; \
+	     do \
+	     	echo "Removing Complex Directory $$subdir"; \
+		(rm -fr $$subdir) || exit 1;  \
+	     done
+	rm -f *~ config.mk;
+	rm -f lib_cs/lib* mod_cs/*.mod obj_cs/*
+
+#      ******************************************************************
+#      *                                                                *
+#      * The actual make. This is not a direct target, but is called    *
+#      * from the architectures.                                        *
+#      *                                                                *
+#      ******************************************************************
+
+module:
+	@for subdir in $(REAL_SRC) ; \
+		do \
+			echo "complexifying $@ in $$subdir"; \
+			echo; \
+			(cd $$subdir && make complexify) || exit 1; \
+		done 
+
+	@for subdir in $(SUBDIR_SRC1) ; \
+		do \
+			echo "making $@ in $$subdir"; \
+			echo; \
+			(cd $$subdir && make) || exit 1; \
+		done
+	@for subdir in $(SUBDIR_SRC2) ; \
+		do \
+			echo "making $@ in $$subdir"; \
+			echo; \
+			(cd $$subdir && make) || exit 1; \
+		done
+	(cd lib_cs && make)
+
+
+#      ******************************************************************
+#      *                                                                *
+#      * Platform specific targets.                                     *
+#      *                                                                *
+#      ******************************************************************
+
+LINUX_INTEL:
+	make -f Makefile_CS  dirs
+	if [ ! -f "config/config.LINUX_INTEL.mk" ]; then cp "config/defaults/config.LINUX_INTEL.mk" ./config; fi
+	ln -sf config/config.LINUX_INTEL.mk config.mk
+	ln -sf Common_CS.mk Common.mk
+	make -f Makefile_CS module
+	(cd src/f2py && make complexify)
+	(cd src_cs/f2py && make)	
+
+LINUX_GFORTRAN:
+	make -f Makefile_CS  dirs
+	if [ ! -f "config/config.LINUX_GFORTRAN.mk" ]; then cp "config/defaults/config.LINUX_GFORTRAN.mk" ./config; fi
+	ln -sf config/config.LINUX_GFORTRAN.mk config.mk
+	ln -sf Common_CS.mk Common.mk
+	make -f Makefile_CS module
+	(cd src/f2py && make complexify)
+	(cd src_cs/f2py && make)
+
+LINUX_INTEL_SCINET:
+	make -f Makefile_CS  dirs
+	if [ ! -f "config/config.LINUX_INTEL_SCINET.mk" ]; then cp "config/defaults/config.LINUX_INTEL_SCINET.mk" ./config; fi
+	ln -sf config/config.LINUX_INTEL_SCINET.mk config.mk
+	ln -sf Common_CS.mk Common.mk
+	make -f Makefile_CS module
+	(cd src/f2py && make complexify)
+	(cd src_cs/f2py && make)
+
