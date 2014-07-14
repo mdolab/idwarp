@@ -14,7 +14,8 @@ vpath %.o $(OBJDIR)
 MODS0 = complexify.o\
 
 MODS1 = precision.o\
-        communication.o
+        communication.o\
+	gridData.o
 
 #FILES_TO_COMPLEXIFY =  enginemodules.F90\
 		       kriging_data.F90\
