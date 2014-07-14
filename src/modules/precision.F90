@@ -3,8 +3,8 @@ module precision
   save 
 #include "mpif.h"
   integer,parameter :: realType = selected_real_kind(12)
-  integer(kind=4), private :: dummyInt
-  integer,parameter :: intType = kind(dummyInt)
+!  integer(kind=4), private :: dummyInt
+  integer,parameter :: intType = selected_int_kind (12)! kind(dummyInt)
 
 
   ! Floating point constants.
