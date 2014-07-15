@@ -17,3 +17,4 @@ mesh1 = USMesh(casename, comm=gcomm, meshOptions=meshOptions)
 
 casename = 'mdo_tutorial_face_bcs.cgns'
 mesh2 = USMesh(casename, comm=gcomm, meshOptions=meshOptions)
+mesh2.updateGridMetrics()
