@@ -4,11 +4,17 @@
 python module warpustruct ! in 
     interface  ! in :warpustruct
         subroutine readunstructuredcgnsfile(cgns_file,comm) ! in :warpustruct:../IO/readUnstructuredCGNS.f90
+            use griddata
             use communication
             use precision
             character*(*) :: cgns_file
             integer(kind=inttype) :: comm
         end subroutine readunstructuredcgnsfile
+        subroutine deallocatecgnsdata ! in :warpustruct:../IO/readUnstructuredCGNS.f90
+            use griddata
+            use communication
+            use precision
+        end subroutine deallocatecgnsdata
         module communication ! in :warpustruct:../modules/communication.f90
             use precision
             integer(kind=inttype) :: warp_comm_self
@@ -16,6 +22,10 @@ python module warpustruct ! in
             integer(kind=inttype) :: warp_comm_world
             integer(kind=inttype) :: nproc
         end module communication
+        subroutine getsurfaceelementcenterandarea ! in :warpustruct:../geoCalcs/getSurfaceElementCenters.f90
+            use griddata
+            use precision
+        end subroutine getsurfaceelementcenterandarea
     end interface 
 end python module warpustruct
 

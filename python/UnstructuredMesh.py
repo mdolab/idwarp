@@ -525,8 +525,20 @@ class USMesh(object):
 
         return
         
+# ============================
+# Local grid geometry calcs
+# ============================
+
+    def updateGridMetrics(self):
+        '''
+        run the fortran level routines to compute area for 
+        the surface elements/faces
+        '''
+
+        self.warp.getsurfaceelementcenterandarea()
 
 
+        return
 
 # =========================================================================
 #                  Local Multi-disciplinary Surface Functionality

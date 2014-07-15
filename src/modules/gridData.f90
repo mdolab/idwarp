@@ -21,6 +21,8 @@ module gridData
      integer(kind=intType):: nElem,nConn
      integer(kind=intType):: elemType
      integer(kind=intType), dimension(:,:), allocatable :: elements
+     real(kind=realType), dimension(:,:), allocatable :: elemCenter
+     real(kind=realType), dimension(:,:), allocatable :: elemArea
 
   end type sectionDataType
 
@@ -53,7 +55,7 @@ module gridData
   end type zoneDataType
 
 
-  integer(kind=intType):: nZones
+  integer(kind=intType):: nZones,physDim,cellDim
   type(zoneDataType) ,dimension(:), allocatable ::gridDoms
 
 
