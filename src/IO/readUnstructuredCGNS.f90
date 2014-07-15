@@ -26,7 +26,7 @@ subroutine readUnstructuredCGNSFile(cgns_file, comm)
   ! CGNS Variabls
   integer(kind=intType) :: fileIndex, base, nbases
   integer(kind=intType) :: nbocos, boco
-  integer(kind=intType) :: cellDim, physDim,nVertices,nVolElements
+  integer(kind=intType) :: nVertices,nVolElements
   integer(kind=intType) :: zone,zoneType,dataType,sec,type
   integer(kind=intType) :: nCoords,nSections,nConn,nElem
   integer(kind=intType) :: eBeg,eEnd,nBdry, parentFlag
@@ -63,7 +63,6 @@ subroutine readUnstructuredCGNSFile(cgns_file, comm)
   ! endif
 
   call cg_open_f(cgns_file, CG_MODE_READ, fileIndex, ierr)
-  !refFileIndex = fileIndex
   if (ierr .eq. CG_ERROR) call cg_error_exit_f
 
   call cg_nbases_f(fileIndex, nbases, ierr)
@@ -75,7 +74,7 @@ subroutine readUnstructuredCGNSFile(cgns_file, comm)
   
   base = 1_intType
 
-    !       *** base attribute:  GOTO base node
+ !       *** base attribute:  GOTO base node
   call cg_goto_f(fileIndex, base, ierr, 'end')
   if (ierr .eq. CG_ERROR) call cg_error_exit_f
 
@@ -109,7 +108,7 @@ subroutine readUnstructuredCGNSFile(cgns_file, comm)
      call cg_zone_type_f(fileIndex,base, zone, zoneType,ierr)
      if (ierr .eq. ERROR) call cg_error_exit_f
      if (myID == 0) then
-        print *, '   -> ZoneType:',zone,zoneType, Structured, Unstructured
+        print *, '   -> ZoneType:',zone,zoneType!, Structured, Unstructured
      end if
 
      if(zoneType .ne. Unstructured)then
@@ -122,25 +121,9 @@ subroutine readUnstructuredCGNSFile(cgns_file, comm)
      call cg_zone_read_f(fileIndex,base,zone,zoneName,sizes,ierr)
      nVertices    = sizes(1)
      nVolElements = sizes(2)
-     ! if (myID == 0) then
-     !    print *, ' zone,nVert,nElem',zone,nVertices,nVolElements,sizes
-     ! end if
 
      ! Allocate the memory for the grid points
      allocate(gridDoms(zone)%points(nVertices,physDim),STAT=ierr)
-
-
-     ! ! Determine the number and names of the coordinates. 
-
-     ! call cg_ncoords_f(fileIndex,base,zone,nCoords,ierr)
-     ! if (myID == 0) then
-     !    print *, 'nCoords',nCoords
-     ! end if
-
-     ! call cg_coord_info_f(fileIndex,base,zone,1_intType,dataType,name,ierr)
-     ! if (myID == 0) then
-     !    print *, 'dataType',dataType,name
-     ! end if
 
      ! Read the x,y,z-coordinates.
      ! This assumes the coords are in double precision.
@@ -150,23 +133,14 @@ subroutine readUnstructuredCGNSFile(cgns_file, comm)
      call cg_coord_read_f(fileIndex,base,zone,"CoordinateX",&
           & realDouble, 1,nVertices, gridDoms(zone)%points(:,1)&
           &,ierr)
-     ! if (myID == 0) then
-     !    print *, 'Coorx',shape(gridDoms(zone)%points(:,1))!,coorX(1:100)
-     ! end if
 
      call cg_coord_read_f(fileIndex,base,zone,"CoordinateY",&
           & realDouble, 1,nVertices, gridDoms(zone)%points(:,2),&
           &ierr)
-     ! if (myID == 0) then
-     !    print *, 'Coory',shape(gridDoms(zone)%points(:,2))!,coorY(1:100)
-     ! end if
 
      call cg_coord_read_f(fileIndex,base,zone,"CoordinateZ",&
           & realDouble, 1,nVertices, gridDoms(zone)%points(:,3),&
           &ierr)
-     ! if (myID == 0) then
-     !    print *, 'Coorz',shape(gridDoms(zone)%points(:,2))!,coorZ(1:100)
-     ! end if
 
      ! Determine the number of sections for this zone. Note that 
      ! surface elements can be stored in a volume zone, but they 
@@ -175,7 +149,7 @@ subroutine readUnstructuredCGNSFile(cgns_file, comm)
 
      call cg_nsections_f(fileIndex,base,zone,nSections,ierr)
      if (myID == 0) then
-        print *, 'nSections',nSections
+        print *, '   -> nSections',nSections
      end if
      gridDoms(zone)%nSections = nSections
      
@@ -239,14 +213,14 @@ subroutine readUnstructuredCGNSFile(cgns_file, comm)
         call cg_section_read_f(fileIndex,base,zone,sec,secName,&
              type,eBeg,eEnd,nBdry,parentFlag,ierr)
         nElem = eEnd-eBeg+1
-        print *,'type',sec,secName,type,eBeg,eEnd,nBdry,parentFlag
-        print *,'Types',HEXA_8,QUAD_4
+        !print *,'type',sec,secName,type,eBeg,eEnd,nBdry,parentFlag
+        !print *,'Types',HEXA_8,QUAD_4
 
         call cg_npe_f(type, nconn, ierr)
 
         if (gridDoms(zone)%isVolumeSection(sec)) then
            ! this is a group of volume elements
-           allocate(gridDoms(zone)%volumeSections(volSecCounter)%elements(nElem,nConn),STAT=ierr)
+           allocate(gridDoms(zone)%volumeSections(volSecCounter)%elements(nConn,nElem),STAT=ierr)
            gridDoms(zone)%volumeSections(volSecCounter)%nElem = nElem
            gridDoms(zone)%volumeSections(volSecCounter)%secName = secName
            gridDoms(zone)%volumeSections(volSecCounter)%elemType = type
@@ -254,6 +228,8 @@ subroutine readUnstructuredCGNSFile(cgns_file, comm)
         else
            ! this is a group of surface elements
            allocate(gridDoms(zone)%surfaceSections(surfSecCounter)%elements(nConn,nElem),STAT=ierr)
+           allocate(gridDoms(zone)%surfaceSections(surfSecCounter)%elemCenter(nElem,physDim),STAT=ierr)
+           allocate(gridDoms(zone)%surfaceSections(surfSecCounter)%elemArea(nElem,physDim),STAT=ierr)
            gridDoms(zone)%surfaceSections(surfSecCounter)%nElem = nElem
            gridDoms(zone)%surfaceSections(surfSecCounter)%secName = secName
            gridDoms(zone)%surfaceSections(surfSecCounter)%elemType = type
@@ -265,17 +241,14 @@ subroutine readUnstructuredCGNSFile(cgns_file, comm)
         conn = 0
         ! allocate(parentData(nElem,nConn),STAT=ierr)
         ! Read the connectivity. Again, the node numbering of the 
-        ! connectivities start at 1. If internally a starting index
-        ! of 0 is used (typical for C-codes) 1 must be substracted 
-        ! from the connectivities read. 
-        print *,'nElem',nElem,nConn
-        print *,'indices',fileIndex,base,zone,sec
-        print *, 'conn',shape(conn)
+        ! connectivities start at 1. If internally a starting
+        ! index of 0 is used (typical for C-codes) 1 must be
+        ! substracted from the connectivities read. 
         
         call cg_elements_read_f(fileIndex,base,zone,sec,conn,parentFlag,ierr)
-         if (myID == 0) then
-            print *, 'conn',shape(conn),conn(:,1)
-         end if
+         ! if (myID == 0) then
+         !    print *, 'conn',shape(conn),conn(:,1)
+         ! end if
 
          if (gridDoms(zone)%isVolumeSection(sec)) then
             gridDoms(zone)%volumeSections(volSecCounter)%elements = conn
@@ -339,6 +312,8 @@ subroutine deallocateCGNSData()
             volSecCounter = volSecCounter + 1
         else
            deallocate(gridDoms(zone)%surfaceSections(surfSecCounter)%elements,STAT=ierr)
+           deallocate(gridDoms(zone)%surfaceSections(surfSecCounter)%elemCenter,STAT=ierr)
+           deallocate(gridDoms(zone)%surfaceSections(surfSecCounter)%elemArea,STAT=ierr)
            surfSecCounter = surfSecCounter + 1
         end if
      end do
