@@ -32,7 +32,7 @@ import subprocess,re
 # =============================================================================
 # External Python modules
 # =============================================================================
-import numpy
+import numpy as np
 try:
     # import the necessary modules from PyFoam
     from PyFoam.RunDictionary.ParsedParameterFile import ParsedParameterFile
@@ -104,8 +104,8 @@ class USMesh(object):
         else:
             self.comm = comm
             
-        # Check if warp has already been set if this is this has been
-        # interhited to complex version
+        # Check if warp has already been set. If this is true, this has been
+        # inherited to the complex version
         try: 
             self.warp
         except:
@@ -124,7 +124,7 @@ class USMesh(object):
         # end if
 
         # Set realtype of 'd'. 'D' is used in Complex and set in
-        # MultiBlockMesh_C.py
+        # UnstructuredMesh_C.py
         self.dtype = 'd'
 
         # Defalut options for mesh warping
@@ -133,6 +133,7 @@ class USMesh(object):
             'warpType':'inversedistance',#alt: rbf
             'aExp': 3,
             'bExp': 5,
+            'fileType':'cgns', # other option openfoam
             'binaryPointsFile':False,
             'binaryFacesFile':False,
             'binaryCellsFile':False,
@@ -145,26 +146,33 @@ class USMesh(object):
         #self._setMeshOptions()
         # self.warpMeshDOF = self.warp.block.nnodeslocal*3
         # self.solverMeshDOF = 0
-        # self.warpInitialized = False
+        self.warpInitialized = False
         # self.solidWarpInitialized = False
-
-        # # Extract family info and add default group "all"
-        # self._getFamilyList()
-        # self.familyGroup = {}
-        # self.addFamilyGroup('all')
 
         # Read the grid from the CGNS file
         print(fileName)
         fileName, ext = os.path.splitext(fileName)
         print('filename after',fileName,ext)
        
-        if 'cgns' in ext:
+        if self.solverOptions['fileType'] == 'cgns':
             self.warp.readunstructuredcgnsfile(fileName+'.cgns', self.comm.py2f())
 
-        else:
+        elif self.solverOptions['fileType'] == 'openfoam':
             # we are dealing with an OpenFOAM case
             self._readOpenFOAMGrid(fileName)
+        else:
+            print('Invalid input file type. CGNS or OpenFOAM required...Exiting')
+            sys.exit(0)
         # end if
+       
+        # Figure out the unique surface numbering
+        self.preprocessSurfaces()
+
+        # Extract family info and add default group "all"
+        self._getFamilyList()
+        self.familyGroup = {}
+        print('adding family group')
+        self.addFamilyGroup('all')
 
 
         return
@@ -223,11 +231,11 @@ class USMesh(object):
         print ('binaryPointsFile?',self.solverOptions['binaryPointsFile'])
         if self.solverOptions['binaryPointsFile']:
             # read the points in binary using fromfile
-            x = numpy.fromfile(pointHandle, dtype='float', count=self.nPoints*3, sep="").reshape((self.nPoints,3))
+            x = np.fromfile(pointHandle, dtype='float', count=self.nPoints*3, sep="").reshape((self.nPoints,3))
 
         else:
             # read the file in as ascii
-            x = numpy.zeros([self.nPoints,3])
+            x = np.zeros([self.nPoints,3])
             counter = 0
             for line in pointHandle.readlines():
                 #print 'before',line
@@ -333,9 +341,9 @@ class USMesh(object):
             # end
 
             for i in range(2):
-                value = numpy.fromfile(faceHandle2, dtype='short', count=1, sep="")
+                value = np.fromfile(faceHandle2, dtype='short', count=1, sep="")
                 print('val',value)
-                # values = numpy.fromfile(faceHandle2, dtype='<i4', count=value, sep="")
+                # values = np.fromfile(faceHandle2, dtype='<i4', count=value, sep="")
                 # print values
             sys.exit(0)
             for i in range(80):#5):#nFaces):
@@ -343,17 +351,17 @@ class USMesh(object):
 
             # for i in range(50):
             #     #value = faceHandle2.read(8)
-            #     value = numpy.fromfile(faceHandle, dtype='int', count=1, sep="")
+            #     value = np.fromfile(faceHandle, dtype='int', count=1, sep="")
             #     print 'val',value
             
             # for i in range(2):#5):#nFaces):
             #     print faceHandle.read(1)
             # for i in range(6):#5):#nFaces):
-            #     nFacePoints = numpy.fromfile(faceHandle, dtype='int', count=nFaces, sep="")
+            #     nFacePoints = np.fromfile(faceHandle, dtype='int', count=nFaces, sep="")
             #     print nFacePoints
             #     # print nFacePoints
                 
-            #     # pointIndices = numpy.fromfile(faceHandle, dtype=numpy.int32, count=nFacePoints, sep="")
+            #     # pointIndices = np.fromfile(faceHandle, dtype=np.int32, count=nFacePoints, sep="")
             #     # print pointIndices
 
 
@@ -372,7 +380,7 @@ class USMesh(object):
                     continue
                 elif counter<self.nFaces:
                     nPoints = int(vals[0])
-                    faces[counter]= numpy.zeros(nPoints,int)
+                    faces[counter]= np.zeros(nPoints,int)
                     for i in range(nPoints):
                         faces[counter][i] = int(vals[i+1])
                     # end
@@ -429,7 +437,7 @@ class USMesh(object):
                     continue
                 elif counter<self.nCells:
                     nFacesPerCell = int(vals[0])
-                    cells[counter]= numpy.zeros(nFacesPerCell,int)
+                    cells[counter]= np.zeros(nFacesPerCell,int)
                     for i in range(nFacesPerCell):
                         cells[counter][i] = int(vals[i+1])
                     # end
@@ -443,7 +451,7 @@ class USMesh(object):
         else:
             # read the file in as ascii
             owners = {}
-            self.owners = numpy.zeros(self.nOwners,int)
+            self.owners = np.zeros(self.nOwners,int)
             counter = 0
             for line in ownerHandle.readlines():
                 line = re.sub('[)(]', ' ', line)
@@ -474,7 +482,7 @@ class USMesh(object):
         # create a boolean array with an entry for each character of the string
         # if we match all of the characters consecutively, we will set a logical
         # which will combine with the '(' character to indicate the start of the list
-        entriesCheck = numpy.zeros(lenNEntries,bool)
+        entriesCheck = np.zeros(lenNEntries,bool)
 
         # set and index for the character boolean and create the logical to indicate
         # when we have found the consecutive string of characters that represent the
@@ -528,6 +536,16 @@ class USMesh(object):
 # ============================
 # Local grid geometry calcs
 # ============================
+    def preprocessSurfaces(self):
+        '''
+        Run the routines to separate out the surfaces and determine the 
+        node orderings
+        '''
+
+        #self.warp.getuniquesurfacenodelist()
+        self.warp.getfulluniquesurfacenodelist()
+
+        return
 
     def updateGridMetrics(self):
         '''
@@ -545,22 +563,25 @@ class USMesh(object):
 # =========================================================================
 
     def getSurfaceCoordinates(self, groupName):
-        """ Returns all surface coordinates on this processor in group
-        "groupName"
-        """
-        # Input Arguments:
-        #    groupName, str: The group from which to obtain the coordinates.
-        #        This name must have been obtained from addFamilyGroup() or
-        #        be the default 'all' which contains all surface coordiantes
-        # Output Arguements:
-        #     coords, numpy array, size(N,3): coordinates of the requested
-        #         group. This may be empty arry, size (0,3)
+        """ 
+        Returns all surface coordinates on this processor in group
+        'groupName'
 
-        #         """
-        # self._setInternalSurface()
-        # indices = self._getIndices(groupName)
-        # coords = numpy.zeros((len(indices)/3,3), self.dtype)
-        # self.warp.getsurfacecoordinates(indices, numpy.ravel(coords))
+        Input Arguments:
+           groupName, str: The group from which to obtain the coordinates.
+           This name must have been obtained from addFamilyGroup() or
+           be the default 'all' which contains all surface coordiantes
+        Output Arguements:
+            coords, numpy array, size(N,3): coordinates of the requested
+            group. This may be empty arry, size (0,3)
+            
+        """
+        self._setInternalSurface()
+        indices = self._getIndices(groupName)
+        coords = np.zeros((len(indices),3), self.dtype)
+        print('about to get coords',groupName,len(indices))
+        self.warp.getsurfacecoordinates(indices, np.ravel(coords))
+        print('points',coords.shape)
 
         return coords
    
@@ -572,112 +593,113 @@ class USMesh(object):
 
 #         return self.familyGroup[groupName]['connectivity']
 
-#     def setSurfaceCoordinates(self, groupName, coordinates):
-#         """ Sets all surface coordinates on this processor in group
-#         "groupName"
+    def setSurfaceCoordinates(self, groupName, coordinates):
+        """ Sets all surface coordinates on this processor in group
+        "groupName"
         
-#         Input Arguments:
-#            groupName, str: The group to set the coordinate in. 
-#                This name must have been obtained from addFamilyGroup() or
-#                be the default 'all' which contains all surface coordiantes
-#            coordinates, numpy array, size(N,3): The coordinate to set. This MUST
-#                be exactly the same size as the array obtained from 
-#                getSurfaceCoordinates()
-#          Output Arguements:
-#             Noneupd
+        Input Arguments:
+           groupName, str: The group to set the coordinate in. 
+               This name must have been obtained from addFamilyGroup() or
+               be the default 'all' which contains all surface coordiantes
+           coordinates, numpy array, size(N,3): The coordinate to set. This MUST
+               be exactly the same size as the array obtained from 
+               getSurfaceCoordinates()
+         Output Arguements:
+            Noneupd
 
-#             """
+            """
 
-#         indices = self._getIndices(groupName)
-#         self.warp.setsurfacecoordinates(indices, numpy.ravel(coordinates))
+        indices = self._getIndices(groupName)
+        self.warp.setsurfacecoordinates(indices, np.ravel(coordinates))
         
-#         return 
+        return 
  
-#     def addFamilyGroup(self, groupName, families=None):
-#         """ 
-#         Create a grouping of CGNS families called "groupName"
+    def addFamilyGroup(self, groupName, families=None):
+        """ 
+        Create a grouping of CGNS families called "groupName"
         
-#         Input Arguments:
-#             groupName, str: The name to call this collection of families
-#         Optional Arguments:
-#             families, list: A list containing the names of the CGNS familes
-#                 the user wants included in "groupName". The items in the list
-#                 must be valid family names. The user can call printFamilyList() 
-#                 to determine what families are present in the CGNS grid.
-#                 Default: All families
-#         Output Arguements:
-#             None
+        Input Arguments:
+            groupName, str: The name to call this collection of families
+        Optional Arguments:
+            families, list: A list containing the names of the CGNS familes
+                the user wants included in "groupName". The items in the list
+                must be valid family names. The user can call printFamilyList() 
+                to determine what families are present in the CGNS grid.
+                Default: All families
+        Output Arguements:
+            None
 
-#             """
+            """
       
-#         # Use whole list by default
-#         if families == None: 
-#             families = self.familyList
-#         # end if
+        # Use whole list by default
+        if families == None: 
+            families = self.familyList
+        # end if
 
-#         groupFamList = []
-#         for fam in families:
-#             if fam.lower() in self.familyList:
-#                 groupFamList.append(fam)
-#             else:
-#                 mpiPrint('* WARNING: %s was not in family list. \
-# I will ignore this family'%(fam),comm=self.comm)
-#             # end if
-#         # end for
+        groupFamList = []
+        for fam in families:
+            if fam.lower() in self.familyList:
+                groupFamList.append(fam)
+            else:
+                print('* WARNING: %s was not in family list. \
+I will ignore this family'%(fam),comm=self.comm)
+            # end if
+        # end for
         
-#         self.familyGroup[groupName] = {'families':groupFamList}
+        self.familyGroup[groupName] = {'families':groupFamList}
+#        print ('family Group',groupName,self.familyGroup[groupName])
+        if self.warpInitialized: # We can add the indices
+            nodeIndices = []
+            nodeCount = 0
 
-#         if self.warpInitialized: # We can add the indices
-#             nodeIndices = []
-#             nodeCount = 0
-
-#             for i in xrange(len(self.patchNames)):
-#                 sizeOfPatch = self.patchSizes[i][0]*self.patchSizes[i][1]*3
+            for i in xrange(len(self.patchNames)):
+                sizeOfPatch = self.patchSizes[i]#[0]*self.patchSizes[i][1]*3
                 
-#                 if self.patchNames[i] in groupFamList:
-#                     # Get the nodes indices:
-#                     nodeIndices.extend(numpy.arange(
-#                             nodeCount,nodeCount+sizeOfPatch))
-#                 # end if
-#                 nodeCount += sizeOfPatch
-#             # end for
-#             self.familyGroup[groupName]['indices'] = nodeIndices
-
-#             cellConn = numpy.zeros((0,4),'intc')
-#             if self.connectivity is None:
-#                 self.familyGroup[groupName]['connectivity'] = cellConn
-#                 return 
+                if self.patchNames[i] in groupFamList:
+                    # Get the nodes indices:
+                    nodeIndices.extend(np.array(self.patchIndices[i]))
+#                    print('nodeLength',len(self.patchIndices[i]),len(nodeIndices))
+                # end if
+                nodeCount += sizeOfPatch
+            # end for
+#            print('groupName',groupName,nodeCount,len(nodeIndices))
+            self.familyGroup[groupName]['indices'] = nodeIndices
+            
+        #     cellConn = np.zeros((0,4),'intc')
+        #     if self.connectivity is None:
+        #         self.familyGroup[groupName]['connectivity'] = cellConn
+        #         return 
          
-#             nNodesSkipped = 0
-#             cCnt = 0
+        #     nNodesSkipped = 0
+        #     cCnt = 0
           
-#             for i in xrange(len(self.patchNames)):
-#                 cellSize = (self.patchSizes[i][0]-1)*(self.patchSizes[i][1]-1)            
-#                 if self.patchNames[i] in groupFamList: 
-#                     # Add the connecitivity minus the number of nodes
-#                     # we've skipped so far. 
-#                     tmp = self.connectivity[cCnt:cCnt+cellSize,:].copy() - nNodesSkipped
-#                     cellConn = numpy.append(cellConn, tmp)
-#                 else:
-#                     # If we didn't add this patch increment the number
-#                     # of nodes we've skipped
-#                     nNodesSkipped += self.patchSizes[i][0]*self.patchSizes[i][1]
-#                 # end if
-#                 cCnt += + cellSize
-#             # end for
+        #     for i in xrange(len(self.patchNames)):
+        #         cellSize = (self.patchSizes[i][0]-1)*(self.patchSizes[i][1]-1)            
+        #         if self.patchNames[i] in groupFamList: 
+        #             # Add the connecitivity minus the number of nodes
+        #             # we've skipped so far. 
+        #             tmp = self.connectivity[cCnt:cCnt+cellSize,:].copy() - nNodesSkipped
+        #             cellConn = np.append(cellConn, tmp)
+        #         else:
+        #             # If we didn't add this patch increment the number
+        #             # of nodes we've skipped
+        #             nNodesSkipped += self.patchSizes[i][0]*self.patchSizes[i][1]
+        #         # end if
+        #         cCnt += + cellSize
+        #     # end for
 
           
-#             self.familyGroup[groupName]['connectivity'] = cellConn
+        #     self.familyGroup[groupName]['connectivity'] = cellConn
 
-#         return
+        return
    
-#     def printFamilyList(self):
-#         """ Prints the families in the CGNS file"""
+    def printFamilyList(self):
+        """ Prints the families in the CGNS file"""
         
-#         if self.comm.rank == 0:
-#             print('Faimily list is:', self.familyList)
+        if self.comm.rank == 0:
+            print('Family list is:', self.familyList)
 
-#         return
+        return
 
 # # =========================================================================
 # #                         Interface Functionality
@@ -699,66 +721,78 @@ class USMesh(object):
 
 #         return 
 
-#     def setExternalSurface(self, patchNames, patchSizes, conn, pts):
-#         """
-#         This is the Master function that defines the surface
-#         coordinates the external solver wants to use. The actual
-#         coordinates themselves MUST match exactly with the warp's
-#         surface (i.e. you must use the same mesh), but they need not
-#         match by processor or and the solver may have split pataches. 
-#         """
+    def setExternalSurface(self, patchNames, patchSizes, patchIndices, conn, pts):
+        """
+        This is the Master function that defines the surface
+        coordinates the external solver wants to use. The actual
+        coordinates themselves MUST match exactly with the warp's
+        surface (i.e. you must use the same mesh), but they need not
+        match by processor or and the solver may have split pataches. 
+        """
 
-#         self.patchNames = patchNames
-#         self.patchSizes = patchSizes
-#         self.connectivity = conn
+        self.patchNames = patchNames
+        self.patchSizes = patchSizes
+        self.patchIndices = patchIndices
+        self.connectivity = conn
         
-#         # Call the fortran initialze warping command withe the
-#         # coordiantes we now have'
+        # Call the fortran initialze warping command withe the
+        # coordiantes we now have'
 
-#         self.warp.initializewarping(numpy.ravel(pts.real.astype('d')))
-#         self._initializeSolidWarping()
-#         self.warpInitialized = True
+        # self.warp.initializewarping(np.ravel(pts.real.astype('d')))
+        # self._initializeSolidWarping()
+        self.warpInitialized = True
 
-#         # We can now back out the indices that should go along with
-#         # the groupNames that may have already been added. 
-
-#         for key in self.familyGroup.keys():
-#             self.addFamilyGroup(key, self.familyGroup[key]['families'])
-#         # end for
+        # We can now back out the indices that should go along with
+        # the groupNames that may have already been added. 
+        print('running add families')
+        for key in self.familyGroup.keys():
+            self.addFamilyGroup(key, self.familyGroup[key]['families'])
+        # end for
         
-#         return 
+        return 
 
-#     def _setInternalSurface(self):
-#         """
-#         This function is used by default if setExternalSurface() is not
-#         set BEFORE an operation is requested that requires this information. 
-#         """
+    def _setInternalSurface(self):
+        """
+        This function is used by default if setExternalSurface() is not
+        set BEFORE an operation is requested that requires this information. 
+        """
 
-#         if self.warpInitialized is False:
-#             mpiPrint(' -> Info: Using Internal pyWarp Surfaces. If this mesh \
-# object is to be used with SUmb, ensure the mesh object is passed to SUmb \
-# immediately after creation.',comm=self.comm)
-#             npatch = self.warp.getnpatches()
-#             patchNames = []
-#             patchSizes = []
-#             ptSize = 0
-#             for i in xrange(npatch):
-#                 tmp = numpy.zeros(256,'c')
-#                 self.warp.getpatchname(i, tmp)
-#                 patchNames.append(
-#                     ''.join([tmp[j] for j in range(256)]).lower().strip())
-#                 patchSizes.append(self.warp.getpatchsize(i))
-#                 ptSize += patchSizes[-1][0]*patchSizes[-1][1]
-#             # end for
+        if self.warpInitialized is False:
+            print(' -> Info: Using Internal pyWarp Surfaces')
+            # get the number of wall patches on this proc
+            npatch = self.warp.getnpatches()
+            patchNames = []
+            patchIndices = []
+            patchSectionIndices = []
+            patchSizes = []
+            ptSize = 0
+            #print ('Npatches',npatch)
+            # loop over the patches to get their names and sizes
+            for i in xrange(npatch):               
+                tmp = self.warp.getpatchname(i)
+                patchIdx = self.warp.getpatchindex(i)
+                #print ('patchname',i,tmp,patchIdx)
+                patchSectionIndices.append(patchIdx)
+                patchNames.append(
+                    ''.join([tmp[j] for j in range(32)]).lower().strip())
+                patchSizes.append(self.warp.getpatchsize(patchSectionIndices[i]))
+                #print('patchSizes',patchSizes[i])
+                patchIndices.append(self.warp.getpatchindexlist(patchSectionIndices[i],patchSizes[i]))
+                #print('index length',len(patchIndices[i]))
+                ptSize += patchSizes[-1]#[0]
+            # end for
 
-#             conn = None
-#             pts = numpy.zeros((ptSize,3), 'd') #Explicitly real...even in complex
-#             self.warp.getpatches(numpy.ravel(pts))
+            # get the patch points
+            conn = None
+            pts = np.zeros((ptSize,3), 'd') #Explicitly real...even in complex
+            self.warp.getpatches(np.ravel(pts))
+            #print(pts.shape,patchNames,patchSizes[0])
 
-#             # Run th "external" command
-#             self.setExternalSurface(patchNames, patchSizes, conn, pts)
-#             self.warpInitialized = True
-#         return
+            # Run the "external" command
+            self.setExternalSurface(patchNames, patchSizes, patchIndices, conn, pts)
+
+            self.warpInitialized = True
+        return
 
 #     def getSolverGrid(self):
 #         """
@@ -774,8 +808,8 @@ class USMesh(object):
 #                 set by setExternalMesIndices()
 #                 """
 
-#         solverGrid = numpy.zeros(self.solverMeshDOF, self.dtype)
-#         warpGrid   = numpy.zeros(self.warpMeshDOF, self.dtype)
+#         solverGrid = np.zeros(self.solverMeshDOF, self.dtype)
+#         warpGrid   = np.zeros(self.warpMeshDOF, self.dtype)
 #         self.warp.packblocks(warpGrid)
 #         self.warp.warp_to_solver_grid(warpGrid, solverGrid)
         
@@ -794,7 +828,7 @@ class USMesh(object):
 #                 format. 
 #                 """
 
-#         warpGrid = numpy.zeros(self.warpMeshDOF, self.dtype)
+#         warpGrid = np.zeros(self.warpMeshDOF, self.dtype)
 #         self.warp.packblocks(warpGrid)
         
 #         return warpGrid
@@ -814,8 +848,8 @@ class USMesh(object):
 #                 """
 
 #         indices = self._getIndices(groupName)
-#         dXs = numpy.zeros((len(indices)/3,3),self.dtype)
-#         self.warp.getdxs(indices, numpy.ravel(dXs))
+#         dXs = np.zeros((len(indices)/3,3),self.dtype)
+#         self.warp.getdxs(indices, np.ravel(dXs))
 
 #         return dXs
 
@@ -834,7 +868,7 @@ class USMesh(object):
 #             """
         
 #         indices = self._getIndices(groupName)
-#         self.warpsetdxs(indices, numpy.ravel(dXs))
+#         self.warpsetdxs(indices, np.ravel(dXs))
 
 #         return
 
@@ -854,10 +888,10 @@ class USMesh(object):
             
 #             """
 #         indices = self._getIndices('all')
-#         self.warp.setdxs(indices, numpy.ravel(inVec))
+#         self.warp.setdxs(indices, np.ravel(inVec))
 #         indices = self._getIndices(groupName)
-#         outVec = numpy.zeros((len(indices)/3,3), self.dtype)
-#         self.warp.getdxs(indices, numpy.ravel(outVec))
+#         outVec = np.zeros((len(indices)/3,3), self.dtype)
+#         self.warp.getdxs(indices, np.ravel(outVec))
 
 #         return outVec
 
@@ -879,10 +913,10 @@ class USMesh(object):
                 
 #                 """
 #         indices = self._getIndices(groupName)
-#         self.warp.setdxs(indices, numpy.ravel(inVec))
+#         self.warp.setdxs(indices, np.ravel(inVec))
 #         indices = self._getIndices('all')
-#         outVec = numpy.zeros((len(indices)/3,3), self.dtype)
-#         self.warp.getdxs(indices, numpy.ravel(outVec))
+#         outVec = np.zeros((len(indices)/3,3), self.dtype)
+#         self.warp.getdxs(indices, np.ravel(outVec))
         
 #         return outVec
 
@@ -1241,7 +1275,7 @@ class USMesh(object):
         if not self.IDWarpInitialized and \
                 self.solverOptions['warpType'] == 'inverseDistance':
 
-            mpiPrint('\nInitializating InverseDistance Mesh Warping...',
+            print('\nInitializating InverseDistance Mesh Warping...',
                      comm=self.comm)
 
             # Determine the Boundary nodes
@@ -1253,7 +1287,7 @@ class USMesh(object):
             # Compute the area weighting of the boundary nodes
                          
 
-            mpiPrint('  -> Inverse Distance Mesh Warping Initialized.', comm=self.comm)
+            print('  -> Inverse Distance Mesh Warping Initialized.', comm=self.comm)
             self.IDWarpInitialized = True
         # end if
 
@@ -1336,7 +1370,7 @@ class USMesh(object):
 
 #         """
 #         if solverVec:
-#             dXvWarp = numpy.zeros(self.warpMeshDOF, self.dtype)
+#             dXvWarp = np.zeros(self.warpMeshDOF, self.dtype)
 #             self.warp.solver_to_warp_grid(dXv, dXvWarp)
 #         else:
 #             dXvWarp = dXv
@@ -1356,11 +1390,11 @@ class USMesh(object):
 
         
 #         if dXv is None:
-#             numpy.random.seed(314) # 'Random' seed to ensure runs are same
-#             dXvWarp = numpy.random.random(self.warpMeshDOF)
+#             np.random.seed(314) # 'Random' seed to ensure runs are same
+#             dXvWarp = np.random.random(self.warpMeshDOF)
 #         else:
 #             if solverVec:
-#                 dXvWarp = numpy.zeros(self.warpMeshDOF, self.dtype)
+#                 dXvWarp = np.zeros(self.warpMeshDOF, self.dtype)
 #                 self.warp.solver_to_warp_grid(dXv, dXvWarp)
 #             else:
 #                 dXvWarp = dXv
@@ -1407,7 +1441,7 @@ class USMesh(object):
 
 #             """
 #         if bins is None:
-#             bins = numpy.linspace(-1, 1, 21)
+#             bins = np.linspace(-1, 1, 21)
 #         # end if
 
 #         nvolLocal = self.warp.getnvolproc()
@@ -1420,11 +1454,11 @@ class USMesh(object):
 #                 quality.extend(res[i])
 #             # end for
                 
-#             qualityMin = numpy.min(quality)
-#             qualityMax = numpy.max(quality)
-#             qualityAvg = numpy.average(quality)
+#             qualityMin = np.min(quality)
+#             qualityMax = np.max(quality)
+#             qualityAvg = np.average(quality)
 
-#             hist, binEdges = numpy.histogram(quality, bins=bins)
+#             hist, binEdges = np.histogram(quality, bins=bins)
 #         else:
 #             qualityMin = None
 #             qualityMax = None
@@ -1472,21 +1506,22 @@ class USMesh(object):
 # #                     Internal Private Functions
 # # =========================================================================
         
-#     def _getFamilyList(self):
-#         """
-#         Obtain the family list from fortran. 
+    def _getFamilyList(self):
+        """
+        Obtain the family list from fortran. 
 
-#         """
-#         fullList = self.warp.mddata.familylist.transpose().flatten()
-#         nFamilies = self.warp.mddata.nwallfamilies
-#         self.familyList = ["" for i in range(nFamilies)]
-#         for i in range(nFamilies):
-#             tempName = fullList[i*32:(i+1)*32]
-#             newName = ''.join([tempName[j] for j in range(32)]).lower()
-#             self.familyList[i] = newName.strip()
-#         # end for
+        """
+        fullList = self.warp.griddata.familylist.transpose().flatten()
+        nFamilies = self.warp.griddata.nwallfamilies
+        print ('Full list',fullList,nFamilies)
+        self.familyList = ["" for i in range(nFamilies)]
+        for i in range(nFamilies):
+            tempName = fullList[i*32:(i+1)*32]
+            newName = ''.join([tempName[j] for j in range(32)]).lower()
+            self.familyList[i] = newName.strip()
+        # end for
 
-#         return
+        return
 
 #     def _reOrderIndices(self,  FETopo,  faceBCs,  sym):
 #         """This funcion takes the order from self.FE_topo and reorders
@@ -1497,8 +1532,8 @@ class USMesh(object):
 #         #[ freedof ]
 #         #[ constrained dof ]
 
-#         ptDOF = numpy.zeros((FETopo.nGlobal, 3), 'intc')
-#         wallDOF = numpy.zeros((FETopo.nGlobal, 3), 'intc')
+#         ptDOF = np.zeros((FETopo.nGlobal, 3), 'intc')
+#         wallDOF = np.zeros((FETopo.nGlobal, 3), 'intc')
 #         for ii in range(FETopo.nGlobal):
 #             for jj in range(len(FETopo.g_index[ii])):
 
@@ -1567,7 +1602,7 @@ class USMesh(object):
 #                         if faceBCs[ivol][iface] == 3:
 #                             # Only set it as a symmetry plane if
 #                             # nothing is already set
-#                             indexSet = numpy.where(sym==-1)[0][0]
+#                             indexSet = np.where(sym==-1)[0][0]
 #                             ptDOF[ii][indexSet] = 1
 
 #                         # end if
@@ -1592,7 +1627,7 @@ class USMesh(object):
 #         constrDOFCount = 0
 #         l_index = []
 #         for ivol in range(len(FETopo.l_index)):
-#             l_index.append(numpy.zeros((3,
+#             l_index.append(np.zeros((3,
 #                                   FETopo.l_index[ivol].shape[0],
 #                                   FETopo.l_index[ivol].shape[1],
 #                                   FETopo.l_index[ivol].shape[2]),
@@ -1628,7 +1663,7 @@ class USMesh(object):
 
 #         l_index_flat = []
 #         lPtr = [0] # -> Zero Based Here
-#         lSizes = numpy.zeros((len(l_index), 3), 'intc')
+#         lSizes = np.zeros((len(l_index), 3), 'intc')
 #         for i in range(len(l_index)):
 #             l_index_flat.extend(l_index[i].flatten('f'))
 #             lPtr.append(lPtr[-1] + l_index[i].size)
@@ -1658,8 +1693,8 @@ class USMesh(object):
 #                     sizes[i, j] = blockDims[i, j]
 #                 # end if
 
-#                 sizeEven = numpy.mod(sizes[i, j], 2)
-#                 dimsEven = numpy.mod(blockDims[i, j], 2)
+#                 sizeEven = np.mod(sizes[i, j], 2)
+#                 dimsEven = np.mod(blockDims[i, j], 2)
 
 #                 if sizeEven == 1 and dimsEven == 1:
 #                     pass
@@ -1670,7 +1705,7 @@ class USMesh(object):
 #                 else:
 #                     # Decrease size by 1 to make it even
 #                     sizes[i, j] -= 1
-#                     sizes[i, j] = numpy.max([sizes[i, j], 2])
+#                     sizes[i, j] = np.max([sizes[i, j], 2])
                     
 #                     mpiPrint(' * Warning: Reduced n to %d for an edge'\
 #                                  %(sizes[i, j]))
@@ -1680,22 +1715,22 @@ class USMesh(object):
 
 #         return sizes
 
-#     def _getIndices(self, groupName):
-#         """
-#         Try to see if groupName is already set, if not raise an
-#         exception
+    def _getIndices(self, groupName):
+        """
+        Try to see if groupName is already set, if not raise an
+        exception
 
-#         """
-#         try: 
-#             indices = self.familyGroup[groupName]['indices']
-#         except:
-#             mpiPrint('+----------------------------------------------------+')
-#             mpiPrint('Error: %s has not been set using addFamilyGroup.'\
-#                          %(groupName), comm=self.comm)
-#             mpiPrint('+----------------------------------------------------+')
-#         # end try
+        """
+        try: 
+            indices = self.familyGroup[groupName]['indices']
+        except:
+            mpiPrint('+----------------------------------------------------+')
+            mpiPrint('Error: %s has not been set using addFamilyGroup.'\
+                         %(groupName), comm=self.comm)
+            mpiPrint('+----------------------------------------------------+')
+        # end try
 
-#         return indices
+        return indices
 
 #     def _getCGNSCoords(self):
 #         """
@@ -1720,9 +1755,9 @@ class USMesh(object):
  
 #         # Re-order coordiantes based on CGNSIDs to produce
 #         # "standard" original CGNS ordering
-#         coords = numpy.zeros_like(temp0)
-#         BCs    = numpy.zeros_like(temp1)
-#         blockDims = numpy.zeros_like(dimsTemp)
+#         coords = np.zeros_like(temp0)
+#         BCs    = np.zeros_like(temp1)
+#         blockDims = np.zeros_like(dimsTemp)
 #         for i in range(nBlocks):
 #             coords[CGNSIDs[i]] = temp0[i]
 #             BCs[CGNSIDs[i]] = temp1[i]
@@ -1745,5 +1780,5 @@ class USMesh(object):
                 self.solverOptionsDefault[key] = solverOptions[key]	
             # end if
         # end for
-        print('solveroptions',solverOptions)
+        #print('solveroptions',solverOptions)
         return solverOptions
