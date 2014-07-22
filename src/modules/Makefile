@@ -14,8 +14,11 @@ vpath %.o $(OBJDIR)
 MODS0 = complexify.o\
 
 MODS1 = precision.o\
+	constants.o\
+	gridTypes.o\
         communication.o\
-	gridData.o
+
+MODS2 = gridData.o
 
 #FILES_TO_COMPLEXIFY =  enginemodules.F90\
 		       kriging_data.F90\
@@ -40,6 +43,7 @@ MODS1 = precision.o\
 default:
 	$(MAKE) $(MODS0)
 	$(MAKE) $(MODS1)
+	$(MAKE) $(MODS2)
 	cp -f *.mod $(MODDIR)
 #	$(MAKE) $(OBJS)
 

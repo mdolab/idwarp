@@ -13,13 +13,7 @@ vpath %.o $(OBJDIR)
 # Name of files to be compiled:
 #MODS0 = 
 
-OBJS = compactSurfacePointList.o\
-       getElementArea.o\
-       getElementCenter.o\
-       getSurfaceElementCenters.o\
-       getFullUniqueSurfaceNodeList.o\
-       getUniqueSurfaceNodeList.o\
-       vectorUtils.o\
+OBJS = pointMergeSort.o\
 
 
 #FILES_TO_COMPLEXIFY =  
@@ -39,17 +33,17 @@ clean:
 
 complexify:
 	@for file in $(FILES_TO_COMPLEXIFY); do \
-		if [ $$file -nt ../../src_cs/geoCalcs/$$file -o ! -e ../../src_cs/geoCalcs/$$file ]; then \
+		if [ $$file -nt ../../src_cs/sort/$$file -o ! -e ../../src_cs/sort/$$file ]; then \
 			echo complexifying file $$file; \
 			python ../complexify.py $$file; \
-			mv c_$$file ../../src_cs/geoCalcs/$$file; \
+			mv c_$$file ../../src_cs/sort/$$file; \
 		fi;\
 		done
 	@for file in $(FILES_TO_COPY); do \
-		if [ $$file -nt ../../src_cs/geoCalcs/$$file -o ! -e ../../src_cs/geoCalcs/$$file ]; then \
+		if [ $$file -nt ../../src_cs/sort/$$file -o ! -e ../../src_cs/sort/$$file ]; then \
 			echo copying file $$file; \
-			cp $$file ../../src_cs/geoCalcs/$$file; \
+			cp $$file ../../src_cs/sort/$$file; \
 		fi;\
 		done
 
-	cp Makefile ../../src_cs/geoCalcs
+	cp Makefile ../../src_cs/sort
