@@ -13,7 +13,7 @@ subroutine getSurfaceElementCenterAndArea()
   ! Local Variable
   integer(kind=intType)::zone,sec,ierr
   real(kind=realType),dimension(:,:), allocatable :: points
-  real(kind=realType),dimension(:), allocatable:: center,area
+  real(kind=realType),dimension(:), allocatable:: center,area,normal
   real(kind=realType):: areaMag
   
   integer(kind=intType):: i, elem
@@ -39,10 +39,12 @@ subroutine getSurfaceElementCenterAndArea()
                  points(i,:) = gridDoms(zone)%points(pointIdx,:)
               end do
               call getElementCenter(nPts,nDim,points,center)
-              call getElementArea(nPts,nDim,points,center,area,areaMag)
+              call getElementArea(nPts,nDim,points,center,area,areaMag,normal)
 
               gridDoms(zone)%surfaceSections(surfSecCounter)%elemCenter(elem,:) = center
               gridDoms(zone)%surfaceSections(surfSecCounter)%elemArea(elem,:) = area
+               gridDoms(zone)%surfaceSections(surfSecCounter)%elemAreaMag(elem) = areaMag
+              gridDoms(zone)%surfaceSections(surfSecCounter)%elemNormal(elem,:) = normal
 
            end do
            deallocate(points,center,area,STAT=ierr)

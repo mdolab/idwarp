@@ -3,6 +3,8 @@
 SUBDIR_SRC    = src/modules\
 		src/IO\
 		src/geoCalcs\
+		src/sort\
+	        src/warp\
 #		src/common\
 		src/kriging\
 		src/rbf\
