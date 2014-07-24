@@ -4,23 +4,41 @@
 ! Date Started: July 15, 2014
 ! Date Modified:
 
-subroutine computeSi(surfZone,surfSec,surfNode,r,si)
+subroutine computeSi(surfIdx,isSurf,r,si)
 
   use precision
   use gridData
   implicit none
 
   ! Subroutine Variables
-  integer(kind=intType)::surfZone,surfSec,surfNode
-  real(kind=realType), dimension(physDim)::r,si
+  integer(kind=intType)::surfIdx
+  real(kind=realType), dimension(3)::r,si
+  logical :: isSurf
 
   ! local variables
-  real(kind=realType), dimension(physDim)::bi
-  real(kind=realType), dimension(physDim,physDim)::Mi
+  !real(kind=realType), dimension(3)::v1,v2
+  real(kind=realType), dimension(3)::bi
+  real(kind=realType), dimension(3,3)::Mi
+  
+  ! if(isSurf)then
+  !    v1 = uniqueSurfaceNodes(surfIdx)%normal0
+  !    v2 = uniqueSurfaceNodes(surfIdx)%normal
+  !    bi =  uniqueSurfaceNodes(surfIdx)%loc-uniqueSurfaceNodes(surfIdx)%loc0
+  ! else
+  !    v1 = uniqueBoundaryNodes(surfIdx)%normal0
+  !    v2 = uniqueBoundaryNodes(surfIdx)%normal
+  !    bi = uniqueBoundaryNodes(surfIdx)%loc-uniqueBoundaryNodes(surfIdx)%loc0
+  ! end if
 
-  Mi = gridDoms(surfZone)%surfaceSections(surfSec)%nodalRotation(surfNode)
-  bi =  gridDoms(surfZone)%surfaceSections(surfSec)%nodalDisplacement(surfNode)
-
+  ! call getRotationMatrix3d(v1,v2,Mi)
+ if(isSurf)then
+     bi =  uniqueSurfaceNodes(surfIdx)%bi
+     Mi =  uniqueSurfaceNodes(surfIdx)%Mi
+  else
+     bi = uniqueBoundaryNodes(surfIdx)%bi
+     Mi = uniqueBoundaryNodes(surfIdx)%Mi
+  end if
+  
   Si = matMul(Mi,r)+bi-r
 
 end subroutine computeSi

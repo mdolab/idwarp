@@ -14,7 +14,7 @@ subroutine getFullUniqueSurfaceNodeList()
   ! Local Variable
   integer(kind=intType)::zone,sec,ierr,idx
   integer(kind=intType):: surfSecCounter
-  integer(kind=intType):: elem,conn,nConn,nElem, nPts
+  integer(kind=intType):: elem,conn,nConn,nElem, nPts,pt,globalIndex
   type(surfacePointType),dimension(:),allocatable::tempSurfPoints, tempBoundaryPoints
   !type(surfacePointType),dimension(10)::testPoints
   integer(kind=intType)::nUniquePoints,surfCounter, boundaryCounter
@@ -64,9 +64,10 @@ subroutine getFullUniqueSurfaceNodeList()
                          gridDoms(zone)%surfaceSections(surfSecCounter)%elements(conn,elem)
                     tempSurfPoints(surfCounter)%proc = myID
                     tempSurfPoints(surfCounter)%zone = zone
-                    tempSurfPoints(surfCounter)%surfSection = surfSecCounter
-                    tempSurfPoints(surfCounter)%connectedElements(:) = -1_intType
-                    tempSurfPoints(surfCounter)%connectedElements(1)=elem 
+                    !tempSurfPoints(surfCounter)%surfSection = surfSecCounter
+                    tempSurfPoints(surfCounter)%connectedElements(:,:) = -1_intType
+                    tempSurfPoints(surfCounter)%connectedElements(1,1)=elem 
+                    tempSurfPoints(surfCounter)%connectedElements(1,2)=surfSecCounter
                     tempSurfPoints(surfCounter)%loc = &
                          gridDoms(zone)%points(tempSurfPoints(surfCounter)%globalIndex,:)
                     tempSurfPoints(surfCounter)%loc0 = &
@@ -77,9 +78,10 @@ subroutine getFullUniqueSurfaceNodeList()
                          gridDoms(zone)%surfaceSections(surfSecCounter)%elements(conn,elem)
                     tempBoundaryPoints(boundaryCounter)%proc = myID
                     tempBoundaryPoints(boundaryCounter)%zone = zone
-                    tempBoundaryPoints(boundaryCounter)%surfSection = surfSecCounter
-                    tempBoundaryPoints(boundaryCounter)%connectedElements(:) = -1_intType
-                    tempBoundaryPoints(boundaryCounter)%connectedElements(1)=elem 
+                    !tempBoundaryPoints(boundaryCounter)%surfSection = surfSecCounter
+                    tempBoundaryPoints(boundaryCounter)%connectedElements(:,:) = -1_intType
+                    tempBoundaryPoints(boundaryCounter)%connectedElements(1,1)=elem 
+                    tempBoundaryPoints(boundaryCounter)%connectedElements(1,2)=surfSecCounter
                     tempBoundaryPoints(boundaryCounter)%loc = &
                          gridDoms(zone)%points(tempBoundaryPoints(boundaryCounter)%globalIndex,:)
                     tempBoundaryPoints(boundaryCounter)%loc0 = &
@@ -115,10 +117,23 @@ subroutine getFullUniqueSurfaceNodeList()
   allocate(uniqueSurfaceNodes(nUniqueSurfPoints),STAT=ierr)
   allocate(uniqueBoundaryNodes(nUniqueBoundaryPoints),STAT=ierr)           
   uniqueSurfaceNodes = tempSurfPoints(1:nUniqueSurfPoints)
-  uniqueBoundaryNodes = tempSurfPoints(1:nUniqueBoundaryPoints)
+  uniqueBoundaryNodes = tempBoundaryPoints(1:nUniqueBoundaryPoints)
   
   deallocate(tempSurfPoints,tempBoundaryPoints,STAT=ierr)
   ! print *,'final points'
   ! call indexShow(nUniquePoints,gridDoms(zone)%surfaceSections(surfSecCounter)%uniqueSurfaceNodes)
 
+  ! Now loop over the nodes and mark the boundary nodes in the global point list
+  ! First loop over the Farfield boundaries
+  do pt = 1, nUniqueBoundaryPoints
+     zone = uniqueBoundaryNodes(pt)%zone
+     globalIndex = uniqueBoundaryNodes(pt)%globalIndex
+     gridDoms(zone)%isSurfaceNode(globalIndex) = .True.      
+  end do
+     ! Then loop over the surface boundaries
+  do pt = 1, nUniqueSurfPoints
+     zone = uniqueSurfaceNodes(pt)%zone
+     globalIndex = uniqueSurfaceNodes(pt)%globalIndex
+     gridDoms(zone)%isSurfaceNode(globalIndex) = .True.  
+  end do
 end subroutine getFullUniqueSurfaceNodeList

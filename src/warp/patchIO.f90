@@ -179,7 +179,8 @@ subroutine getPatchSize(patchIndex, patchSize)
   ! from this surface patch
   patchSize = 0
   do pt = 1,nUniqueSurfPoints
-     pointPatch = uniqueSurfaceNodes(pt)%surfSection     
+     !base this off of the first connected element
+     pointPatch = uniqueSurfaceNodes(pt)%connectedElements(1,2)
      if(pointPatch .eq. patchIndex)then
         ! this point is on this patch, append add to counter
         patchSize = patchSize + 1
@@ -213,7 +214,8 @@ subroutine getPatchIndexList(patchIndex, patchSize, patchIndices)
   ! from this surface patch
   patchCounter = 1
   do pt = 1,nUniqueSurfPoints
-     pointPatch = uniqueSurfaceNodes(pt)%surfSection     
+     !base this off of the first connected element
+     pointPatch = uniqueSurfaceNodes(pt)%connectedElements(1,2)
      if(pointPatch .eq. patchIndex)then
         ! this point is on this patch, append index to list
         patchIndices(patchCounter)=pt
@@ -347,7 +349,9 @@ subroutine setSurfaceCoordinates(nPoints,indices,points)
         idxStart = (pt-1)*3+1
         idxEnd = (pt)*3
         uniqueSurfaceNodes(idx)%loc=points(idxStart:idxEnd)
+        
      end do
+     !print *,'connected elements',uniqueSurfaceNodes(idx)%connectedElements
   end do
          
 end subroutine setSurfaceCoordinates

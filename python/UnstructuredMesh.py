@@ -147,7 +147,8 @@ class USMesh(object):
         # self.warpMeshDOF = self.warp.block.nnodeslocal*3
         # self.solverMeshDOF = 0
         self.warpInitialized = False
-        # self.solidWarpInitialized = False
+        self.IDWarpInitialized = False
+
 
         # Read the grid from the CGNS file
         print(fileName)
@@ -544,16 +545,18 @@ class USMesh(object):
 
         #self.warp.getuniquesurfacenodelist()
         self.warp.getfulluniquesurfacenodelist()
+        self.updateGridMetrics(True)
 
         return
 
-    def updateGridMetrics(self):
+    def updateGridMetrics(self,initialPoint=False):
         '''
         run the fortran level routines to compute area for 
         the surface elements/faces
         '''
 
         self.warp.getsurfaceelementcenterandarea()
+        self.warp.computenodalproperties(initialPoint)
 
 
         return
@@ -1168,9 +1171,9 @@ I will ignore this family'%(fam),comm=self.comm)
 # #                      Mesh Warping Functionality
 # # =========================================================================
 
-#     def _setMeshOptions(self):
-#         """ Private function to set the options currently in
-#         self.solverOptions to the corresponding place in Fortran"""
+    def _setMeshOptions(self):
+        """ Private function to set the options currently in
+        self.solverOptions to the corresponding place in Fortran"""
         
 #         # Solid/Algebraic Warping
 #         if self.solverOptions['warpType'] == 'algebraic':
@@ -1185,87 +1188,8 @@ I will ignore this family'%(fam),comm=self.comm)
 #             sys.exit(1)
 #         # end if
             
-#         # Linear/Non linear solution type option
-#         if self.solverOptions['solidSolutionType'] == 'linear':
-#             self.warp.solidwarpmodule.solidsolutiontype = \
-#                 self.warp.solidwarpmodule.linearwarping
-#         elif self.solverOptions['solidSolutionType'] == 'nonLinear':
-#             self.warp.solidwarpmodule.solidsolutiontype = \
-#                 self.warp.solidwarpmodule.nonlinearwarping
-#         elif self.solverOptions['solidSolutionType'] == 'steppedLinear':
-#             self.warp.solidwarpmodule.solidsolutiontype = \
-#                 self.warp.solidwarpmodule.steppedlinearwarping
-#         else:
-#             mpiPrint('solidSolutionType not understood. Use \
-# \'linear\',\'nonLinear\' or \'steppedLinear\'. \
-# Liner warping is now assumed.', comm=self.comm)
-#             self.warp.solidwarpmodule.solidsolutiontype = \
-#                 self.warp.solidwarpmodule.linearwarping
-#         # end if
-                
-#         # Linear/Cubic Fill option:
-#         if self.solverOptions['fillType'] == 'linear':
-#             self.warp.solidwarpmodule.filltype = \
-#                 self.warp.solidwarpmodule.linearinterpolation
-#         elif self.solverOptions['fillType'] == 'cubic':
-#             self.warp.solidwarpmodule.filltype = \
-#                 self.warp.solidwarpmodule.cubicinterpolation
-#         elif self.solverOptions['fillType'] == 'bspline':
-#             self.warp.solidwarpmodule.filltype = \
-#                 self.warp.solidwarpmodule.bspline
-#         # end if
 
-#         # Rotation Correction option:
-#         self.warp.solidwarpmodule.userotationcorrection = \
-#             self.solverOptions['useRotationCorrection']
-
-#         # Nu, eExp, skewExp, warpTol and factor
-#         if self.dtype == 'D':
-#             self.warp.solidwarpmodule.nu = \
-#                 complex(self.solverOptions['nu'])
-#             self.warp.solidwarpmodule.e_exp = \
-#                 complex(self.solverOptions['eExp'])
-#             self.warp.solidwarpmodule.skew_exp = \
-#                 complex(self.solverOptions['skewExp'])
-#             self.warp.solidwarpmodule.warp_tol = \
-#                 complex(self.solverOptions['warpTol'])
-#             self.warp.solidwarpmodule.reduction_factor_for_reform = \
-#                 complex(self.solverOptions['reductionFactorForReform'])
-#         else:
-#             self.warp.solidwarpmodule.nu = self.solverOptions['nu']
-#             self.warp.solidwarpmodule.e_exp = self.solverOptions['eExp']
-#             self.warp.solidwarpmodule.skew_exp = self.solverOptions['skewExp']
-#             self.warp.solidwarpmodule.warp_tol = \
-#                 self.solverOptions['warpTol']
-#             self.warp.solidwarpmodule.reduction_factor_for_reform = \
-#                 self.solverOptions['reductionFactorForReform']
-#         # end if
-
-#         # Number of solution steps
-#         self.warp.solidwarpmodule.nsolutionsteps = \
-#             self.solverOptions['nSolutionSteps']
-        
-#         # Maximum number of ksp its to perform before refactor:
-#         self.warp.solidwarpmodule.ksp_its = self.solverOptions['kspIts']
-
-#         # Monitoring options
-#         self.warp.solidwarpmodule.usesolutionmonitor = \
-#             self.solverOptions['useSolutionMonitor']
-
-#         self.warp.solidwarpmodule.usekspmonitor = \
-#             self.solverOptions['useKSPMonitor']
-
-#         # Check on value of 'n'
-#         if self.solverOptions['solidWarpType'] == 'n':
-#             n = self.solverOptions['n']
-#             assert n >= 2, 'Error: n must be greater than or equal to 2'
-#         # end if
-
-#         # Set number of correction iterations:
-#         self.warp.solidwarpmodule.nparametercorrectioniterations = \
-#             self.solverOptions['nParameterCorrectionIterations']
-
-#         return
+        return
 
     def _initializeIDWarping(self):
         """
@@ -1312,7 +1236,12 @@ I will ignore this family'%(fam),comm=self.comm)
         self._initializeIDWarping()
 
         # Warp the mesh
-        # loop over the surface to compute the rotations and
+
+        # Compute the updated surface element centers, areas and normals
+        print('updating grid metrics')
+        self.updateGridMetrics()
+
+        # loop over the unique surface nodes to compute the rotations and
         # displacements
         
         # compute Si for eache surface node
@@ -1324,6 +1253,8 @@ I will ignore this family'%(fam),comm=self.comm)
         # For each volume node not on the boundary
         # loop over the surface and compute wi and si
         # Sum s(r) on the fly
+        print('updateingVolume')
+        self.warp.updatevolumecoordinates()
         
         return
 

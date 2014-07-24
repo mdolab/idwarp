@@ -72,7 +72,7 @@ subroutine indexShow(nPts,lst)
   integer(kind=intType):: x
 
   do x = 1, nPts
-     print 100, 'index: ',x,' global: ',lst(x)%globalIndex,' elem: ',lst(x)%connectedElements(1)!,lst(x)%loc
+     print 100, 'index: ',x,' global: ',lst(x)%globalIndex,' elem: ',lst(x)%connectedElements(1,:)!,lst(x)%loc
   end do
 
 100 format (A,i10,A,i10,A,i10)!,3f8.2)
