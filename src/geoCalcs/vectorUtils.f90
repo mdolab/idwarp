@@ -17,44 +17,83 @@ subroutine cross_product_3d(v1,v2,cross)
   cross(3) = half*(v1(1)*v2(2) - v1(2)*v2(1))
 end subroutine cross_product_3d
 
-subroutine getDistance(nDim,r,ri,dist)
+! subroutine getDistance(nDim,r,ri,dist)
+!   use precision
+!   use constants
+!   implicit none
+
+!   ! Subroutine Variables
+!   integer(kind=intType)::nDim
+!   real(kind=realType),dimension(nDim)::r,ri
+!   real(kind=realType):: dist
+
+!   ! Local Variables
+!   real(kind=realType),dimension(nDim)::dx
+
+!   dx = r-ri
+!   call getMag(nDim,dx,dist)
+
+! end subroutine getDistance
+
+subroutine getDistance(r,ri,dist)
   use precision
   use constants
   implicit none
 
   ! Subroutine Variables
   integer(kind=intType)::nDim
-  real(kind=realType),dimension(nDim)::r,ri
+  real(kind=realType),dimension(3)::r,ri
   real(kind=realType):: dist
 
   ! Local Variables
-  real(kind=realType),dimension(nDim)::dx
+  real(kind=realType),dimension(3)::dx
 
   dx = r-ri
-  call getMag(nDim,dx,dist)
+  call getMag(dx,dist)
 
 end subroutine getDistance
 
 
-subroutine getMag(nDim,V,mag)
+! subroutine getMag(nDim,V,mag)
+!   use precision
+!   use constants
+!   implicit none
+
+!   ! Subroutine Variables
+!   integer(kind=intType)::nDim
+!   real(kind=realType),dimension(nDim)::V
+!   real(kind=realType):: mag
+
+!   ! Local Variables
+!   integer(kind=intType)::i
+!   real(kind=realType)::sum
+
+!   sum=0
+!   do i = 1,nDim
+!      sum = sum+V(i)*V(i)
+!   end do
+!   mag = sqrt(sum)
+  
+! end subroutine getMag
+subroutine getMag(V,mag)
   use precision
   use constants
   implicit none
 
   ! Subroutine Variables
-  integer(kind=intType)::nDim
-  real(kind=realType),dimension(nDim)::V
+  real(kind=realType),dimension(3)::V
   real(kind=realType):: mag
 
   ! Local Variables
-  integer(kind=intType)::i
-  real(kind=realType)::sum
+  ! integer(kind=intType)::i
+  ! real(kind=realType)::sum
 
-  sum=0
-  do i = 1,nDim
-     sum = sum+V(i)*V(i)
-  end do
-  mag = sqrt(sum)
+  ! sum=0
+  ! do i = 1,3
+  !    sum = sum+V(i)*V(i)
+  ! end do
+  ! mag = sqrt(sum)
+  mag = sqrt(v(1)*v(1)+v(2)*v(2)+v(3)*v(3))
   
 end subroutine getMag
 
@@ -75,8 +114,8 @@ subroutine getRotationMatrix3d(v1,v2,Mi)
 
   ! Begin Execution
   
-  call getMag(3_intType,v1,magV1)
-  call getMag(3_intType,v2,magV2)
+  call getMag(v1,magV1)
+  call getMag(v2,magV2)
 
 
   ! Start by determining the rotation axis by getting the 
@@ -85,7 +124,7 @@ subroutine getRotationMatrix3d(v1,v2,Mi)
   call cross_product_3d(v1,v2,axis)
 
   ! Now Normalize
-  call getMag(Three,axis,axisMag)
+  call getMag(axis,axisMag)
   axis = axis/axisMag
 
   ! Now compute the rotation angle about that axis

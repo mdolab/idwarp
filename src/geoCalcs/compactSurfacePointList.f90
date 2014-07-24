@@ -19,7 +19,8 @@ subroutine compactSurfacePointList(nPts,tempPoints,nUniquePts)
   ! Local Variables
   integer(kind=intType)::i,surfSecCounter
   integer(kind=intType)::currentSlot,currentNodeNumber,currElem
-  integer(kind=intType)::nodeNumber, connectedElement
+  integer(kind=intType)::nodeNumber
+  integer(kind=intType),dimension(2)::connectedElement
 
   !begin execution
 
@@ -34,12 +35,12 @@ subroutine compactSurfacePointList(nPts,tempPoints,nUniquePts)
   currElem = 1
   do i = 1,nPts
      nodeNumber = tempPoints(i)%globalIndex
-     connectedElement =  tempPoints(i)%connectedElements(1)
+     connectedElement =  tempPoints(i)%connectedElements(1,:)
 !     print *,'current Numbers',nodeNumber,connectedElement
      if (nodeNumber .eq. currentNodeNumber)then
         !print *,'eq'
         ! Current node is part of current set.
-        tempPoints(currentSlot)%connectedElements(currElem) = connectedElement
+        tempPoints(currentSlot)%connectedElements(currElem,:) = connectedElement
         currElem = currElem + 1
      else
         !print *,'incrementing'
@@ -53,8 +54,8 @@ subroutine compactSurfacePointList(nPts,tempPoints,nUniquePts)
         ! of the current point and then proceed.
         currentNodeNumber = nodeNumber
         !Store all of the data
-        tempPoints(currentSlot)%connectedElements(:) = -1_intType
-        tempPoints(currentSlot)%connectedElements(currElem) = connectedElement
+        tempPoints(currentSlot)%connectedElements(:,:) = -1_intType
+        tempPoints(currentSlot)%connectedElements(currElem,:) = connectedElement
         !tempPoints(currentSlot)%loc = tempPoints(i)%loc
         tempPoints(currentSlot)%globalIndex = currentNodeNumber
         currElem = currElem + 1

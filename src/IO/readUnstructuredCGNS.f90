@@ -125,7 +125,10 @@ subroutine readUnstructuredCGNSFile(cgns_file, comm)
 
      ! Allocate the memory for the grid points
      allocate(gridDoms(zone)%points(nVertices,physDim),STAT=ierr)
-
+     allocate(gridDoms(zone)%points0(nVertices,physDim),STAT=ierr)
+     allocate(gridDoms(zone)%dx(nVertices,physDim),STAT=ierr)
+     allocate(gridDoms(zone)%isSurfaceNode(nVertices),STAT=ierr)
+     gridDoms(zone)%isSurfaceNode=.False.
      ! Read the x,y,z-coordinates.
      ! This assumes the coords are in double precision.
      ! Note that CGNS starts the numbering at 
@@ -143,6 +146,8 @@ subroutine readUnstructuredCGNSFile(cgns_file, comm)
           & realDouble, 1,nVertices, gridDoms(zone)%points(:,3),&
           &ierr)
 
+     ! copy points to points0 to keep original points as a reference
+     gridDoms(zone)%points0 = gridDoms(zone)%points
      ! Determine the number of sections for this zone. Note that 
      ! surface elements can be stored in a volume zone, but they 
      ! are NOT taken into account in the number obtained from 
@@ -225,17 +230,22 @@ subroutine readUnstructuredCGNSFile(cgns_file, comm)
            gridDoms(zone)%volumeSections(volSecCounter)%nElem = nElem
            gridDoms(zone)%volumeSections(volSecCounter)%secName = secName
            gridDoms(zone)%volumeSections(volSecCounter)%elemType = type
-           gridDoms(zone)%volumeSections(volSecCounter)%nConn = nConn          
+           gridDoms(zone)%volumeSections(volSecCounter)%nConn = nConn 
+           gridDoms(zone)%volumeSections(volSecCounter)%elemStart = eBeg
+           gridDoms(zone)%volumeSections(volSecCounter)%elemEnd = eEnd
         else
            ! this is a group of surface elements
            allocate(gridDoms(zone)%surfaceSections(surfSecCounter)%elements(nConn,nElem),STAT=ierr)
            allocate(gridDoms(zone)%surfaceSections(surfSecCounter)%elemCenter(nElem,physDim),STAT=ierr)
            allocate(gridDoms(zone)%surfaceSections(surfSecCounter)%elemArea(nElem,physDim),STAT=ierr)
            allocate(gridDoms(zone)%surfaceSections(surfSecCounter)%elemNormal(nElem,physDim),STAT=ierr)
+           allocate(gridDoms(zone)%surfaceSections(surfSecCounter)%elemAreaMag(nElem),STAT=ierr)
            gridDoms(zone)%surfaceSections(surfSecCounter)%nElem = nElem
            gridDoms(zone)%surfaceSections(surfSecCounter)%secName = secName
            gridDoms(zone)%surfaceSections(surfSecCounter)%elemType = type
-           gridDoms(zone)%surfaceSections(surfSecCounter)%nConn = nConn          
+           gridDoms(zone)%surfaceSections(surfSecCounter)%nConn = nConn 
+           gridDoms(zone)%surfaceSections(surfSecCounter)%elemStart = eBeg
+           gridDoms(zone)%surfaceSections(surfSecCounter)%elemEnd = eEnd        
         end if
 
         ! call cg_npe_f(type, nconn, ierr)
@@ -413,12 +423,16 @@ subroutine deallocateCGNSData()
            deallocate(gridDoms(zone)%surfaceSections(surfSecCounter)%elements,STAT=ierr)
            deallocate(gridDoms(zone)%surfaceSections(surfSecCounter)%elemCenter,STAT=ierr)
            deallocate(gridDoms(zone)%surfaceSections(surfSecCounter)%elemArea,STAT=ierr)
+           deallocate(gridDoms(zone)%surfaceSections(surfSecCounter)%elemNormal,STAT=ierr)
+           deallocate(gridDoms(zone)%surfaceSections(surfSecCounter)%elemAreaMag,STAT=ierr)
            surfSecCounter = surfSecCounter + 1
         end if
      end do
      deallocate(gridDoms(zone)%volumeSections,STAT=ierr)
      deallocate(gridDoms(zone)%surfaceSections,STAT=ierr)
      deallocate(gridDoms(zone)%isVolumeSection,STAT=ierr)
+     deallocate(gridDoms(zone)%dx,STAT=ierr)
+     deallocate(gridDoms(zone)%points0,STAT=ierr)
      deallocate(gridDoms(zone)%points,STAT=ierr)
   end do
 

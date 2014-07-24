@@ -33,6 +33,7 @@ subroutine getSurfaceElementCenterAndArea()
            npts = gridDoms(zone)%surfaceSections(surfSecCounter)%nConn
            nDim = physDim
            allocate(points(npts,nDim),center(nDim),area(nDim),STAT=ierr)
+           allocate(normal(nDim),STAT=ierr)
            do elem =1,gridDoms(zone)%surfaceSections(surfSecCounter)%nElem
               do i = 1,nPts
                  pointIdx = gridDoms(zone)%surfaceSections(surfSecCounter)%elements(i,elem)
@@ -43,11 +44,11 @@ subroutine getSurfaceElementCenterAndArea()
 
               gridDoms(zone)%surfaceSections(surfSecCounter)%elemCenter(elem,:) = center
               gridDoms(zone)%surfaceSections(surfSecCounter)%elemArea(elem,:) = area
-               gridDoms(zone)%surfaceSections(surfSecCounter)%elemAreaMag(elem) = areaMag
+              gridDoms(zone)%surfaceSections(surfSecCounter)%elemAreaMag(elem) = areaMag
               gridDoms(zone)%surfaceSections(surfSecCounter)%elemNormal(elem,:) = normal
 
            end do
-           deallocate(points,center,area,STAT=ierr)
+           deallocate(points,center,area,normal,STAT=ierr)
            surfSecCounter = surfSecCounter + 1
         end if
      end do
