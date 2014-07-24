@@ -35,9 +35,9 @@ for i in xrange(len(coords0)):
 print 'setting new coords'
 # Reset the newly computed surface coordiantes
 mesh.setSurfaceCoordinates('full_surface',new_coords)
-sys.exit(0)
-mesh.warpMesh()
 
+mesh.warpMesh()
+sys.exit(0)
 
 # mesh2.preprocessSurfaces()
 # mesh2.updateGridMetrics()

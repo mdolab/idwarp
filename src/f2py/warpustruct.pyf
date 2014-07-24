@@ -55,15 +55,16 @@ python module warpustruct ! in
             use griddata
             use precision
         end subroutine getsurfaceelementcenterandarea
-        subroutine getuniquesurfacenodelist ! in :warpustruct:../geoCalcs/getUniqueSurfaceNodeList.f90
-            use griddata
-            use precision
-        end subroutine getuniquesurfacenodelist
         subroutine getfulluniquesurfacenodelist ! in :warpustruct:../geoCalcs/getFullUniqueSurfaceNodeList.f90
             use griddata
             use communication
             use precision
         end subroutine getfulluniquesurfacenodelist
+        subroutine computenodalproperties(initialpoint) ! in :warpustruct:../geoCalcs/computeNodalProperties.f90
+            use griddata
+            use precision
+            logical :: initialpoint
+        end subroutine computenodalproperties
         subroutine getnpatches(npatches) ! in :warpustruct:../warp/patchIO.f90
             use griddata
             use precision
@@ -122,6 +123,10 @@ python module warpustruct ! in
             integer(kind=inttype) dimension(npoints),intent(in) :: indices
             real(kind=realtype) dimension(3 * npoints),intent(in),depend(npoints) :: points
         end subroutine setsurfacecoordinates
+        subroutine updatevolumecoordinates ! in :warpustruct:../warp/updateVolumeCoordinates.f90
+            use griddata
+            use precision
+        end subroutine updatevolumecoordinates
     end interface 
 end python module warpustruct
 

@@ -14,11 +14,11 @@ vpath %.o $(OBJDIR)
 #MODS0 = 
 
 OBJS = compactSurfacePointList.o\
+       computeNodalProperties.o\
        getElementArea.o\
        getElementCenter.o\
        getSurfaceElementCenters.o\
        getFullUniqueSurfaceNodeList.o\
-       getUniqueSurfaceNodeList.o\
        vectorUtils.o\
 
 

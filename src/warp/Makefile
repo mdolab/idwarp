@@ -14,7 +14,7 @@ vpath %.o $(OBJDIR)
 #MODS0 = 
 
 OBJS =  patchIO.o\
-#	computeSi.o\
+	computeSi.o\
 	computeWi.o\
 	updateVolumeCoordinates.o\
 
