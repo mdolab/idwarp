@@ -47,14 +47,46 @@ subroutine updateVolumeCoordinates()
                  !    denomenator = denomenator + Wi
                  ! end do
                  ! now loop over surfaces
+                 !print *,'r',r
                  do pt = 1, nUniqueSurfPoints
                     call computeWi(pt,.true.,r,wi)
                     call computeSi(pt,.true.,r,Si)
+                    !print *,pt,'Wi,Si',Wi,Si
                     numerator = numerator + Wi*Si
                     denomenator = denomenator + Wi
+                    ! if (node .eq. 4) then
+                    !    print *,'weights',pt,wi,'s',si
+                    ! end if
                  end do
+                 if(hasSymmetry)then
+                    do pt = 1, nUniqueSurfPoints
+                       call computeWiSymm(pt,.true.,r,wi)
+                       call computeSiSymm(pt,.true.,r,Si)
+                       !print *,pt,'Wi,Si',Wi,Si
+                       numerator = numerator + Wi*Si
+                       denomenator = denomenator + Wi
+                       ! if (node .eq. 4) then
+                       !    print *,'weights',pt,wi,'s',si
+                       ! end if
+                    end do
+                 end if
+                 ! if (node .eq.4) then
+                 !    print *,'num,dem,',node,numerator,denomenator,numerator/denomenator
+                 !    stop
+                 ! end if
+                 ! if (numerator(2) .ne. 0) then
+                 !    print *,'num,dem,',node,numerator,denomenator,numerator/denomenator
+                 ! end if
+                 !stop
+                  gridDoms(zone)%dx(node,:) = numerator/denomenator
+              else
+                 
+                 gridDoms(zone)%dx(node,:) = 0.0
               end if
-              gridDoms(zone)%dx(node,:) = numerator/denomenator
+              !print *,'dx', gridDoms(zone)%dx(node,:),'p0',gridDoms(zone)%points0(node,:),'p',gridDoms(zone)%points(node,:)
+              ! if (gridDoms(zone)%dx(node,2) .ne. 0)then
+              !    print *,'dx', gridDoms(zone)%dx(node,:),'p0',gridDoms(zone)%points0(node,:),'p',gridDoms(zone)%points(node,:)
+              ! end if
               gridDoms(zone)%points(node,:)=gridDoms(zone)%points0(node,:)+gridDoms(zone)%dx(node,:)
            end do
         end if
@@ -69,10 +101,11 @@ subroutine updateVolumeCoordinates()
      globalIndex = uniqueBoundaryNodes(pt)%globalIndex
      gridDoms(zone)%points(globalIndex,:) = uniqueBoundaryNodes(pt)%loc
   end do
-     ! Then loop over the surface boundaries
+  ! Then loop over the surface boundaries
   do pt = 1, nUniqueSurfPoints
      zone = uniqueSurfaceNodes(pt)%zone
      globalIndex = uniqueSurfaceNodes(pt)%globalIndex
+     !print *,'surf',pt,globalIndex,gridDoms(zone)%points(globalIndex,:),uniqueSurfaceNodes(pt)%loc
      gridDoms(zone)%points(globalIndex,:) = uniqueSurfaceNodes(pt)%loc  
   end do
 end subroutine updateVolumeCoordinates
