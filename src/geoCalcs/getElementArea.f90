@@ -26,7 +26,7 @@ subroutine getElementArea(nPts,nDim,points,center,area,areaMag,elemNormal)
   do i = 1,nPts
      radialVec(i,:) = points(i,:)-center(:)
   end do
-  
+  !print *,'radial',radialVec
   ! Now loop around element doing cross products to get directional area
   sumArea = 0
   do i = 1,nPts-1
@@ -45,7 +45,7 @@ subroutine getElementArea(nPts,nDim,points,center,area,areaMag,elemNormal)
         ! sumArea = sumArea+ cross/2.0
      elseif( nDim .eq. 3) then
         call cross_product_3d(radialVec(i,:),radialVec(i+1,:),cross)
-              
+        !print *,'cross',cross
         sumArea = sumArea+ cross/2.0
      else
         print *,'Cross product not available for ',nDim,' dimensions...exiting'
@@ -55,10 +55,10 @@ subroutine getElementArea(nPts,nDim,points,center,area,areaMag,elemNormal)
   area = sumArea
  
   ! Get the magnitude of the area as well
-  call getMag(nDim,sumArea,areaMag)
-  
+  call getMag(sumArea,areaMag)
+  !print *,'areamag',areaMag
   ! also since the cross product gives the normal, this area is effectively an
   ! area weighted normal. Normalize this and save it for later
   elemNormal = area/areaMag
-
+  !print *,'normal',elemNormal
 end subroutine getElementArea

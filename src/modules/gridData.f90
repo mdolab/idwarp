@@ -24,5 +24,7 @@ module gridData
   ! Boundary nodes are all of the non-surface, non-symmetry boundary nodes
   type(surfacePointType),dimension(:),allocatable :: uniqueBoundaryNodes
   integer(kind=intType)::nBoundaryNodes,nUniqueBoundaryPoints
-
+  logical:: hasSymmetry
+  real(kind=realType),dimension(3)::symDir !Symmetry direction
+ 
 end module gridData

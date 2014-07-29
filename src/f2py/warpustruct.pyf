@@ -23,6 +23,13 @@ python module warpustruct ! in
             use communication
             use precision
         end subroutine deallocatecgnsdata
+        subroutine writeunstructuredcgnsfile(cgns_file,comm) ! in :warpustruct:../IO/writeUnstructuredCGNS.f90
+            use griddata
+            use communication
+            use precision
+            character*(*) :: cgns_file
+            integer(kind=inttype) :: comm
+        end subroutine writeunstructuredcgnsfile
         module communication ! in :warpustruct:../modules/communication.f90
             use precision
             integer(kind=inttype) :: warp_comm_self

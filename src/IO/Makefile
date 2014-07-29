@@ -14,7 +14,7 @@ vpath %.o $(OBJDIR)
 #MODS0 = 
 
 OBJS = readUnstructuredCGNS.o\
-
+       writeUnstructuredCGNS.o\
 
 #FILES_TO_COMPLEXIFY =  enginemodules.F90\
 		       kriging_data.F90\
