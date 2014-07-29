@@ -9,8 +9,9 @@ subroutine readUnstructuredCGNSFile(cgns_file, comm)
   use precision
   use communication
   use gridData
+  use cgnsData
   implicit none
-  include 'cgnslib_f.h'
+
 
   ! Input Arguments
   character*(*) :: cgns_file
@@ -21,8 +22,8 @@ subroutine readUnstructuredCGNSFile(cgns_file, comm)
   ! integer(kind=intType), dimension(3,1):: isize
   ! integer(kind=intType), dimension(3):: irmin, irmax
 
-  character*32 :: zoneName
-  character*32 :: baseName,name,secName,bocoName,famName
+  character*32 :: zoneName,name,secName,bocoName,famName
+  !character*32 :: baseName
   ! CGNS Variabls
   integer(kind=intType) :: fileIndex, base, nbases
   integer(kind=intType) :: nbocos, boco, index
@@ -34,7 +35,7 @@ subroutine readUnstructuredCGNSFile(cgns_file, comm)
   integer(kind=intType) :: normalIndex,normListFlag
   integer(kind=intType) :: normDataType,nDataSet
   !integer(kind=8), dimension(3)::sizes
-  integer(kind=intType), dimension(3)::sizes
+  !integer(kind=intType), dimension(3)::sizes
   integer(kind=intType), dimension(:,:), allocatable::conn
 
   integer(kind=intType):: surfSecCounter,volSecCounter, famID
@@ -45,11 +46,11 @@ subroutine readUnstructuredCGNSFile(cgns_file, comm)
   !            Setup MPI Data first
   ! ---------------------------------------
 
-  warp_comm_world = comm
-  warp_comm_self  = mpi_comm_self
-  call MPI_Comm_size(warp_comm_world, nProc, ierr)
-  call MPI_Comm_rank(warp_comm_world, myid , ierr)
-
+  ! warp_comm_world = comm
+  ! warp_comm_self  = mpi_comm_self
+  ! call MPI_Comm_size(warp_comm_world, nProc, ierr)
+  ! call MPI_Comm_rank(warp_comm_world, myid , ierr)
+  myID = 0
   ! ---------------------------------------
   !           Open CGNS File
   ! ---------------------------------------
@@ -98,9 +99,13 @@ subroutine readUnstructuredCGNSFile(cgns_file, comm)
      print *, '   -> Number of Zones:', nzones
   end if
 
+
+  ! initialize the Symmetry condition to false
+  hasSymmetry = .False.
+
   ! Allocate the GridDoms Data structure
   allocate(gridDoms(nZones),STAT=ierr)
-
+  
   ! loop over the zones and read
   do zone = 1,nZones
 
@@ -122,7 +127,8 @@ subroutine readUnstructuredCGNSFile(cgns_file, comm)
      nVertices    = sizes(1)
      nVolElements = sizes(2)
      gridDoms(zone)%nVertices = nVertices
-
+     gridDoms(zone)%nVolElements = nVolElements
+     gridDoms(zone)%zoneName = zoneName
      ! Allocate the memory for the grid points
      allocate(gridDoms(zone)%points(nVertices,physDim),STAT=ierr)
      allocate(gridDoms(zone)%points0(nVertices,physDim),STAT=ierr)
@@ -272,13 +278,13 @@ subroutine readUnstructuredCGNSFile(cgns_file, comm)
         deallocate(conn,STAT=ierr)
      end do
 
-     ! ignore BCs for now. All the info we need is in the sections
-
      !Determine the number of boundary conditions for this zone. 
      call cg_nbocos_f(fileIndex,base,zone,nBocos,ierr)
 
      ! Loop over the number of boundary conditions.
-
+     gridDoms(zone)%nBocos = nBocos
+     allocate(gridDoms(zone)%BCInfo(nBocos),STAT=ierr)
+     
      do boco=1,nBocos
         ! Read the info for this boundary condition. 
 
@@ -289,6 +295,15 @@ subroutine readUnstructuredCGNSFile(cgns_file, comm)
         !      bocoType, ptsettype, nbcelem, normalIndex,&
         !      normListFlag,normDataType,nDataSet
 
+        gridDoms(zone)%BCInfo(boco)%nBCElem = nBCElem
+        gridDoms(zone)%BCInfo(boco)%BCName =  bocoName
+        gridDoms(zone)%BCInfo(boco)%BCType = bocoType
+        allocate(gridDoms(zone)%BCInfo(boco)%BCElements(nBCElem),STAT=ierr)
+
+        ! Read the element ID's.
+        call cg_boco_read_f(fileIndex,base,zone,boco,&
+             gridDoms(zone)%BCInfo(boco)%BCElements,NULL,ierr)
+        
         ! Now that we have the boundary condition info read the family name
         ! to associate it with a specific section
 
@@ -307,6 +322,7 @@ subroutine readUnstructuredCGNSFile(cgns_file, comm)
               do sec=1,nSections
                  if (.not. gridDoms(zone)%isVolumeSection(sec)) then
                     ! we have a surface section
+                    gridDoms(zone)%BCInfo(boco)%famName = famName
                     !print *,'names',famName,gridDoms(zone)%surfaceSections(surfSecCounter)%secName
                     if(gridDoms(zone)%surfaceSections(surfSecCounter)%secName==&
                          famName)then
@@ -327,15 +343,13 @@ subroutine readUnstructuredCGNSFile(cgns_file, comm)
            !    !family not present set logical
            end if
         end if
-        ! !         allocate(BCElements(nbcelem),STAT=ierr)
-        ! !         ! Read the element ID's.
-        ! !         call cg_boco_read_f(fileIndex,base,zone,boco,&
-        ! !              BCElements,NULL,ierr)
-        ! ! !        print *,'bcelem',shape(BCElements)
-        ! !         deallocate(BCElements,STAT=ierr)
+     
      end do
 
   end do
+
+!  close CGNS file
+  call cg_close_f(fileIndex,ierr)
 
  ! We can also generate the wall family list
   nwallFamilies = 0
@@ -350,13 +364,13 @@ subroutine readUnstructuredCGNSFile(cgns_file, comm)
            gridDoms(zone)%surfaceSections(surfSecCounter)%isWallBC=.False.
            gridDoms(zone)%surfaceSections(surfSecCounter)%isBoundaryBC=.False.
            gridDoms(zone)%surfaceSections(surfSecCounter)%isSymmBC=.False.
-           print *,'bocotype',bocoType,BCTypeName(bocoType)
+!           print *,'bocotype',bocoType,BCTypeName(bocoType)
            if (BCTypeName(bocoType) == 'BCWallViscous' .or. &
                 BCTypeName(bocoType) == 'BCWallInviscid' .or. &
                 BCTypeName(bocoType) == 'BCWall' .or. &
                 BCTypeName(bocoType) == 'BCWallViscousHeatFlux' .or. &
                 BCTypeName(bocoType) == 'BCWallViscousIsothermal') then
-              print *,'is Wall',zone,surfSecCounter
+              !print *,'is Wall',zone,surfSecCounter
               gridDoms(zone)%surfaceSections(surfSecCounter)%isWallBC=.True.
               !this is a wall family, add to the family list
               call checkInFamilyList(familyList, famName, nwallFamilies, famID)
@@ -365,11 +379,12 @@ subroutine readUnstructuredCGNSFile(cgns_file, comm)
                  familyList(nwallFamilies) = famName
               end if
            elseif(BCTypeName(bocotype) == 'BCFarfield')  then
-              print *,'is farfield',zone,surfSecCounter
+              !print *,'is farfield',zone,surfSecCounter
               gridDoms(zone)%surfaceSections(surfSecCounter)%isBoundaryBC=.True.
            elseif(BCTypeName(bocotype) == 'BCSymmetryPlane') then
-              print *,' is symm',zone,surfSecCounter
+              !print *,' is symm',zone,surfSecCounter
               gridDoms(zone)%surfaceSections(surfSecCounter)%isSymmBC = .True.
+              hasSymmetry = .True.
            else
               print *,'Unrecongnized boundary Type... exiting'
               stop

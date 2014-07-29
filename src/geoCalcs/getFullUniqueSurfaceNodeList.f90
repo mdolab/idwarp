@@ -8,6 +8,7 @@
 subroutine getFullUniqueSurfaceNodeList()
   use precision
   use gridData
+  use sortData
   use communication
   implicit none
   include 'cgnslib_f.h'
@@ -16,8 +17,8 @@ subroutine getFullUniqueSurfaceNodeList()
   integer(kind=intType):: surfSecCounter
   integer(kind=intType):: elem,conn,nConn,nElem, nPts,pt,globalIndex
   type(surfacePointType),dimension(:),allocatable::tempSurfPoints, tempBoundaryPoints
-  !type(surfacePointType),dimension(10)::testPoints
-  integer(kind=intType)::nUniquePoints,surfCounter, boundaryCounter
+  type(surfacePointType),dimension(10)::testPoints
+  integer(kind=intType)::nUniquePoints,surfCounter, boundaryCounter,nNodesTest
   
   ! begin execution
   
@@ -32,7 +33,7 @@ subroutine getFullUniqueSurfaceNodeList()
   do zone = 1,nZones
      surfSecCounter = 1 
      do sec = 1,gridDoms(zone)%nSections
-        print *,'section',sec
+        !print *,'section',sec
         if(.not. gridDoms(zone)%isVolumeSection(sec))then
            nconn = gridDoms(zone)%surfaceSections(surfSecCounter)%nConn
            nElem = gridDoms(zone)%surfaceSections(surfSecCounter)%nElem
@@ -52,7 +53,7 @@ subroutine getFullUniqueSurfaceNodeList()
   do zone = 1,nZones
      surfSecCounter = 1 
      do sec = 1,gridDoms(zone)%nSections
-        print *,'section',sec
+        !print *,'section',sec
         if(.not. gridDoms(zone)%isVolumeSection(sec))then
            nconn = gridDoms(zone)%surfaceSections(surfSecCounter)%nConn
            nElem = gridDoms(zone)%surfaceSections(surfSecCounter)%nElem
@@ -100,19 +101,61 @@ subroutine getFullUniqueSurfaceNodeList()
      end do
   end do
 
-  ! Sort the point array
-  ! print *,'before sort',nConn,nElem,nPts
-  ! call indexShow(nPts,tempPoints)
-  ! print *,'sorting',nPts,shape(tempPoints)
-  call pointMergeSort(nSurfNodes,tempSurfPoints,0_intType,nSurfNodes)
-  call pointMergeSort(nBoundaryNodes,tempBoundaryPoints,0_intType,nBoundaryNodes)
+
+  ! ! Check that the global indices match up
+  ! surfCounter=1
+  ! do zone = 1,nZones
+  !    do pt = 1, 100!nSurfNodes
+  !       globalIndex = tempSurfPoints(pt)%globalIndex
+  !       print *,pt,'surfpoints',tempSurfPoints(pt)%loc,gridDoms(zone)%points(globalIndex,:),globalIndex
+  !    end do
+  ! end do
+  ! !stop
+  ! ! Sort the point array
+  ! nNodesTest = 10
+  ! testPoints = tempSurfPoints(1:10)
+  ! call indexShow(nNodesTest,testPoints)
+  ! ! print *,'sorting',nPts,shape(tempPoints)
+  ! allocate(sortPoints(nNodesTest),STAT=ierr)
+  ! sortPoints = testPoints
+  ! call pointMergeSort(nNodesTest,0_intType,nNodesTest)
+  ! testPoints = sortPoints
+  ! deallocate(sortPoints,STAT=ierr)
   ! print *,'after sort'
-  ! call indexShow(nPts,tempPoints)
+  ! call indexShow(nNodesTest,testPoints)
+  ! stop
+
+  ! print *,'before sort',nConn,nElem,nSurfNodes
+  ! call indexShow(nSurfNodes,tempSurfPoints)
+  ! print *,'sorting',nPts,shape(tempPoints)
+  allocate(sortPoints(nSurfNodes),STAT=ierr)
+  sortPoints = tempSurfPoints
+  !call pointMergeSort(nSurfNodes,tempSurfPoints,0_intType,nSurfNodes)
+  call pointMergeSort(nSurfNodes,0_intType,nSurfNodes)
+  tempSurfPoints = sortPoints
+  deallocate(sortPoints,STAT=ierr)
+  ! print *,'after sort'
+  ! call indexShow(nSurfNodes,tempSurfPoints)
+  
+  ! repeat for Boundary
+  allocate(sortPoints(nBoundaryNodes),STAT=ierr)
+  sortPoints = tempBoundaryPoints
+  !call pointMergeSort(nBoundaryNodes,tempBoundaryPoints,0_intType,nBoundaryNodes)
+  call pointMergeSort(nBoundaryNodes,0_intType,nBoundaryNodes)
+  tempBoundaryPoints = sortPoints
+  deallocate(sortPoints,STAT=ierr)
+
+  ! do zone = 1,nZones
+  !    do pt = 1, 100!nSurfNodes
+  !       globalIndex = tempSurfPoints(pt)%globalIndex
+  !       print *,pt,'Sortedsurfpoints',tempSurfPoints(pt)%loc,gridDoms(zone)%points(globalIndex,:),globalIndex
+  !    end do
+  ! end do
 
   !compact the list
   call compactSurfacePointList(nSurfNodes,tempSurfPoints,nUniqueSurfPoints)
   call compactSurfacePointList(nBoundaryNodes,tempBoundaryPoints,nUniqueBoundaryPoints)
-  print *,'Compacted sizes',nUniqueSurfPoints,nUniqueBoundaryPoints
+  !print *,'Compacted sizes',nUniqueSurfPoints,nUniqueBoundaryPoints
   ! Allocate the permanent storage
   allocate(uniqueSurfaceNodes(nUniqueSurfPoints),STAT=ierr)
   allocate(uniqueBoundaryNodes(nUniqueBoundaryPoints),STAT=ierr)           
@@ -136,4 +179,11 @@ subroutine getFullUniqueSurfaceNodeList()
      globalIndex = uniqueSurfaceNodes(pt)%globalIndex
      gridDoms(zone)%isSurfaceNode(globalIndex) = .True.  
   end do
+  ! do pt = 1, 100!nUniqueSurfPoints
+  !    zone = uniqueSurfaceNodes(pt)%zone
+  !    globalIndex = uniqueSurfaceNodes(pt)%globalIndex
+  !    print *,'surf',pt,globalIndex,gridDoms(zone)%points(globalIndex,:),uniqueSurfaceNodes(pt)%loc
+  !    !gridDoms(zone)%points(globalIndex,:) = uniqueSurfaceNodes(pt)%loc  
+  ! end do
+  ! stop
 end subroutine getFullUniqueSurfaceNodeList

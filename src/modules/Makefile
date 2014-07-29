@@ -18,7 +18,9 @@ MODS1 = precision.o\
 	gridTypes.o\
         communication.o\
 
-MODS2 = gridData.o
+MODS2 = gridData.o\
+	cgnsData.o\
+	sortModule.o\
 
 #FILES_TO_COMPLEXIFY =  enginemodules.F90\
 		       kriging_data.F90\

@@ -113,23 +113,32 @@ subroutine getRotationMatrix3d(v1,v2,Mi)
   integer(kind=intType)::i
 
   ! Begin Execution
-  
+ ! print *,'v1,v2',v1,v2
   call getMag(v1,magV1)
   call getMag(v2,magV2)
-
+  
+ ! print *,'mags',magv1,magv2
 
   ! Start by determining the rotation axis by getting the 
   ! cross product between v1, v2
 
   call cross_product_3d(v1,v2,axis)
-
   ! Now Normalize
   call getMag(axis,axisMag)
-  axis = axis/axisMag
+ ! print *,'axis',axis,'mag', axisMag
+  if (axisMag <1.0e-15) then
+     ! no rotation at this point, angle is 0
+     angle = 0
+     ! the axis doesn't matter so set to x
+     axis = 0
+     axis(1) = 1.0
+  else
+     axis = axis/axisMag
 
-  ! Now compute the rotation angle about that axis
-  angle = acos(dot_product(v1/magv1,v2/magv2))
-
+     ! Now compute the rotation angle about that axis
+     angle = acos(dot_product(v1/magv1,v2/magv2))
+     !print *,'angle',angle,'ax',axis
+  end if
   ! Now that we have an axis and an angle,build the rotation Matrix
 
   ! A skew symmetric representation of the normalized axis 
@@ -152,4 +161,6 @@ subroutine getRotationMatrix3d(v1,v2,Mi)
   ! Rodrigues formula for the rotation matrix 
   
   Mi = eye + sin(angle)*axis_skewed + (1-cos(angle))*matmul(axis_skewed,axis_skewed)
+  ! print *,'Mi',Mi
+  ! stop
 end subroutine getRotationMatrix3d

@@ -31,12 +31,12 @@ subroutine compactSurfacePointList(nPts,tempPoints,nUniquePts)
 
    !Loop over points
   currentSlot = 1
-  currentNodeNumber = 1
+  currentNodeNumber = tempPoints(1)%globalIndex!1
   currElem = 1
   do i = 1,nPts
      nodeNumber = tempPoints(i)%globalIndex
      connectedElement =  tempPoints(i)%connectedElements(1,:)
-!     print *,'current Numbers',nodeNumber,connectedElement
+     !print *,'current Numbers',nodeNumber,connectedElement
      if (nodeNumber .eq. currentNodeNumber)then
         !print *,'eq'
         ! Current node is part of current set.
@@ -56,7 +56,8 @@ subroutine compactSurfacePointList(nPts,tempPoints,nUniquePts)
         !Store all of the data
         tempPoints(currentSlot)%connectedElements(:,:) = -1_intType
         tempPoints(currentSlot)%connectedElements(currElem,:) = connectedElement
-        !tempPoints(currentSlot)%loc = tempPoints(i)%loc
+        tempPoints(currentSlot)%loc = tempPoints(i)%loc
+         tempPoints(currentSlot)%loc0 = tempPoints(i)%loc0
         tempPoints(currentSlot)%globalIndex = currentNodeNumber
         currElem = currElem + 1
      end if
@@ -64,6 +65,6 @@ subroutine compactSurfacePointList(nPts,tempPoints,nUniquePts)
   end do
   
   nUniquePts = currentSlot
-  
+
 100 format (A,i7,i7,i7,A,10i5,i10,i10)
 end subroutine compactSurfacePointList

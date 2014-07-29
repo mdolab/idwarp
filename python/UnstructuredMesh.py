@@ -546,7 +546,7 @@ class USMesh(object):
         #self.warp.getuniquesurfacenodelist()
         self.warp.getfulluniquesurfacenodelist()
         self.updateGridMetrics(True)
-
+        
         return
 
     def updateGridMetrics(self,initialPoint=False):
@@ -926,6 +926,14 @@ I will ignore this family'%(fam),comm=self.comm)
 # # ==========================================================================
 # #                        Output Functionality
 # # ==========================================================================
+    def writeGridCGNS(self,fileName):
+        '''
+        write the current grid to a CGNS File
+        '''
+        self.warp.writeunstructuredcgnsfile(fileName, self.comm.py2f())
+        
+        return
+        
     def writeGridTecplot(self,fileName):
         '''
         write the current grid coordinates in a tecplot FE
@@ -1240,7 +1248,7 @@ I will ignore this family'%(fam),comm=self.comm)
         # Compute the updated surface element centers, areas and normals
         print('updating grid metrics')
         self.updateGridMetrics()
-
+        #sys.exit(0)
         # loop over the unique surface nodes to compute the rotations and
         # displacements
         
@@ -1444,7 +1452,7 @@ I will ignore this family'%(fam),comm=self.comm)
         """
         fullList = self.warp.griddata.familylist.transpose().flatten()
         nFamilies = self.warp.griddata.nwallfamilies
-        print ('Full list',fullList,nFamilies)
+        #print ('Full list',fullList,nFamilies)
         self.familyList = ["" for i in range(nFamilies)]
         for i in range(nFamilies):
             tempName = fullList[i*32:(i+1)*32]

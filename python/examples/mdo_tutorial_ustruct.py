@@ -16,6 +16,7 @@ meshOptions = {}
 casename = 'mdo_tutorial_face_bcs.cgns'
 mesh = USMesh(casename, comm=gcomm, meshOptions=meshOptions)
 print 'mesh initialized',mesh.familyGroup
+
 # First see what families are in the file:
 mesh.printFamilyList()
 
@@ -31,12 +32,16 @@ new_coords = coords0.copy()
 for i in xrange(len(coords0)):
     span = coords0[i,2]
     new_coords[i,0] += .05*span
+    new_coords[i,1] += .05*span
 # end for
 print 'setting new coords'
 # Reset the newly computed surface coordiantes
 mesh.setSurfaceCoordinates('full_surface',new_coords)
 
 mesh.warpMesh()
+
+mesh.writeGridCGNS('new_'+casename)
+
 sys.exit(0)
 
 # mesh2.preprocessSurfaces()
