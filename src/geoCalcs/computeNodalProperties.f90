@@ -20,6 +20,7 @@ subroutine computeNodalProperties(initialPoint)
   real(kind=realType), dimension(3,3)::Mi
   ! begin Execution
   !print *,'computing Nodal Properties',initialPoint,hasSymmetry,symDir
+
   ! First loop over the Farfield boundaries
   do pt = 1, nUniqueBoundaryPoints
      ! for each node loop over the connected elements and sum the area
@@ -28,10 +29,11 @@ subroutine computeNodalProperties(initialPoint)
      sumArea = 0
      sumNormal = 0
      !surfSecCounter = uniqueBoundaryNodes(pt)%surfSection
-     do elem = 1,10 ! This is hardcoded for the moment to reduce allocate calls
+     do elem = 1,30 ! This is hardcoded for the moment to reduce allocate calls
         elemIdx = uniqueBoundaryNodes(pt)%connectedElements(elem,1)
         surfSecCounter = uniqueBoundaryNodes(pt)%connectedElements(elem,2)
         if (elemIdx .ge. 0) then
+           !print *,'elemIdx',elem,elemIdx,surfSecCounter,shape( gridDoms(zone)%surfaceSections(surfSecCounter)%elemAreaMag),shape(gridDoms(zone)%surfaceSections(surfSecCounter)%elemNormal)
            ! this is a connected element
            area = gridDoms(zone)%surfaceSections(surfSecCounter)%elemAreaMag(elemIdx)
            normal = gridDoms(zone)%surfaceSections(surfSecCounter)%elemNormal(elemIdx,:)
@@ -73,20 +75,23 @@ subroutine computeNodalProperties(initialPoint)
 
   ! Then loop over the surface boundaries
   do pt = 1, nUniqueSurfPoints
+     !print *,'in pt',pt
      ! for each node loop over the connected elements and sum the area
      ! and area weighted normal
      zone = uniqueSurfaceNodes(pt)%zone
      sumArea = 0
      sumNormal = 0
      !surfSecCounter = uniqueSurfaceNodes(pt)%surfSection
-     do elem = 1,10 ! This is hardcoded for the moment to reduce allocate calls
+     do elem = 1,30 ! This is hardcoded for the moment to reduce allocate calls
         elemIdx = uniqueSurfaceNodes(pt)%connectedElements(elem,1)
         surfSecCounter = uniqueSurfaceNodes(pt)%connectedElements(elem,2)
         if (elemIdx .ge. 0) then
            ! this is a connected element
            area = gridDoms(zone)%surfaceSections(surfSecCounter)%elemAreaMag(elemIdx)
            normal = gridDoms(zone)%surfaceSections(surfSecCounter)%elemNormal(elemIdx,:)
+           !print *,'sumArea',elem,sumArea,area
            sumArea = sumArea + area
+           !print *,'sumNormal',elem,sumNormal,normal
            sumNormal = sumNormal + area*normal
         end if
      end do
@@ -95,6 +100,7 @@ subroutine computeNodalProperties(initialPoint)
      if(initialPoint)then
         uniqueSurfaceNodes(pt)%normal0 = sumNormal
      else
+        !print *,'pt',pt
         uniqueSurfaceNodes(pt)%normal = sumNormal
         v1 = uniqueSurfaceNodes(pt)%normal0
         v2 = uniqueSurfaceNodes(pt)%normal

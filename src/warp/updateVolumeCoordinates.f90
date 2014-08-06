@@ -30,8 +30,9 @@ subroutine updateVolumeCoordinates()
   !loop over the volume nodes
   do zone = 1,nZones
      volSecCounter = 1
-     do sec = 1,gridDoms(zone)%nSections 
-        if(gridDoms(zone)%isVolumeSection(sec))then
+     ! do sec = 1,gridDoms(zone)%nSections 
+     !    if(gridDoms(zone)%isVolumeSection(sec))then
+     !print *,'in Update Volume',gridDoms(zone)%nVertices
            do node = 1,gridDoms(zone)%nVertices
               !print *,'warping node',node,gridDoms(zone)%nVertices,sec,zone
               if(.not. gridDoms(zone)%isSurfaceNode(node))then
@@ -54,7 +55,8 @@ subroutine updateVolumeCoordinates()
                     !print *,pt,'Wi,Si',Wi,Si
                     numerator = numerator + Wi*Si
                     denomenator = denomenator + Wi
-                    ! if (node .eq. 4) then
+                    ! if (node .eq. 303) then
+                    !    print *,'num',numerator,denomenator
                     !    print *,'weights',pt,wi,'s',si
                     ! end if
                  end do
@@ -65,20 +67,21 @@ subroutine updateVolumeCoordinates()
                        !print *,pt,'Wi,Si',Wi,Si
                        numerator = numerator + Wi*Si
                        denomenator = denomenator + Wi
-                       ! if (node .eq. 4) then
-                       !    print *,'weights',pt,wi,'s',si
+                       ! if (node .eq. 303) then
+                       !    print *,'numSym',numerator,denomenator
+                       !    print *,'weightsSym',pt,wi,'s',si
                        ! end if
                     end do
                  end if
-                 ! if (node .eq.4) then
+                 ! if (node .eq.303) then
                  !    print *,'num,dem,',node,numerator,denomenator,numerator/denomenator
                  !    stop
                  ! end if
                  ! if (numerator(2) .ne. 0) then
                  !    print *,'num,dem,',node,numerator,denomenator,numerator/denomenator
                  ! end if
-                 !stop
-                  gridDoms(zone)%dx(node,:) = numerator/denomenator
+                 ! stop
+                 gridDoms(zone)%dx(node,:) = numerator/denomenator
               else
                  
                  gridDoms(zone)%dx(node,:) = 0.0
@@ -89,8 +92,8 @@ subroutine updateVolumeCoordinates()
               ! end if
               gridDoms(zone)%points(node,:)=gridDoms(zone)%points0(node,:)+gridDoms(zone)%dx(node,:)
            end do
-        end if
-     end do
+     !    end if
+     ! end do
   end do
   call cpu_time(timeB)
   print *,'MeshWarping Time',timeB-timeA

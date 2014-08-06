@@ -16,6 +16,7 @@ subroutine getElementArea(nPts,nDim,points,center,area,areaMag,elemNormal)
 
   ! Local variables
   integer(kind=intType):: i,j
+  real(kind=realType),dimension(nPts,nDim):: tempPoints
   real(kind=realType),dimension(nPts,nDim):: radialVec
   real(kind=realType),dimension(nDim):: sumArea,cross
   real(kind=realType),dimension(3):: v1, v2,v3
@@ -27,6 +28,20 @@ subroutine getElementArea(nPts,nDim,points,center,area,areaMag,elemNormal)
      radialVec(i,:) = points(i,:)-center(:)
   end do
   !print *,'radial',radialVec
+  
+  ! Sort the points into a consistant order
+  !use the first two points to determine the rotation axis
+  call cross_product_3d(radialVec(1,:),radialVec(2,:),cross)
+  call getMag(cross,areaMag)
+  elemNormal = cross/areaMag
+  tempPoints = points
+  call orderElemPoints(nPts,tempPoints,center,elemNormal,0,nPts)
+
+  ! now update the radial vectors
+  do i = 1,nPts
+     radialVec(i,:) = tempPoints(i,:)-center(:)
+  end do
+
   ! Now loop around element doing cross products to get directional area
   sumArea = 0
   do i = 1,nPts-1
@@ -44,8 +59,12 @@ subroutine getElementArea(nPts,nDim,points,center,area,areaMag,elemNormal)
         ! cross = v3(2:3)
         ! sumArea = sumArea+ cross/2.0
      elseif( nDim .eq. 3) then
-        call cross_product_3d(radialVec(i,:),radialVec(i+1,:),cross)
-        !print *,'cross',cross
+        if (i<nPts) then
+           call cross_product_3d(radialVec(i,:),radialVec(i+1,:),cross)
+           !print *,'cross',i,sumArea,cross
+        else
+           call cross_product_3d(radialVec(i,:),radialVec(1,:),cross)
+        end if
         sumArea = sumArea+ cross/2.0
      else
         print *,'Cross product not available for ',nDim,' dimensions...exiting'
@@ -56,7 +75,7 @@ subroutine getElementArea(nPts,nDim,points,center,area,areaMag,elemNormal)
  
   ! Get the magnitude of the area as well
   call getMag(sumArea,areaMag)
-  !print *,'areamag',areaMag
+  !print *,'area',area,'areamag',areaMag
   ! also since the cross product gives the normal, this area is effectively an
   ! area weighted normal. Normalize this and save it for later
   elemNormal = area/areaMag

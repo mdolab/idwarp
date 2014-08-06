@@ -13,7 +13,10 @@ vpath %.o $(OBJDIR)
 # Name of files to be compiled:
 #MODS0 = 
 
-OBJS = readUnstructuredCGNS.o\
+OBJS = allocateGridDoms.o\
+       createSections.o\
+       readUnstructuredCGNS.o\
+       setGetVolumeCoordinates.o\
        writeUnstructuredCGNS.o\
 
 #FILES_TO_COMPLEXIFY =  enginemodules.F90\

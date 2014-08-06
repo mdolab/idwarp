@@ -113,11 +113,11 @@ subroutine getRotationMatrix3d(v1,v2,Mi)
   integer(kind=intType)::i
 
   ! Begin Execution
- ! print *,'v1,v2',v1,v2
+  !print *,'v1,v2',v1,v2
   call getMag(v1,magV1)
   call getMag(v2,magV2)
   
- ! print *,'mags',magv1,magv2
+  !print *,'mags',magv1,magv2
 
   ! Start by determining the rotation axis by getting the 
   ! cross product between v1, v2
@@ -125,7 +125,7 @@ subroutine getRotationMatrix3d(v1,v2,Mi)
   call cross_product_3d(v1,v2,axis)
   ! Now Normalize
   call getMag(axis,axisMag)
- ! print *,'axis',axis,'mag', axisMag
+  !print *,'axis',axis,'mag', axisMag
   if (axisMag <1.0e-15) then
      ! no rotation at this point, angle is 0
      angle = 0
@@ -161,6 +161,6 @@ subroutine getRotationMatrix3d(v1,v2,Mi)
   ! Rodrigues formula for the rotation matrix 
   
   Mi = eye + sin(angle)*axis_skewed + (1-cos(angle))*matmul(axis_skewed,axis_skewed)
-  ! print *,'Mi',Mi
+  !print *,'Rot:Mi',Mi,'a',angle,'ax',axis
   ! stop
 end subroutine getRotationMatrix3d

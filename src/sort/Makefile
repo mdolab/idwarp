@@ -13,7 +13,8 @@ vpath %.o $(OBJDIR)
 # Name of files to be compiled:
 #MODS0 = 
 
-OBJS = pointMergeSort.o\
+OBJS = elemPointSort.o\
+       pointMergeSort.o\
 
 
 #FILES_TO_COMPLEXIFY =  

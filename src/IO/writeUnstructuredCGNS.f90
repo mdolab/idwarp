@@ -25,7 +25,7 @@ subroutine writeUnstructuredCGNSFile(cgns_file, comm)
   integer(kind=intType) :: fileIndex, base
   integer(kind=intType) :: nbocos, boco,bcIndex
   integer(kind=intType) :: nVertices,nVolElements
-  integer(kind=intType) :: zone,sec,type
+  integer(kind=intType) :: zone,sec,etype
   integer(kind=intType) :: coordIndex
   integer(kind=intType) :: nSections,nConn,nElem
   integer(kind=intType) :: eBeg,eEnd
@@ -33,6 +33,7 @@ subroutine writeUnstructuredCGNSFile(cgns_file, comm)
   integer(kind=intType), dimension(:,:), allocatable::conn
 
   integer(kind=intType):: surfSecCounter,volSecCounter
+  integer(kind=intType):: i,j,elemIdx
 
   ! ---------------------------------------
   !           Open CGNS File
@@ -80,32 +81,53 @@ subroutine writeUnstructuredCGNSFile(cgns_file, comm)
      volSecCounter = 1
      surfSecCounter = 1
      do sec=1,nSections
+        print *,'writing sections',sec
         ! Get the section information for the current section
         if (gridDoms(zone)%isVolumeSection(sec)) then
            nElem = gridDoms(zone)%volumeSections(volSecCounter)%nElem
            secName = gridDoms(zone)%volumeSections(volSecCounter)%secName
-           type = gridDoms(zone)%volumeSections(volSecCounter)%elemType
-           nConn = gridDoms(zone)%volumeSections(volSecCounter)%nConn
+           etype = gridDoms(zone)%volumeSections(volSecCounter)%elemType
+           !nConn = gridDoms(zone)%volumeSections(volSecCounter)%nConn
            eBeg = gridDoms(zone)%volumeSections(volSecCounter)%elemStart
            eEnd = gridDoms(zone)%volumeSections(volSecCounter)%elemEnd
+           nConn = gridDoms(zone)%volumeSections(volSecCounter)%elemPtr(2)-gridDoms(zone)%volumeSections(volSecCounter)%elemPtr(1)
            allocate(conn(nConn,nElem),STAT=ierr)
-           conn = gridDoms(zone)%volumeSections(volSecCounter)%elements
+
+           do i = 1,nElem
+              do j = 1,nConn
+                 elemIdx = gridDoms(zone)%volumeSections(volSecCounter)%elemPtr(i)
+                 conn(j,i) = gridDoms(zone)%volumeSections(volSecCounter)%elemConn(elemIdx+j-1)
+                 !gridDoms(zone)%volumeSections(volSecCounter)%elements = conn
+              end do
+           end do
+           !conn = gridDoms(zone)%volumeSections(volSecCounter)%elements
            volSecCounter = volSecCounter+1
         else
            nElem = gridDoms(zone)%surfaceSections(surfSecCounter)%nElem
            secName =  gridDoms(zone)%surfaceSections(surfSecCounter)%secName
-           type = gridDoms(zone)%surfaceSections(surfSecCounter)%elemType
-           nConn = gridDoms(zone)%surfaceSections(surfSecCounter)%nConn
+           etype = gridDoms(zone)%surfaceSections(surfSecCounter)%elemType
+           !nConn = gridDoms(zone)%surfaceSections(surfSecCounter)%nConn
            eBeg = gridDoms(zone)%surfaceSections(surfSecCounter)%elemStart
            eEnd = gridDoms(zone)%surfaceSections(surfSecCounter)%elemEnd
+           nConn = gridDoms(zone)%surfaceSections(surfSecCounter)%elemPtr(2)-gridDoms(zone)%surfaceSections(surfSecCounter)%elemPtr(1)
            allocate(conn(nConn,nElem),STAT=ierr)
-           conn = gridDoms(zone)%surfaceSections(surfSecCounter)%elements
+           do i = 1,nElem
+              do j = 1,nConn
+                 elemIdx = gridDoms(zone)%surfaceSections(surfSecCounter)%elemPtr(i)
+                 conn(j,i) = gridDoms(zone)%surfaceSections(surfSecCounter)%elemConn(elemIdx+j-1)
+                 !gridDoms(zone)%volumeSections(volSecCounter)%elements = conn
+              end do
+           end do
+           !conn = gridDoms(zone)%surfaceSections(surfSecCounter)%elements
            surfSecCounter = surfSecCounter + 1
         end if
 
         !write element connectivity (user can give any name)
-        call cg_section_write_f(fileIndex,base,zone,secName,type,&
+        print *,'file',fileIndex,base,zone,secName,etype,&
+             eBeg,eEnd, shape(conn)
+        call cg_section_write_f(fileIndex,base,zone,secName,etype,&
              eBeg,eEnd,0,conn,sec,ierr)
+        print *,'section error check',ierr
         deallocate(conn,STAT=ierr)
 
      end do

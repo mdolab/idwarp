@@ -7,6 +7,7 @@ python module warpustruct ! in
             use griddata
             use communication
             use precision
+            use cgnsdata
             character*(*) :: cgns_file
             integer(kind=inttype) :: comm
         end subroutine readunstructuredcgnsfile
@@ -23,13 +24,74 @@ python module warpustruct ! in
             use communication
             use precision
         end subroutine deallocatecgnsdata
+        subroutine setvolumecoordinates(zone,nzonesin,nvertices,vertices,initcall) ! in :warpustruct:../IO/setGetVolumeCoordinates.f90
+            use griddata
+            use precision
+            integer(kind=inttype) :: zone
+            integer(kind=inttype) :: nzonesin
+            integer(kind=inttype), optional,check(shape(vertices,0)==nvertices),depend(vertices) :: nvertices=shape(vertices,0)
+            real(kind=realtype) dimension(nvertices,3) :: vertices
+            logical :: initcall
+        end subroutine setvolumecoordinates
+        subroutine getvolumecoordinates(zone,nvertices,vertices) ! in :warpustruct:../IO/setGetVolumeCoordinates.f90
+            use griddata
+            use precision
+            integer(kind=inttype) :: zone
+            integer(kind=inttype) :: nvertices
+            real(kind=realtype) dimension(nvertices,3),intent(out),depend(nvertices) :: vertices
+        end subroutine getvolumecoordinates
+        subroutine getnvertices(zone,nvertices) ! in :warpustruct:../IO/setGetVolumeCoordinates.f90
+            use griddata
+            use precision
+            integer(kind=inttype) intent(in) :: zone
+            integer(kind=inttype) intent(out) :: nvertices
+        end subroutine getnvertices
         subroutine writeunstructuredcgnsfile(cgns_file,comm) ! in :warpustruct:../IO/writeUnstructuredCGNS.f90
             use griddata
             use communication
             use precision
+            use cgnsdata
             character*(*) :: cgns_file
             integer(kind=inttype) :: comm
         end subroutine writeunstructuredcgnsfile
+        subroutine createsections(zone,nsections) ! in :warpustruct:../IO/createSections.f90
+            use griddata
+            use precision
+            integer(kind=inttype) intent(in) :: zone
+            integer(kind=inttype) intent(in) :: nsections
+        end subroutine createsections
+        subroutine setsectiontypes(zone,nsection,isvolumesec) ! in :warpustruct:../IO/createSections.f90
+            use griddata
+            use precision
+            integer(kind=inttype) intent(in) :: zone
+            integer(kind=inttype), optional,intent(in),check(len(isvolumesec)>=nsection),depend(isvolumesec) :: nsection=len(isvolumesec)
+            logical dimension(nsection),intent(in) :: isvolumesec
+        end subroutine setsectiontypes
+        subroutine setsectiondata(zone,sec,seccounter,nelem,nnodeidx,secname,ebeg,eend,nodeindexlist,elemptr) ! in :warpustruct:../IO/createSections.f90
+            use griddata
+            use precision
+            integer(kind=inttype) intent(in) :: zone
+            integer(kind=inttype) intent(in) :: sec
+            integer(kind=inttype) intent(in) :: seccounter
+            integer(kind=inttype), optional,intent(in),check((len(elemptr)-1)>=nelem),depend(elemptr) :: nelem=(len(elemptr)-1)
+            integer(kind=inttype), optional,intent(in),check(len(nodeindexlist)>=nnodeidx),depend(nodeindexlist) :: nnodeidx=len(nodeindexlist)
+            character*32 :: secname
+            integer(kind=inttype) intent(in) :: ebeg
+            integer(kind=inttype) intent(in) :: eend
+            integer(kind=inttype) dimension(nnodeidx) :: nodeindexlist
+            integer(kind=inttype) dimension(nelem + 1) :: elemptr
+        end subroutine setsectiondata
+        subroutine setboundarydata(zone,sec,surfseccounter,famname,iswall,issymm,isboundary) ! in :warpustruct:../IO/createSections.f90
+            use griddata
+            use precision
+            integer(kind=inttype) intent(in) :: zone
+            integer(kind=inttype) intent(in) :: sec
+            integer(kind=inttype) intent(in) :: surfseccounter
+            character*32 :: famname
+            logical :: iswall
+            logical :: issymm
+            logical :: isboundary
+        end subroutine setboundarydata
         module communication ! in :warpustruct:../modules/communication.f90
             use precision
             integer(kind=inttype) :: warp_comm_self
@@ -44,8 +106,9 @@ python module warpustruct ! in
 !            type(zonedatatype), allocatable,dimension(:) :: griddoms
             real(kind=realtype) :: aexp
             integer(kind=inttype) :: nwallfamilies
-!            type(surfacepointtype), allocatable,dimension(:) :: uniqueboundarynodes
+            logical :: hassymmetry
             integer(kind=inttype) :: nsurfnodes
+            real(kind=realtype) dimension(3) :: symdir
             integer(kind=inttype) :: nuniquesurfpoints
             real(kind=realtype) :: alpha
 !            type(surfacepointtype), allocatable,dimension(:) :: uniquesurfacenodes
@@ -57,7 +120,13 @@ python module warpustruct ! in
             real(kind=realtype) :: ldef
             integer(kind=inttype) :: nboundarynodes
             integer(kind=inttype) :: nuniqueboundarypoints
+!            type(surfacepointtype), allocatable,dimension(:) :: uniqueboundarynodes
         end module griddata
+        module cgnsdata ! in :warpustruct:../modules/cgnsData.f90
+            use precision
+            character*32 :: basename
+            integer(kind=inttype) dimension(3) :: sizes
+        end module cgnsdata
         subroutine getsurfaceelementcenterandarea ! in :warpustruct:../geoCalcs/getSurfaceElementCenters.f90
             use griddata
             use precision
@@ -65,6 +134,7 @@ python module warpustruct ! in
         subroutine getfulluniquesurfacenodelist ! in :warpustruct:../geoCalcs/getFullUniqueSurfaceNodeList.f90
             use griddata
             use communication
+            use sortdata
             use precision
         end subroutine getfulluniquesurfacenodelist
         subroutine computenodalproperties(initialpoint) ! in :warpustruct:../geoCalcs/computeNodalProperties.f90
