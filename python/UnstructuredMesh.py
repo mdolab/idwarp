@@ -138,6 +138,7 @@ class USMesh(object):
             'binaryFacesFile':False,
             'binaryCellsFile':False,
             'binaryOwnersFile':False,
+            'binaryNeighboursFile':False,
             }
         
         # # Set remaining default values
@@ -161,6 +162,7 @@ class USMesh(object):
         elif self.solverOptions['fileType'] == 'openfoam':
             # we are dealing with an OpenFOAM case
             self._readOpenFOAMGrid(fileName)
+
         else:
             print('Invalid input file type. CGNS or OpenFOAM required...Exiting')
             sys.exit(0)
@@ -200,15 +202,16 @@ class USMesh(object):
         self.mInfo = MeshInformation(caseDir)
 
         # Read in the volume points
-        self.nodes = self._readVolumeMeshPoints()
+        self._readVolumeMeshPoints()
 
-        # Read the boundary info
-        self._readBoundaryInfo()
-        
         # Read the face info for the mesh
         self._readFaceInfo()
 
+        # Read the boundary info
+        self._readBoundaryInfo()
+      
         # Read the cell info for the mesh
+        print('reading owner info')
         self._readCellInfo()
 
         return
@@ -220,7 +223,7 @@ class USMesh(object):
 
         # use PyFoam to determine the number of points in the file
         self.nPoints = self.mInfo.nrOfPoints()
-        #print 'nPoints',self.nPoints
+        print('nPoints',self.nPoints)
        
         # Open the points file for reading
         pointHandle = open(self.pointsFile,'r')
@@ -228,35 +231,48 @@ class USMesh(object):
         self._parseHeaderNumerical(pointHandle,self.nPoints)
       
         # now read the points into x
-        print (self.solverOptions)
-        print ('binaryPointsFile?',self.solverOptions['binaryPointsFile'])
+        #print (self.solverOptions)
+        #print ('binaryPointsFile?',self.solverOptions['binaryPointsFile'])
         if self.solverOptions['binaryPointsFile']:
             # read the points in binary using fromfile
             x = np.fromfile(pointHandle, dtype='float', count=self.nPoints*3, sep="").reshape((self.nPoints,3))
 
         else:
+            #print('reading points file')
             # read the file in as ascii
             x = np.zeros([self.nPoints,3])
             counter = 0
             for line in pointHandle.readlines():
                 #print 'before',line
                 line = re.sub('[)(]', '', line)
-                #print 'after',line
+                #print('after',line)
                 vals = line.split()
-                #print len(vals),vals
+                #print(len(vals),vals)
                 if len(vals)==3 and counter<self.nPoints:
                     #print 'points found',counter
                     x[counter,0] = float(vals[0])
                     x[counter,1] = float(vals[1])
                     x[counter,2] = float(vals[2])
+                    #print('x',counter,x[counter,:])
                     counter += 1
                 # end
             # end
         # end
-                    
-        pointHandle.close()
 
-        return x
+        pointHandle.close()
+        #print('setting volumePoints')
+        self.warp.setvolumecoordinates(1,1,x,True)
+        #print('volume PointsSet')
+
+        return 
+
+    def _setOpenFoamVolumePoints(x):
+        '''
+        take in the OpenFoam data Points and set in the warping
+        '''
+        self.warp.setvolumecoordinates(1,1,x,False)
+
+        return
 
     def _readBoundaryInfo(self):
         '''
@@ -275,45 +291,119 @@ class USMesh(object):
 
         self._parseHeaderNumerical(boundaryHandle,nBoundaries)
 
-        print ('boundary',dir(boundary),boundary.getSize())
+        #print ('boundary',dir(boundary),boundary.getSize())
         
         boundaries = {}
         boundaryKeys = []
         boundaryCounter = 0
         startDict = True
         for line in boundaryHandle.readlines():
-            #print line
+            #print(line)
             vals = line.split()
+            #print('vals',vals,'len',len(vals))
             if len(vals)==0:
                 continue
             else:
                 if startDict:
-                    boundaries[vals[0]] = {}
-                    boundaryKeys.append(vals[0])
-                   
-                    startDict = False
-                elif boundaryCounter<nBoundaries-1:
+                    if vals[0]==')':
+                        startDict = False
+                        continue
+                    else:
+                        boundaries[vals[0]] = {}
+                        boundaryKeys.append(vals[0])
+                        startDict = False
+                    # end
+                elif boundaryCounter<nBoundaries:
                     if '{' in line:
                         continue
                     elif '}' in line:
                         startDict=True
                         boundaryCounter+=1
-                        print(boundaryCounter,nBoundaries)
+                        #print(boundaryCounter,nBoundaries)
                     else:
-                        boundaries[boundaryKeys[boundaryCounter]][vals[0]] = vals[1]
+                        #print('appending boundary',boundaryKeys[boundaryCounter],vals[0],vals[1].split(';')[0])
+                        boundaries[boundaryKeys[boundaryCounter]][vals[0]] = vals[1].split(';')[0]
                     # end
                 # end
                 #print vals
 
             # end
         # end
-        print(boundaries.keys())
+#        print(boundaries.keys())
 
+                        
         boundaryHandle.close()
+        # for key in boundaries.keys():
+        #     print(key,boundaries[key])
+        # sys.exit(0)
+        # loop over the boundary sections and create a list of nodes and elements
+        # associated with each one. Note that on the surface, the faces are the
+        # elements.
+            
+
         for key in boundaries.keys():
-            print(boundaries[key])
-                
-        sys.exit(0)
+            #print(key)
+            nodeCounter = 1#0 #start from 1 not zero for fortran numbering
+            nFaces = int(boundaries[key]['nFaces'])
+            startFaces = int(boundaries[key]['startFace'])
+            boundaries[key]['faceList'] = np.zeros(nFaces+1,int)
+            boundaries[key]['nodeIndexList']=[]
+            #print(key,nFaces,startFaces)
+            for counter in range(nFaces):
+                face = counter+startFaces
+                #print('face',face)
+                boundaries[key]['faceList'][counter] = nodeCounter
+                nNodes = len(self.faces[face])
+                for node in range(nNodes):
+                    #print('node',node)
+                    index = self.faces[face][node]+1
+                    boundaries[key]['nodeIndexList'].append(index)
+                    nodeCounter+=1
+                # endfor
+            # end
+            boundaries[key]['faceList'][-1] = nodeCounter
+            # print('facelist',boundaries[key]['faceList'][-3:])
+            # print('nodeIndexlist',len(boundaries[key]['nodeIndexList']),boundaries[key]['nodeIndexList'][-3:])
+        # end for
+
+        #print('nBound',len(boundaries),nBoundaries)
+        #Now Allocate the memory and set in fortran
+        self.warp.createsections(1,nBoundaries)
+
+        isVolumeSec = np.array([False]*nBoundaries)
+        # print('isVolSec',isVolumeSec)
+        # sys.exit(0)
+        self.warp.setsectiontypes(1,isVolumeSec)
+        
+        counter = 1
+        for key in sorted(boundaries.keys()):
+            #print(key)
+            nFaces = int(boundaries[key]['nFaces'])
+            secName = key
+            eBeg = int(boundaries[key]['startFace'])
+            eEnd = int(eBeg+nFaces)
+            #print('eend',eEnd)
+            self.warp.setsectiondata(1,counter,counter,secName,
+                                     eBeg,eEnd,
+                                     np.array(boundaries[key]['nodeIndexList']),
+                                     boundaries[key]['faceList'])
+            isBoundary = True
+            isWall = False
+            isSymm = False
+            if(boundaries[key]['type']=='wall'):
+                isBoundary = False
+                isWall=True
+            elif(boundaries[key]['type']=='symmetry'):
+                isBoundary = False
+                isSymm = True
+            # end
+            #print('boundary',key,counter,isBoundary,isWall,isSymm)
+            self.warp.setboundarydata(1,counter,counter,key,isWall,isSymm,
+                                      isBoundary)
+            counter +=1
+        # end
+        #print('sectionDataSet')
+        
         return
 
     def _readFaceInfo(self):
@@ -370,7 +460,7 @@ class USMesh(object):
             sys.exit(0)
         else:
             # read the file in as ascii
-            faces = {}
+            faces = []#{}
             counter = 0
             for line in faceHandle.readlines():
                 line = re.sub('[)(]', ' ', line)
@@ -381,7 +471,7 @@ class USMesh(object):
                     continue
                 elif counter<self.nFaces:
                     nPoints = int(vals[0])
-                    faces[counter]= np.zeros(nPoints,int)
+                    faces.append(np.zeros(nPoints,int))
                     for i in range(nPoints):
                         faces[counter][i] = int(vals[i+1])
                     # end
@@ -390,11 +480,7 @@ class USMesh(object):
             # end
 
         self.faces = faces
-        #print 'faces',dir(faces),faces.getSize()
-        
-        # tmp = faces.readFile()
-        # print tmp
-        # self.faces=faces.getSize()
+        #print('faces',len(faces))
 
         faceHandle.close()
         return
@@ -405,53 +491,58 @@ class USMesh(object):
         '''
         dirName = os.getcwd()
         
-        cellFile = os.path.join(dirName,'constant/polyMesh/cells')
+        #cellFile = os.path.join(dirName,'constant/polyMesh/cells')
         ownerFile = os.path.join(dirName,'constant/polyMesh/owner')
+        neighbourFile = os.path.join(dirName,'constant/polyMesh/neighbour')
         meshDir = os.path.join(dirName,'constant/polyMesh/')
 
-        cells=ListFile(meshDir,"cells")
+        #cells=ListFile(meshDir,"cells")
         owners = ListFile(meshDir,"owner")
+        neighbours = ListFile(meshDir,"neighbour")
         
         self.nOwners = owners.getSize()
-        self.nCells = cells.getSize()
+        self.nNeighbours = neighbours.getSize()
+        #self.nCells = cells.getSize()
 
-        cellHandle = open(cellFile, 'r')
+        #cellHandle = open(cellFile, 'r')
         ownerHandle = open(ownerFile, 'r')
+        neighbourHandle = open(neighbourFile, 'r')
 
         # parse through the header to get to the start of the binary data
-        self._parseHeaderNumerical(cellHandle,self.nCells)
+        #self._parseHeaderNumerical(cellHandle,self.nCells)
         self._parseHeaderNumerical(ownerHandle,self.nOwners)
+        self._parseHeaderNumerical(neighbourHandle,self.nNeighbours)
 
-        # read the cells
-        if self.solverOptions['binaryCellsFile']:
-            pass
-        else:
-            # read the file in as ascii
-            cells = {}
-            counter = 0
-            for line in cellHandle.readlines():
-                line = re.sub('[)(]', ' ', line)
-                vals = line.split()
-                if len(vals)==0:
-                    continue
-                elif "//" in line:
-                    continue
-                elif counter<self.nCells:
-                    nFacesPerCell = int(vals[0])
-                    cells[counter]= np.zeros(nFacesPerCell,int)
-                    for i in range(nFacesPerCell):
-                        cells[counter][i] = int(vals[i+1])
-                    # end
-                    counter += 1
-                # end
-            # end
+        # # read the cells
+        # if self.solverOptions['binaryCellsFile']:
+        #     pass
+        # else:
+        #     # read the file in as ascii
+        #     cells = {}
+        #     counter = 0
+        #     for line in cellHandle.readlines():
+        #         line = re.sub('[)(]', ' ', line)
+        #         vals = line.split()
+        #         if len(vals)==0:
+        #             continue
+        #         elif "//" in line:
+        #             continue
+        #         elif counter<self.nCells:
+        #             nFacesPerCell = int(vals[0])
+        #             cells[counter]= np.zeros(nFacesPerCell,int)
+        #             for i in range(nFacesPerCell):
+        #                 cells[counter][i] = int(vals[i+1])
+        #             # end
+        #             counter += 1
+        #         # end
+        #     # end
 
         # read the owners
         if self.solverOptions['binaryOwnersFile']:
             pass
         else:
             # read the file in as ascii
-            owners = {}
+            #owners = {}
             self.owners = np.zeros(self.nOwners,int)
             counter = 0
             for line in ownerHandle.readlines():
@@ -466,8 +557,49 @@ class USMesh(object):
                     counter += 1
                 # end
             # end
+            print('nowners',self.nOwners,counter,self.owners.shape,np.max(self.owners))
+            cellFaceList = []
+            self.nCells = np.max(self.owners)+1
+            for i in range(self.nCells):
+                cellFaceList.append([])
+            # end
+            for i in range(self.nOwners):
+                faceCell = self.owners[i]
+                #print('faceCell',faceCell,i,len(cellFaceList))
+                cellFaceList[faceCell].append(i)
+            # end
+            #print(cellFaceList)
 
-        
+        # read the neighbours
+        if self.solverOptions['binaryNeighboursFile']:
+            pass
+        else:
+            # read the file in as ascii
+            self.neighbours = np.zeros(self.nNeighbours,int)
+            counter = 0
+            for line in neighbourHandle.readlines():
+                line = re.sub('[)(]', ' ', line)
+                vals = line.split()
+                if len(vals)==0:
+                    continue
+                elif "//" in line:
+                    continue
+                elif counter<self.nNeighbours:
+                    self.neighbours[counter]=int(vals[0])
+                    counter += 1
+                # end
+            # end
+            print('nNeighbours',self.nNeighbours,counter,self.neighbours.shape,np.max(self.neighbours))
+            # now append neighbour faces
+            for i in range(self.nNeighbours):
+                faceCell = self.neighbours[i]
+                #print('faceCell',faceCell,i,len(cellFaceList))
+                cellFaceList[faceCell].append(i)
+            # end
+            # #print(cellFaceList)
+            # for i in range(len(cellFaceList)):
+            #     print('faceList',i,len(cellFaceList[i]))
+
 
     def _parseHeaderNumerical(self,handle,stopValue):
         '''
@@ -769,19 +901,19 @@ I will ignore this family'%(fam),comm=self.comm)
             patchSectionIndices = []
             patchSizes = []
             ptSize = 0
-            #print ('Npatches',npatch)
+            print ('Npatches',npatch)
             # loop over the patches to get their names and sizes
             for i in xrange(npatch):               
                 tmp = self.warp.getpatchname(i)
                 patchIdx = self.warp.getpatchindex(i)
-                #print ('patchname',i,tmp,patchIdx)
+                print ('patchname',i,tmp,patchIdx)
                 patchSectionIndices.append(patchIdx)
                 patchNames.append(
                     ''.join([tmp[j] for j in range(32)]).lower().strip())
                 patchSizes.append(self.warp.getpatchsize(patchSectionIndices[i]))
-                #print('patchSizes',patchSizes[i])
+                print('patchSizes',patchSizes[i])
                 patchIndices.append(self.warp.getpatchindexlist(patchSectionIndices[i],patchSizes[i]))
-                #print('index length',len(patchIndices[i]))
+                print('index length',len(patchIndices[i]))
                 ptSize += patchSizes[-1]#[0]
             # end for
 
@@ -952,6 +1084,8 @@ I will ignore this family'%(fam),comm=self.comm)
             faceNodeSum+=nPointsFace
         # end
 
+        nodes = self.warp.getvolumecoordinates(1,nPoints)
+
         f.write('TITLE = "Example Grid File"\n')
         f.write('FILETYPE = GRID\n')
         f.write('VARIABLES = "X" "Y" "Z"\n')
@@ -966,7 +1100,7 @@ I will ignore this family'%(fam),comm=self.comm)
         # Write the points to file in block data format
         for i in range(3):
             for j in range(nPoints):
-                f.write('%f\n'%self.nodes[j,i])
+                f.write('%f\n'%nodes[j,i])
             # end
         # end
         # Write the number of nodes in each face to the
@@ -991,10 +1125,13 @@ I will ignore this family'%(fam),comm=self.comm)
         # end
         # write left elements
         for i in range(nFaces):
-            f.write('%d\n'%0)#self.owners[i])
+            f.write('%d\n'%(self.owners[i]+1))
         # write right elements
         for i in range(nFaces):
-            f.write('%d\n'%1)#self.owners[nFaces-i-1])
+            if i<self.nNeighbours:
+                f.write('%d\n'%(self.neighbours[i]+1))
+            else:
+                f.write('%d\n'%(0))
             
 
         f.close()

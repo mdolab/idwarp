@@ -99,12 +99,14 @@ subroutine getPatchIndex(iPatch, patchIndex)
      surfSecCounter = 1
      nSections = gridDoms(zone)%nSections 
      do sec=1,nSections
+        !print *,'index Sections',sec
         if (.not. gridDoms(zone)%isVolumeSection(sec)) then
            if(gridDoms(zone)%surfaceSections(surfSecCounter)%isWallBC)then
-!              print *,'matching',patchCount,iPatch,patchCount == iPatch
+              !print *,'matching',patchCount,iPatch,patchCount == iPatch
               if (patchCount == iPatch) then                 
                  patchIndex = surfSecCounter
               end if
+              !print *,'patchIndex',patchIndex,surfSecCounter
               patchCount = patchCount + 1
            end if
            surfSecCounter = surfSecCounter + 1
@@ -112,6 +114,7 @@ subroutine getPatchIndex(iPatch, patchIndex)
      end do
   end do
   !print *,'patchIndex',patchIndex,iPatch
+  !stop
 end subroutine getPatchIndex
 
 ! subroutine getPatchSize(iPatch, patchSize)
@@ -173,7 +176,7 @@ subroutine getPatchSize(patchIndex, patchSize)
 
   ! Working
   integer(kind=intType) :: pt, pointPatch
-  !print *,'ipatch Size',patchIndex
+!  print *,'ipatch Size',patchIndex
 
   ! loop over the unique surface nodes to determine the number of unique nodes
   ! from this surface patch
@@ -181,14 +184,15 @@ subroutine getPatchSize(patchIndex, patchSize)
   do pt = 1,nUniqueSurfPoints
      !base this off of the first connected element
      pointPatch = uniqueSurfaceNodes(pt)%connectedElements(1,2)
+     !print *,'pointPatch',pt,pointPatch,patchIndex,'ce', uniqueSurfaceNodes(pt)%connectedElements(:,2)
      if(pointPatch .eq. patchIndex)then
         ! this point is on this patch, append add to counter
         patchSize = patchSize + 1
         !print *,'pointPatch',pt,pointPatch,patchIndex,patchSize
      end if
   end do
-  !print *,'patchsize',patchSize
-  
+  ! print *,'patchsize',patchSize
+  ! stop
 end subroutine getPatchSize
 
 subroutine getPatchIndexList(patchIndex, patchSize, patchIndices)

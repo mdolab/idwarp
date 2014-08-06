@@ -34,6 +34,7 @@ subroutine readUnstructuredCGNSFile(cgns_file, comm)
   integer(kind=intType) :: bocoType,ptsettype,nbcelem
   integer(kind=intType) :: normalIndex,normListFlag
   integer(kind=intType) :: normDataType,nDataSet
+  integer(kind=intType) :: i,j,counter
   !integer(kind=8), dimension(3)::sizes
   !integer(kind=intType), dimension(3)::sizes
   integer(kind=intType), dimension(:,:), allocatable::conn
@@ -104,7 +105,8 @@ subroutine readUnstructuredCGNSFile(cgns_file, comm)
   hasSymmetry = .False.
 
   ! Allocate the GridDoms Data structure
-  allocate(gridDoms(nZones),STAT=ierr)
+ ! allocate(gridDoms(nZones),STAT=ierr)
+  call allocateGridDoms(nZones)
   
   ! loop over the zones and read
   do zone = 1,nZones
@@ -163,10 +165,12 @@ subroutine readUnstructuredCGNSFile(cgns_file, comm)
      if (myID == 0) then
         print *, '   -> nSections',nSections
      end if
-     gridDoms(zone)%nSections = nSections
+     ! gridDoms(zone)%nSections = nSections
 
-     ! allocate the logical to track the section type
-     allocate(gridDoms(zone)%isVolumeSection(nSections),STAT=ierr)
+     ! ! allocate the logical to track the section type
+     ! allocate(gridDoms(zone)%isVolumeSection(nSections),STAT=ierr)
+
+     call createSections(zone,nSections)
 
      ! loop over the number of sections and determine which
      ! sections are volume elements and which are surface elements
@@ -232,16 +236,20 @@ subroutine readUnstructuredCGNSFile(cgns_file, comm)
 
         if (gridDoms(zone)%isVolumeSection(sec)) then
            ! this is a group of volume elements
-           allocate(gridDoms(zone)%volumeSections(volSecCounter)%elements(nConn,nElem),STAT=ierr)
+           allocate(gridDoms(zone)%volumeSections(volSecCounter)%elemPtr(nElem+1),STAT=ierr)
+           allocate(gridDoms(zone)%volumeSections(volSecCounter)%elemConn(nConn*nElem),STAT=ierr)
            gridDoms(zone)%volumeSections(volSecCounter)%nElem = nElem
            gridDoms(zone)%volumeSections(volSecCounter)%secName = secName
            gridDoms(zone)%volumeSections(volSecCounter)%elemType = type
-           gridDoms(zone)%volumeSections(volSecCounter)%nConn = nConn 
+           !gridDoms(zone)%volumeSections(volSecCounter)%nConn = nConn 
            gridDoms(zone)%volumeSections(volSecCounter)%elemStart = eBeg
            gridDoms(zone)%volumeSections(volSecCounter)%elemEnd = eEnd
         else
            ! this is a group of surface elements
-           allocate(gridDoms(zone)%surfaceSections(surfSecCounter)%elements(nConn,nElem),STAT=ierr)
+           allocate(gridDoms(zone)%surfaceSections(surfSecCounter)%elemPtr(nElem+1),STAT=ierr)
+           allocate(gridDoms(zone)%surfaceSections(surfSecCounter)%elemConn(nConn*nElem),STAT=ierr)
+
+           ! allocate(gridDoms(zone)%surfaceSections(surfSecCounter)%elements(nConn,nElem),STAT=ierr)
            allocate(gridDoms(zone)%surfaceSections(surfSecCounter)%elemCenter(nElem,physDim),STAT=ierr)
            allocate(gridDoms(zone)%surfaceSections(surfSecCounter)%elemArea(nElem,physDim),STAT=ierr)
            allocate(gridDoms(zone)%surfaceSections(surfSecCounter)%elemNormal(nElem,physDim),STAT=ierr)
@@ -249,7 +257,7 @@ subroutine readUnstructuredCGNSFile(cgns_file, comm)
            gridDoms(zone)%surfaceSections(surfSecCounter)%nElem = nElem
            gridDoms(zone)%surfaceSections(surfSecCounter)%secName = secName
            gridDoms(zone)%surfaceSections(surfSecCounter)%elemType = type
-           gridDoms(zone)%surfaceSections(surfSecCounter)%nConn = nConn 
+           !gridDoms(zone)%surfaceSections(surfSecCounter)%nConn = nConn 
            gridDoms(zone)%surfaceSections(surfSecCounter)%elemStart = eBeg
            gridDoms(zone)%surfaceSections(surfSecCounter)%elemEnd = eEnd        
         end if
@@ -269,10 +277,30 @@ subroutine readUnstructuredCGNSFile(cgns_file, comm)
         ! end if
 
         if (gridDoms(zone)%isVolumeSection(sec)) then
-           gridDoms(zone)%volumeSections(volSecCounter)%elements = conn
+           counter = 1
+           do i = 1,nElem
+              gridDoms(zone)%volumeSections(volSecCounter)%elemPtr(i)=counter
+              do j = 1,nConn
+                 gridDoms(zone)%volumeSections(volSecCounter)%elemConn(counter)=conn(j,i)
+                 counter = counter +1
+                 !gridDoms(zone)%volumeSections(volSecCounter)%elements = conn
+              end do
+           end do
+           gridDoms(zone)%volumeSections(volSecCounter)%elemPtr(i)=counter
            volSecCounter = volSecCounter+1
         else
-           gridDoms(zone)%surfaceSections(surfSecCounter)%elements = conn
+           !gridDoms(zone)%surfaceSections(surfSecCounter)%elements = conn
+           counter = 1
+           do i = 1,nElem
+              gridDoms(zone)%surfaceSections(surfSecCounter)%elemPtr(i)=counter
+              do j = 1,nConn
+                 gridDoms(zone)%surfaceSections(surfSecCounter)%elemConn(counter)=conn(j,i)
+                 counter = counter +1
+              end do
+              !print *,'counter',i,counter,gridDoms(zone)%surfaceSections(surfSecCounter)%elemPtr(i)
+           end do
+           !print *,'end',i,counter
+           gridDoms(zone)%surfaceSections(surfSecCounter)%elemPtr(i)=counter
            surfSecCounter = surfSecCounter + 1
         end if
         deallocate(conn,STAT=ierr)
@@ -412,6 +440,7 @@ subroutine checkInFamilyList(familyList, famName, nFamily, index)
         exit famLoop
      end if
   end do famLoop
+
 end subroutine checkInFamilyList
 
 subroutine deallocateCGNSData()
@@ -432,10 +461,15 @@ subroutine deallocateCGNSData()
      do sec=1,gridDoms(zone)%nSections
         
         if (gridDoms(zone)%isVolumeSection(sec)) then
-           deallocate(gridDoms(zone)%volumeSections(volSecCounter)%elements,STAT=ierr)
+           deallocate(gridDoms(zone)%volumeSections(volSecCounter)%elemPtr,STAT=ierr)
+           deallocate(gridDoms(zone)%volumeSections(volSecCounter)%elemConn,STAT=ierr)
+           !deallocate(gridDoms(zone)%volumeSections(volSecCounter)%elements,STAT=ierr)
             volSecCounter = volSecCounter + 1
         else
-           deallocate(gridDoms(zone)%surfaceSections(surfSecCounter)%elements,STAT=ierr)
+           deallocate(gridDoms(zone)%surfaceSections(surfSecCounter)%elemPtr,STAT=ierr)
+           deallocate(gridDoms(zone)%surfaceSections(surfSecCounter)%elemConn,STAT=ierr)
+
+           !deallocate(gridDoms(zone)%surfaceSections(surfSecCounter)%elements,STAT=ierr)
            deallocate(gridDoms(zone)%surfaceSections(surfSecCounter)%elemCenter,STAT=ierr)
            deallocate(gridDoms(zone)%surfaceSections(surfSecCounter)%elemArea,STAT=ierr)
            deallocate(gridDoms(zone)%surfaceSections(surfSecCounter)%elemNormal,STAT=ierr)

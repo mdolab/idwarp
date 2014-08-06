@@ -17,7 +17,7 @@ subroutine compactSurfacePointList(nPts,tempPoints,nUniquePts)
   type(surfacePointType),dimension(nPts)::tempPoints
 
   ! Local Variables
-  integer(kind=intType)::i,surfSecCounter
+  integer(kind=intType)::i,surfSecCounter,j
   integer(kind=intType)::currentSlot,currentNodeNumber,currElem
   integer(kind=intType)::nodeNumber
   integer(kind=intType),dimension(2)::connectedElement
@@ -31,19 +31,22 @@ subroutine compactSurfacePointList(nPts,tempPoints,nUniquePts)
 
    !Loop over points
   currentSlot = 1
+  !print *,'tempPoints',shape(tempPoints)
   currentNodeNumber = tempPoints(1)%globalIndex!1
   currElem = 1
   do i = 1,nPts
      nodeNumber = tempPoints(i)%globalIndex
      connectedElement =  tempPoints(i)%connectedElements(1,:)
-     !print *,'current Numbers',nodeNumber,connectedElement
+     ! if (connectedElement(2) > 6) then
+     !    print *,'current Numbers',nodeNumber,connectedElement
+     ! end if
      if (nodeNumber .eq. currentNodeNumber)then
-        !print *,'eq'
+        !print *,'eq',currentSlot,currElem,nodeNumber,currentNodeNumber
         ! Current node is part of current set.
         tempPoints(currentSlot)%connectedElements(currElem,:) = connectedElement
         currElem = currElem + 1
      else
-        !print *,'incrementing'
+        !print *,'incrementing',currentSlot
         ! We have moved to the next global node number, increment the current slot
         ! and reset the currElem counter
         currentSlot = currentSlot + 1
@@ -57,7 +60,7 @@ subroutine compactSurfacePointList(nPts,tempPoints,nUniquePts)
         tempPoints(currentSlot)%connectedElements(:,:) = -1_intType
         tempPoints(currentSlot)%connectedElements(currElem,:) = connectedElement
         tempPoints(currentSlot)%loc = tempPoints(i)%loc
-         tempPoints(currentSlot)%loc0 = tempPoints(i)%loc0
+        tempPoints(currentSlot)%loc0 = tempPoints(i)%loc0
         tempPoints(currentSlot)%globalIndex = currentNodeNumber
         currElem = currElem + 1
      end if
@@ -65,6 +68,15 @@ subroutine compactSurfacePointList(nPts,tempPoints,nUniquePts)
   end do
   
   nUniquePts = currentSlot
-
+!   do i = 1,nUniquePts
+!      do j = 1,30
+!         if (tempPoints(i)%connectedElements(j,1).ge.0)then
+!            if(tempPoints(i)%connectedElements(j,2)>6) then
+!               print *,'Compacted list',i,j,tempPoints(i)%connectedElements(j,:)
+!            end if
+!         end if
+!      end do
+!   end do
+! stop
 100 format (A,i7,i7,i7,A,10i5,i10,i10)
 end subroutine compactSurfacePointList

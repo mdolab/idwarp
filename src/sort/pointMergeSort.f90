@@ -89,10 +89,10 @@ subroutine indexShow(nPts,lst)
   integer(kind=intType):: x
 
   do x = 1, nPts
-     print 100, 'index: ',x,' global: ',lst(x)%globalIndex,' elem: ',lst(x)%connectedElements(1,1)!,lst(x)%loc
+     print 100, 'index: ',x,' global: ',lst(x)%globalIndex,' elem: ',lst(x)%connectedElements(1,1),lst(x)%connectedElements(1,2),'loc',lst(x)%loc(1),lst(x)%loc(2),lst(x)%loc(3)
   end do
 
-100 format (A,i10,A,i10,A,i10)!,3f8.2)
+100 format (A,i10,A,i10,A,2i10,A,3f10.6)
 end subroutine indexShow
 
 ! subroutine copySurfacePoint(ptIn,ptOut)

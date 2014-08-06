@@ -17,28 +17,34 @@ subroutine getSurfaceElementCenterAndArea()
   real(kind=realType):: areaMag
   
   integer(kind=intType):: i, elem
-  integer(kind=intType):: surfSecCounter,npts,nDim,pointIdx
+  integer(kind=intType):: surfSecCounter,npts,nDim,pointIdx,elemIdx
 
   ! Begin Execution
 
-  !print *,' in get surface element centers',nZones
+  print *,' in get surface element centers',nZones
   ! loop over the zones and sections.
   do zone = 1,nZones
      surfSecCounter = 1
-     !print *,'nSections',gridDoms(zone)%nSections
+     print *,'nSections',gridDoms(zone)%nSections
      do sec = 1,gridDoms(zone)%nSections
         !print *,'isSurface',sec,(.not. gridDoms(zone)%isVolumeSection(sec))
         if(.not. gridDoms(zone)%isVolumeSection(sec))then
            ! For each surface section, compute the element center and store
-           npts = gridDoms(zone)%surfaceSections(surfSecCounter)%nConn
+           !npts = gridDoms(zone)%surfaceSections(surfSecCounter)%nConn
            nDim = physDim
-           allocate(points(npts,nDim),center(nDim),area(nDim),STAT=ierr)
+           allocate(center(nDim),area(nDim),STAT=ierr)
            allocate(normal(nDim),STAT=ierr)
            do elem =1,gridDoms(zone)%surfaceSections(surfSecCounter)%nElem
+              nPts = gridDoms(zone)%surfaceSections(surfSecCounter)%elemPtr(elem+1)-gridDoms(zone)%surfaceSections(surfSecCounter)%elemPtr(elem)
+              allocate(points(npts,nDim),STAT=ierr)
               do i = 1,nPts
-                 pointIdx = gridDoms(zone)%surfaceSections(surfSecCounter)%elements(i,elem)
+               
+                 elemIdx = gridDoms(zone)%surfaceSections(surfSecCounter)%elemPtr(elem)
+                 !print *,'elemidx',zone,elem,surfSecCounter,elemIdx+i,elemidx,i,shape( gridDoms(zone)%surfaceSections(surfSecCounter)%elemPtr),shape(gridDoms(zone)%surfaceSections(surfSecCounter)%elemConn)
+                 pointIdx = gridDoms(zone)%surfaceSections(surfSecCounter)%elemConn(elemIdx+i)
                  points(i,:) = gridDoms(zone)%points(pointIdx,:)
               end do
+              !print *,'elem',elem
               call getElementCenter(nPts,nDim,points,center)
               !print *,'points',points,'c',center
               call getElementArea(nPts,nDim,points,center,area,areaMag,normal)
@@ -50,13 +56,13 @@ subroutine getSurfaceElementCenterAndArea()
               if(gridDoms(zone)%surfaceSections(surfSecCounter)%isSymmBC) then
                  symDir = gridDoms(zone)%surfaceSections(surfSecCounter)%elemNormal(elem,:)
               end if
-              
+              deallocate(points,STAT=ierr)
            end do
-           deallocate(points,center,area,normal,STAT=ierr)
+           deallocate(center,area,normal,STAT=ierr)
            surfSecCounter = surfSecCounter + 1
 
         end if
      end do
   end do
-
+!stop
 end subroutine getSurfaceElementCenterAndArea
