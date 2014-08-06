@@ -1,6 +1,6 @@
-MODULE_FILES="../modules/communication.f90 ../modules/precision.f90 ../modules/gridData.f90"
+MODULE_FILES="../modules/communication.f90  ../modules/gridData.f90 ../modules/cgnsData.f90"
 
-IO_FILES="../IO/readUnstructuredCGNS.f90 ../IO/writeUnstructuredCGNS.f90"
+IO_FILES="../IO/readUnstructuredCGNS.f90 ../IO/setGetVolumeCoordinates.f90 ../IO/writeUnstructuredCGNS.f90 ../IO/createSections.f90"
 
 GEOCALC_FILES="../geoCalcs/getSurfaceElementCenters.f90 ../geoCalcs/getFullUniqueSurfaceNodeList.f90 ../geoCalcs/computeNodalProperties.f90"
 

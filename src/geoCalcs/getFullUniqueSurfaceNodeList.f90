@@ -19,7 +19,7 @@ subroutine getFullUniqueSurfaceNodeList()
   type(surfacePointType),dimension(:),allocatable::tempSurfPoints, tempBoundaryPoints
   type(surfacePointType),dimension(10)::testPoints
   integer(kind=intType)::nUniquePoints,surfCounter, boundaryCounter,nNodesTest
-  
+  integer(kind=intType)::elemIdx
   ! begin execution
   
   ! loop over all of the zones and sections.
@@ -33,56 +33,73 @@ subroutine getFullUniqueSurfaceNodeList()
   do zone = 1,nZones
      surfSecCounter = 1 
      do sec = 1,gridDoms(zone)%nSections
-        !print *,'section',sec
+        !print *,'surfsection',sec,gridDoms(zone)%isVolumeSection(sec)
         if(.not. gridDoms(zone)%isVolumeSection(sec))then
-           nconn = gridDoms(zone)%surfaceSections(surfSecCounter)%nConn
+           !nconn = gridDoms(zone)%surfaceSections(surfSecCounter)%nConn
            nElem = gridDoms(zone)%surfaceSections(surfSecCounter)%nElem
-           if(gridDoms(zone)%surfaceSections(surfSecCounter)%isWallBC ) then
-              nSurfNodes = nSurfNodes + nConn*nElem
-           elseif(gridDoms(zone)%surfaceSections(surfSecCounter)%isBoundaryBC)then
-              nBoundaryNodes = nBoundaryNodes + nConn*nElem
-           end if
+           !print *,'nElem',nElem
+           do elem = 1,nElem
+              nConn = gridDoms(zone)%surfaceSections(surfSecCounter)%elemPtr(elem+1)-gridDoms(zone)%surfaceSections(surfSecCounter)%elemPtr(elem)
+
+              if(gridDoms(zone)%surfaceSections(surfSecCounter)%isWallBC ) then
+                 nSurfNodes = nSurfNodes + nConn
+              elseif(gridDoms(zone)%surfaceSections(surfSecCounter)%isBoundaryBC)then
+                 nBoundaryNodes = nBoundaryNodes + nConn
+              end if
+           end do
            surfSecCounter = surfSecCounter +1
         end if
      end do
   end do
-           
+  !print *,'nSurfNodes',nSurfNodes,nBoundaryNodes
+!  stop
   allocate(tempSurfPoints(nSurfNodes),tempBoundaryPoints(nBoundaryNodes),STAT=ierr)
   surfCounter=1
   boundaryCounter=1
   do zone = 1,nZones
      surfSecCounter = 1 
      do sec = 1,gridDoms(zone)%nSections
-        !print *,'section',sec
+        !print *,'tempPointSection',sec,surfSecCounter,gridDoms(zone)%isVolumeSection(sec)
         if(.not. gridDoms(zone)%isVolumeSection(sec))then
-           nconn = gridDoms(zone)%surfaceSections(surfSecCounter)%nConn
+           !nconn = gridDoms(zone)%surfaceSections(surfSecCounter)%nConn
            nElem = gridDoms(zone)%surfaceSections(surfSecCounter)%nElem
            ! Loop over the surface and store the node data in the temp array
+           !print *,'nElem',nElem
+           !print *,'Boundary Type',gridDoms(zone)%surfaceSections(surfSecCounter)%isWallBC,gridDoms(zone)%surfaceSections(surfSecCounter)%isBoundaryBC,gridDoms(zone)%surfaceSections(surfSecCounter)%isSymmBC
            do elem = 1,nElem
+              nConn = gridDoms(zone)%surfaceSections(surfSecCounter)%elemPtr(elem+1)-gridDoms(zone)%surfaceSections(surfSecCounter)%elemPtr(elem)
+              !print *,'nConn',nConn
               do conn = 1,nConn
                  if(gridDoms(zone)%surfaceSections(surfSecCounter)%isWallBC ) then
+                    elemIdx = gridDoms(zone)%surfaceSections(surfSecCounter)%elemPtr(elem)
                     tempSurfPoints(surfCounter)%globalIndex = &
-                         gridDoms(zone)%surfaceSections(surfSecCounter)%elements(conn,elem)
+                         gridDoms(zone)%surfaceSections(surfSecCounter)%elemConn(elemIdx+conn-1)
                     tempSurfPoints(surfCounter)%proc = myID
                     tempSurfPoints(surfCounter)%zone = zone
                     !tempSurfPoints(surfCounter)%surfSection = surfSecCounter
                     tempSurfPoints(surfCounter)%connectedElements(:,:) = -1_intType
                     tempSurfPoints(surfCounter)%connectedElements(1,1)=elem 
                     tempSurfPoints(surfCounter)%connectedElements(1,2)=surfSecCounter
+                    !print *,'surfCounter',surfCounter,tempSurfPoints(surfCounter)%connectedElements(1,2),tempSurfPoints(surfCounter)%globalIndex,elemIdx+conn-1
                     tempSurfPoints(surfCounter)%loc = &
                          gridDoms(zone)%points(tempSurfPoints(surfCounter)%globalIndex,:)
                     tempSurfPoints(surfCounter)%loc0 = &
                          gridDoms(zone)%points(tempSurfPoints(surfCounter)%globalIndex,:)
                     surfCounter = surfCounter + 1
                  elseif(gridDoms(zone)%surfaceSections(surfSecCounter)%isBoundaryBC)then
+                    !print *,'elem',elem,shape(gridDoms(zone)%surfaceSections(surfSecCounter)%elemPtr)
+                    elemIdx = gridDoms(zone)%surfaceSections(surfSecCounter)%elemPtr(elem)
+                    !print *,'elemidx',elemIdx,conn,nElem,shape(gridDoms(zone)%surfaceSections(surfSecCounter)%elemConn)
+                    !print *,'boundary Counter',boundaryCounter,shape(tempBoundaryPoints),nBoundaryNodes
                     tempBoundaryPoints(boundaryCounter)%globalIndex = &
-                         gridDoms(zone)%surfaceSections(surfSecCounter)%elements(conn,elem)
+                         gridDoms(zone)%surfaceSections(surfSecCounter)%elemConn(elemIdx+conn-1)
                     tempBoundaryPoints(boundaryCounter)%proc = myID
                     tempBoundaryPoints(boundaryCounter)%zone = zone
                     !tempBoundaryPoints(boundaryCounter)%surfSection = surfSecCounter
                     tempBoundaryPoints(boundaryCounter)%connectedElements(:,:) = -1_intType
                     tempBoundaryPoints(boundaryCounter)%connectedElements(1,1)=elem 
                     tempBoundaryPoints(boundaryCounter)%connectedElements(1,2)=surfSecCounter
+                    !print *,'boundaryPoint',boundaryCounter,tempBoundaryPoints(boundaryCounter)%connectedElements(1,2)
                     tempBoundaryPoints(boundaryCounter)%loc = &
                          gridDoms(zone)%points(tempBoundaryPoints(boundaryCounter)%globalIndex,:)
                     tempBoundaryPoints(boundaryCounter)%loc0 = &
@@ -100,7 +117,8 @@ subroutine getFullUniqueSurfaceNodeList()
         end if
      end do
   end do
-
+  !print *,'boundary Counter',boundaryCounter,surfCounter
+  
 
   ! ! Check that the global indices match up
   ! surfCounter=1
@@ -136,7 +154,7 @@ subroutine getFullUniqueSurfaceNodeList()
   deallocate(sortPoints,STAT=ierr)
   ! print *,'after sort'
   ! call indexShow(nSurfNodes,tempSurfPoints)
-  
+
   ! repeat for Boundary
   allocate(sortPoints(nBoundaryNodes),STAT=ierr)
   sortPoints = tempBoundaryPoints
@@ -164,8 +182,8 @@ subroutine getFullUniqueSurfaceNodeList()
   
   deallocate(tempSurfPoints,tempBoundaryPoints,STAT=ierr)
   ! print *,'final points'
-  ! call indexShow(nUniquePoints,gridDoms(zone)%surfaceSections(surfSecCounter)%uniqueSurfaceNodes)
-
+  ! call indexShow(nUniqueSurfPoints,uniqueSurfaceNodes)
+  ! stop
   ! Now loop over the nodes and mark the boundary nodes in the global point list
   ! First loop over the Farfield boundaries
   do pt = 1, nUniqueBoundaryPoints

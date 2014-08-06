@@ -27,7 +27,7 @@ module gridTypes
      ! integer(kind=intType),dimension(:),allocatable::connectedElements
      !integer(kind=intType),dimension(10)::connectedNodes
      integer(kind=intType):: proc, zone!, surfSection
-     integer(kind=intType),dimension(10,2)::connectedElements
+     integer(kind=intType),dimension(30,2)::connectedElements
      real(kind=realType),dimension(3)::loc,loc0
      real(kind=realType),dimension(3)::normal, normal0
      real(kind=realType),dimension(3,3)::Mi
@@ -50,7 +50,8 @@ module gridTypes
      integer(kind=intType):: nElem,nConn
      integer(kind=intType):: elemStart, elemEnd
      integer(kind=intType):: elemType
-     integer(kind=intType), dimension(:,:), allocatable :: elements
+     !integer(kind=intType), dimension(:,:), allocatable :: elements
+     real(kind=realType), dimension(:), allocatable :: elemPtr,elemConn
      real(kind=realType), dimension(:,:), allocatable :: elemCenter
      real(kind=realType), dimension(:,:), allocatable :: elemArea
      real(kind=realType), dimension(:,:), allocatable :: elemNormal

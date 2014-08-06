@@ -34,12 +34,14 @@ subroutine computeSi(surfIdx,isSurf,r,si)
 ! if(isSurf)then
      bi =  uniqueSurfaceNodes(surfIdx)%bi
      Mi =  uniqueSurfaceNodes(surfIdx)%Mi
+!  print *,'bi,mi',bi,mi
   ! else
   !    bi = uniqueBoundaryNodes(surfIdx)%bi
   !    Mi = uniqueBoundaryNodes(surfIdx)%Mi
   ! end if
   
   Si = matMul(Mi,r)+bi-r
+  !print *,'Si',Si
 
 end subroutine computeSi
 
