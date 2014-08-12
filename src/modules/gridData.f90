@@ -26,5 +26,5 @@ module gridData
   integer(kind=intType)::nBoundaryNodes,nUniqueBoundaryPoints
   logical:: hasSymmetry
   real(kind=realType),dimension(3)::symDir !Symmetry direction
- 
+  integer(kind=intType)::iSymm
 end module gridData

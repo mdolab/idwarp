@@ -21,9 +21,6 @@ subroutine orderElemMerge(nPts,sortPoints,center,normal, a, middle, b)
   ti = a
 
   do while ((ai .lt. middle) .or. (bi .lt. b))
-     radialVec(1,:) = sortPoints(ai+1,:)-center
-     radialVec(2,:) = sortPoints(bi+1,:)-center
-     call cross_product_3d(radialVec(1,:),radialVec(2,:),cross)
      if (ai .eq. middle) then
         tmp(ti+1,:) = sortPoints(bi+1,:)
 
@@ -32,13 +29,18 @@ subroutine orderElemMerge(nPts,sortPoints,center,normal, a, middle, b)
         tmp(ti+1,:) = sortPoints(ai+1,:)
         ai = ai + 1
      ! else if (sortPoints(ai+1)%globalIndex .lt. sortPoints(bi+1)%globalIndex) then
-     else if(dot_product(normal,cross).lt. 0)then
-        tmp(ti+1,:) = sortPoints(ai+1,:)
-        ai = ai + 1
      else
-        tmp(ti+1,:) = sortPoints(bi+1,:)
-
-        bi = bi + 1
+        radialVec(1,:) = sortPoints(ai+1,:)-center
+        radialVec(2,:) = sortPoints(bi+1,:)-center
+        call cross_product_3d(radialVec(1,:),radialVec(2,:),cross)
+        if(dot_product(normal,cross).lt. 0)then
+           tmp(ti+1,:) = sortPoints(ai+1,:)
+           ai = ai + 1
+        else
+           tmp(ti+1,:) = sortPoints(bi+1,:)
+           
+           bi = bi + 1
+        end if
      end if
      ti = ti + 1
   end do

@@ -12,7 +12,7 @@ subroutine updateVolumeCoordinates()
 
 
   ! Local Variables
-  integer(kind=intType):: zone,sec,node,pt
+  integer(kind=intType):: zone,sec,node,pt,nodeNumber
   integer(kind=intType):: volSecCounter, surfSecCounter,globalIndex
   real(kind=realType), dimension(physDim):: numerator
   real(kind=realType)::  denomenator
@@ -24,9 +24,10 @@ subroutine updateVolumeCoordinates()
   call cpu_time(timeA)
   aexp = 3.0
   bexp = 5.0
-  Ldef = 15.0
-  alpha = 0.1250
+  Ldef = 3.5!15.0
+  alpha = 1.0!0.1250
 
+  nodeNumber = 10048!12944
   !loop over the volume nodes
   do zone = 1,nZones
      volSecCounter = 1
@@ -35,21 +36,26 @@ subroutine updateVolumeCoordinates()
      !print *,'in Update Volume',gridDoms(zone)%nVertices
            do node = 1,gridDoms(zone)%nVertices
               !print *,'warping node',node,gridDoms(zone)%nVertices,sec,zone
+              !if(node .eq. nodeNumber)then
               if(.not. gridDoms(zone)%isSurfaceNode(node))then
+
                  numerator = 0
                  denomenator = 0
                  r = gridDoms(zone)%points0(node,:)
-                 ! boundary not needed because Si is always 0
-                 ! ! First loop over the Farfield boundaries
-                 ! do pt = 1, nUniqueBoundaryPoints
-                 !    call computeWi(pt,.false.,r,wi)
-                 !    call computeSi(pt,.false.,r,Si)
-                 !    numerator = numerator + Wi*Si
-                 !    denomenator = denomenator + Wi
-                 ! end do
+                 ! boundary Si not needed because it is always 0
+                 ! just compute Wi
+                 ! First loop over the Farfield boundaries
+                 do pt = 1, nUniqueBoundaryPoints
+                    !print *,'boundarypoint',pt
+                    call computeWi(pt,.false.,r,wi)
+                    !call computeSi(pt,.false.,r,Si)
+                    !numerator = numerator + Wi*Si
+                    denomenator = denomenator + Wi
+                 end do
                  ! now loop over surfaces
                  !print *,'r',r
                  do pt = 1, nUniqueSurfPoints
+                    !print *,'SurfacePoint',pt
                     call computeWi(pt,.true.,r,wi)
                     call computeSi(pt,.true.,r,Si)
                     !print *,pt,'Wi,Si',Wi,Si
@@ -61,7 +67,15 @@ subroutine updateVolumeCoordinates()
                     ! end if
                  end do
                  if(hasSymmetry)then
+                    do pt = 1, nUniqueBoundaryPoints
+                       !print *,'symmBoundaryPoint',pt
+                       call computeWiSymm(pt,.false.,r,wi)
+                       !call computeSiSymm(pt,.false.,r,Si)
+                       !numerator = numerator + Wi*Si
+                       denomenator = denomenator + Wi
+                    end do
                     do pt = 1, nUniqueSurfPoints
+                       !print *,'symmSurfacePoint',pt
                        call computeWiSymm(pt,.true.,r,wi)
                        call computeSiSymm(pt,.true.,r,Si)
                        !print *,pt,'Wi,Si',Wi,Si
@@ -86,9 +100,13 @@ subroutine updateVolumeCoordinates()
                  
                  gridDoms(zone)%dx(node,:) = 0.0
               end if
+           !end if
               !print *,'dx', gridDoms(zone)%dx(node,:),'p0',gridDoms(zone)%points0(node,:),'p',gridDoms(zone)%points(node,:)
               ! if (gridDoms(zone)%dx(node,2) .ne. 0)then
               !    print *,'dx', gridDoms(zone)%dx(node,:),'p0',gridDoms(zone)%points0(node,:),'p',gridDoms(zone)%points(node,:)
+              ! end if
+              ! if (node .eq.nodeNumber) then
+              !    print *,'node dx',node,gridDoms(zone)%dx(node,:)
               ! end if
               gridDoms(zone)%points(node,:)=gridDoms(zone)%points0(node,:)+gridDoms(zone)%dx(node,:)
            end do

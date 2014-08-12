@@ -352,9 +352,9 @@ subroutine setSurfaceCoordinates(nPoints,indices,points)
      do i = 1,3
         idxStart = (pt-1)*3+1
         idxEnd = (pt)*3
-        uniqueSurfaceNodes(idx)%loc=points(idxStart:idxEnd)
-        
+        uniqueSurfaceNodes(idx)%loc=points(idxStart:idxEnd)        
      end do
+     !print *,'globalIndex', uniqueSurfaceNodes(idx)%globalIndex
      !print *,'connected elements',uniqueSurfaceNodes(idx)%connectedElements
   end do
          

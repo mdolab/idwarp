@@ -59,9 +59,15 @@ subroutine computeNodalProperties(initialPoint)
         uniqueBoundaryNodes(pt)%symAi = sumArea
 
         if(initialPoint)then
-           uniqueBoundaryNodes(pt)%symNormal0 = sumNormal*(-1*symDir)
+           uniqueBoundaryNodes(pt)%symNormal0 = sumNormal!*(-1*symDir)
+           uniqueBoundaryNodes(pt)%symNormal0(iSymm) = uniqueBoundaryNodes(pt)%symNormal0(iSymm)*(-1)
+           uniqueBoundaryNodes(pt)%symloc0 = uniqueBoundaryNodes(pt)%loc0!*(-1*symDir)
+           uniqueBoundaryNodes(pt)%symloc0(iSymm) = uniqueBoundaryNodes(pt)%symloc0(iSymm)*-1
         else
-           uniqueBoundaryNodes(pt)%symNormal = sumNormal*(-1*symDir)
+           uniqueBoundaryNodes(pt)%symNormal = sumNormal!*(-1*symDir)
+           uniqueBoundaryNodes(pt)%symNormal(iSymm) = uniqueBoundaryNodes(pt)%symNormal(iSymm)*(-1) 
+           uniqueBoundaryNodes(pt)%symloc = uniqueBoundaryNodes(pt)%loc!*(-1*symDir)
+           uniqueBoundaryNodes(pt)%symloc(iSymm) =  uniqueBoundaryNodes(pt)%symloc(iSymm)*(-1)
            v1 = uniqueBoundaryNodes(pt)%symNormal0
            v2 = uniqueBoundaryNodes(pt)%symNormal
            call getRotationMatrix3d(v1,v2,Mi)
@@ -114,14 +120,22 @@ subroutine computeNodalProperties(initialPoint)
         uniqueSurfaceNodes(pt)%symAi = sumArea
 
         if(initialPoint)then
-           uniqueSurfaceNodes(pt)%symNormal0 = sumNormal*(-1*symDir)
+           uniqueSurfaceNodes(pt)%symNormal0 = sumNormal!*(-1*symDir)
+           uniqueSurfaceNodes(pt)%symNormal0(iSymm) =uniqueSurfaceNodes(pt)%symNormal0(iSymm)*(-1)
+           uniqueSurfaceNodes(pt)%symLoc0 = uniqueSurfaceNodes(pt)%loc0!*(-1*symDir)
+           uniqueSurfaceNodes(pt)%symLoc0(iSymm) = uniqueSurfaceNodes(pt)%symLoc0(iSymm)*(-1)
+           ! print *,'symloc',uniqueSurfaceNodes(pt)%symLoc0,uniqueSurfaceNodes(pt)%loc0,(-1*symDir)
+           ! stop
         else
-           uniqueSurfaceNodes(pt)%symNormal = sumNormal*(-1*symDir)
+           uniqueSurfaceNodes(pt)%symNormal = sumNormal!*(-1*symDir)
+           uniqueSurfaceNodes(pt)%symNormal(iSymm) = uniqueSurfaceNodes(pt)%symNormal(iSymm)*(-1) 
+           uniqueSurfaceNodes(pt)%symLoc = uniqueSurfaceNodes(pt)%loc!*(-1*symDir)
+           uniqueSurfaceNodes(pt)%symLoc(iSymm) = uniqueSurfaceNodes(pt)%symLoc(iSymm)*(-1)
            v1 = uniqueSurfaceNodes(pt)%symNormal0
            v2 = uniqueSurfaceNodes(pt)%symNormal
            call getRotationMatrix3d(v1,v2,Mi)
            uniqueSurfaceNodes(pt)%symMi = Mi
-           bi = (uniqueSurfaceNodes(pt)%symloc-uniqueSurfaceNodes(pt)%symloc0)*(-1*symDir)
+           bi = (uniqueSurfaceNodes(pt)%symloc-uniqueSurfaceNodes(pt)%symloc0)!*(-1*symDir)
            uniqueSurfaceNodes(pt)%symbi = bi
         end if
      end if

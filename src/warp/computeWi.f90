@@ -24,17 +24,16 @@ subroutine computeWi(surfIdx,isSurf,r,wi)
   ! Begin Execution
   !print *,'in wi',surfIdx,isSurf,r
 
-!  if(isSurf)then
-
+  if(isSurf)then
      Ai = uniqueSurfaceNodes(surfIdx)%Ai
-     ri = uniqueSurfaceNodes(surfIdx)%loc
+     ri = uniqueSurfaceNodes(surfIdx)%loc0
      !print *,'Ai', Ai,uniqueSurfaceNodes(surfIdx)%Ai
-  ! else
-  !    Ai = uniqueBoundaryNodes(surfIdx)%Ai
-  !    ri = uniqueBoundaryNodes(surfIdx)%loc
-  !    !print *,'ai b',Ai,uniqueBoundaryNodes(surfIdx)%Ai
-  ! end if
-!  print *,'ri',ri
+  else
+     Ai = uniqueBoundaryNodes(surfIdx)%Ai
+     ri = uniqueBoundaryNodes(surfIdx)%loc0
+     !print *,'ai b',Ai,uniqueBoundaryNodes(surfIdx)%Ai
+  end if
+  !print *,'ri',ri
   call getDistance(r,ri,dist)
   ! print *,'dist',dist
   ! print *,'Ai',Ai
@@ -66,26 +65,25 @@ subroutine computeWiSymm(surfIdx,isSurf,r,wi)
 
   
   ! Begin Execution
-  !print *,'in wi',surfIdx,isSurf,r
+  !print *,'in wiSymm',surfIdx,isSurf,r
 
-  ! if(isSurf)then
-
-  Ai = uniqueSurfaceNodes(surfIdx)%Ai
-  ri = uniqueSurfaceNodes(surfIdx)%symloc
+  if(isSurf)then
+     Ai = uniqueSurfaceNodes(surfIdx)%Ai
+     ri = uniqueSurfaceNodes(surfIdx)%symloc0
   !    !print *,'Ai', Ai,uniqueSurfaceNodes(surfIdx)%Ai
-  ! else
-  !Ai = uniqueBoundaryNodes(surfIdx)%Ai
-  !ri = uniqueBoundaryNodes(surfIdx)%symloc
-  !    !print *,'ai b',Ai,uniqueBoundaryNodes(surfIdx)%Ai
-  ! end if
-!  print *,'ri',ri
+  else
+     Ai = uniqueBoundaryNodes(surfIdx)%Ai
+     ri = uniqueBoundaryNodes(surfIdx)%symloc0
+     !print *,'ai b',Ai,uniqueBoundaryNodes(surfIdx)%Ai
+  end if
+  !print *,'riSymm',ri
   call getDistance(r,ri,dist)
-  ! print *,'dist',dist
-  ! print *,'Ai',Ai
-  ! print *,'ldef',ldef
-  ! print *,'aexp',aexp
-  ! print *,'bexp',bexp
-  ! print *,'alpha',alpha
+  ! print *,'distSymm',dist
+  ! print *,'AiSymm',Ai
+  ! print *,'ldefSymm',ldef
+  ! print *,'aexpSymm',aexp
+  ! print *,'bexpSymm',bexp
+  ! print *,'alphaSymm',alpha
   ! stop
 !  print *,'wi',Ai,lDef,dist,aexp,'t2',alpha,bexp
   wi = Ai *((Ldef/dist)**aExp+(alpha*Ldef/dist)**bExp)
