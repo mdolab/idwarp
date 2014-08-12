@@ -71,5 +71,6 @@ subroutine computeSiSymm(surfIdx,isSurf,r,si)
   ! end if
   
   Si = matMul(Mi,r)+bi-r
+  !print *,'siSymm',Si
 
 end subroutine computeSiSymm

@@ -152,9 +152,9 @@ class USMesh(object):
 
 
         # Read the grid from the CGNS file
-        print(fileName)
+#        print(fileName)
         fileName, ext = os.path.splitext(fileName)
-        print('filename after',fileName,ext)
+        #print('filename after',fileName,ext)
        
         if self.solverOptions['fileType'] == 'cgns':
             self.warp.readunstructuredcgnsfile(fileName+'.cgns', self.comm.py2f())
@@ -174,7 +174,7 @@ class USMesh(object):
         # Extract family info and add default group "all"
         self._getFamilyList()
         self.familyGroup = {}
-        print('adding family group')
+        #print('adding family group')
         self.addFamilyGroup('all')
 
 
@@ -211,7 +211,7 @@ class USMesh(object):
         self._readBoundaryInfo()
       
         # Read the cell info for the mesh
-        print('reading owner info')
+        #print('reading owner info')
         self._readCellInfo()
 
         return
@@ -223,7 +223,7 @@ class USMesh(object):
 
         # use PyFoam to determine the number of points in the file
         self.nPoints = self.mInfo.nrOfPoints()
-        print('nPoints',self.nPoints)
+        #print('nPoints',self.nPoints)
        
         # Open the points file for reading
         pointHandle = open(self.pointsFile,'r')
@@ -343,7 +343,7 @@ class USMesh(object):
 
         for key in boundaries.keys():
             #print(key)
-            nodeCounter = 1#0 #start from 1 not zero for fortran numbering
+            nodeCounter = 0#1#0 #start from 1 not zero for fortran numbering
             nFaces = int(boundaries[key]['nFaces'])
             startFaces = int(boundaries[key]['startFace'])
             boundaries[key]['faceList'] = np.zeros(nFaces+1,int)
@@ -433,7 +433,7 @@ class USMesh(object):
 
             for i in range(2):
                 value = np.fromfile(faceHandle2, dtype='short', count=1, sep="")
-                print('val',value)
+                #print('val',value)
                 # values = np.fromfile(faceHandle2, dtype='<i4', count=value, sep="")
                 # print values
             sys.exit(0)
@@ -557,7 +557,7 @@ class USMesh(object):
                     counter += 1
                 # end
             # end
-            print('nowners',self.nOwners,counter,self.owners.shape,np.max(self.owners))
+            #print('nowners',self.nOwners,counter,self.owners.shape,np.max(self.owners))
             cellFaceList = []
             self.nCells = np.max(self.owners)+1
             for i in range(self.nCells):
@@ -589,7 +589,7 @@ class USMesh(object):
                     counter += 1
                 # end
             # end
-            print('nNeighbours',self.nNeighbours,counter,self.neighbours.shape,np.max(self.neighbours))
+            #print('nNeighbours',self.nNeighbours,counter,self.neighbours.shape,np.max(self.neighbours))
             # now append neighbour faces
             for i in range(self.nNeighbours):
                 faceCell = self.neighbours[i]
@@ -632,7 +632,7 @@ class USMesh(object):
                     # if they match, set the current entry in the boolean array 
                     # to true and increment the index to the next entry in the 
                     # array
-                    print(c)
+                    #print(c)
                     entriesCheck[eIdx] = True
                     eIdx += 1
 
@@ -656,8 +656,8 @@ class USMesh(object):
                 # looking for the '(' that represents the start of the entries list
                 # once we have found that character, exit the loop.
                 if c=='(':
-                    print("final Character",c)
-                    print("End of header")
+                    #print("final Character",c)
+                    #print("End of header")
                     break
                 # end
             # end
@@ -714,9 +714,9 @@ class USMesh(object):
         self._setInternalSurface()
         indices = self._getIndices(groupName)
         coords = np.zeros((len(indices),3), self.dtype)
-        print('about to get coords',groupName,len(indices))
+        #print('about to get coords',groupName,len(indices))
         self.warp.getsurfacecoordinates(indices, np.ravel(coords))
-        print('points',coords.shape)
+        #print('points',coords.shape)
 
         return coords
    
@@ -745,6 +745,7 @@ class USMesh(object):
             """
 
         indices = self._getIndices(groupName)
+        #print ('indices',indices)
         self.warp.setsurfacecoordinates(indices, np.ravel(coordinates))
         
         return 
@@ -879,7 +880,7 @@ I will ignore this family'%(fam),comm=self.comm)
 
         # We can now back out the indices that should go along with
         # the groupNames that may have already been added. 
-        print('running add families')
+        #print('running add families')
         for key in self.familyGroup.keys():
             self.addFamilyGroup(key, self.familyGroup[key]['families'])
         # end for
@@ -901,19 +902,19 @@ I will ignore this family'%(fam),comm=self.comm)
             patchSectionIndices = []
             patchSizes = []
             ptSize = 0
-            print ('Npatches',npatch)
+            #print ('Npatches',npatch)
             # loop over the patches to get their names and sizes
             for i in xrange(npatch):               
                 tmp = self.warp.getpatchname(i)
                 patchIdx = self.warp.getpatchindex(i)
-                print ('patchname',i,tmp,patchIdx)
+                #print ('patchname',i,tmp,patchIdx)
                 patchSectionIndices.append(patchIdx)
                 patchNames.append(
                     ''.join([tmp[j] for j in range(32)]).lower().strip())
                 patchSizes.append(self.warp.getpatchsize(patchSectionIndices[i]))
-                print('patchSizes',patchSizes[i])
+                #print('patchSizes',patchSizes[i])
                 patchIndices.append(self.warp.getpatchindexlist(patchSectionIndices[i],patchSizes[i]))
-                print('index length',len(patchIndices[i]))
+                #print('index length',len(patchIndices[i]))
                 ptSize += patchSizes[-1]#[0]
             # end for
 
@@ -1083,9 +1084,9 @@ I will ignore this family'%(fam),comm=self.comm)
             nPointsFace = len(self.faces[i])
             faceNodeSum+=nPointsFace
         # end
-
+        #print('getting volume coords')
         nodes = self.warp.getvolumecoordinates(1,nPoints)
-
+        #print('nodes retrieved',nodes.shape)
         f.write('TITLE = "Example Grid File"\n')
         f.write('FILETYPE = GRID\n')
         f.write('VARIABLES = "X" "Y" "Z"\n')
@@ -1136,6 +1137,62 @@ I will ignore this family'%(fam),comm=self.comm)
 
         f.close()
         return
+    def writeOpenFOAMVolumePoints(self):
+        '''
+        Write the most recent points to a file
+        '''
+
+        # get current directory
+        dirName = os.getcwd()
+
+
+        if self.comm.size >1:
+            '''
+            Run is parallel, write points to decomposed locations
+            '''
+            fileName = os.path.join(dirName,'processor%d/constant/polyMesh/points'%self.comm.rank)
+        else:
+             fileName = os.path.join(dirName,'constant/polyMesh/points')
+        # end
+
+        f = open(fileName,'w')
+
+        # write the file header
+        f.write('/*--------------------------------*- C++ -*----------------------------------*\ \n')
+        f.write('| =========                 |                                                 |\n')
+        f.write('| \\\\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |\n')
+        f.write('|  \\\\    /   O peration     | Version:  2.3.x                                 |\n')
+        f.write('|   \\\\  /    A nd           | Web:      www.OpenFOAM.org                      |\n')
+        f.write('|    \\\\/     M anipulation  |                                                 |\n')
+        f.write('\*---------------------------------------------------------------------------*/\n')
+        f.write('FoamFile\n')
+        f.write('{\n')
+        f.write('    version     2.0;\n')
+        f.write('    format      ascii;\n')
+        f.write('    class       vectorField;\n')
+        f.write('    location    "constant/polyMesh";\n')
+        f.write('    object      points;\n')
+        f.write('}\n')
+        f.write('// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //\n')
+        f.write('\n')
+        f.write('\n')
+        # write the number of points in the file
+        nPoints = self.nPoints
+        nodes = self.warp.getvolumecoordinates(1,nPoints)
+
+        f.write('%d\n'%nPoints)
+        f.write('(\n')
+        for i in range(nPoints):
+            # write the points
+            f.write('(%f %f %f)\n'%(nodes[i,0],nodes[i,1],nodes[i,2]))
+        # end
+        f.write(')\n')
+        f.write('\n')
+        f.write('\n')
+        f.write('// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //\n')
+
+        return
+
 #     def writeVolumeGrid(self, fileName):
 #         """
 #         Write the current state the mesh to a volume CGNS file
@@ -1383,7 +1440,7 @@ I will ignore this family'%(fam),comm=self.comm)
         # Warp the mesh
 
         # Compute the updated surface element centers, areas and normals
-        print('updating grid metrics')
+        #print('updating grid metrics')
         self.updateGridMetrics()
         #sys.exit(0)
         # loop over the unique surface nodes to compute the rotations and
@@ -1398,7 +1455,7 @@ I will ignore this family'%(fam),comm=self.comm)
         # For each volume node not on the boundary
         # loop over the surface and compute wi and si
         # Sum s(r) on the fly
-        print('updateingVolume')
+        #print('updateingVolume')
         self.warp.updatevolumecoordinates()
         
         return
