@@ -21,11 +21,11 @@ subroutine getSurfaceElementCenterAndArea()
 
   ! Begin Execution
 
-  print *,' in get surface element centers',nZones
+  !print *,' in get surface element centers',nZones
   ! loop over the zones and sections.
   do zone = 1,nZones
      surfSecCounter = 1
-     print *,'nSections',gridDoms(zone)%nSections
+     !print *,'nSections',gridDoms(zone)%nSections
      do sec = 1,gridDoms(zone)%nSections
         !print *,'isSurface',sec,(.not. gridDoms(zone)%isVolumeSection(sec))
         if(.not. gridDoms(zone)%isVolumeSection(sec))then
@@ -54,7 +54,9 @@ subroutine getSurfaceElementCenterAndArea()
               gridDoms(zone)%surfaceSections(surfSecCounter)%elemAreaMag(elem) = areaMag
               gridDoms(zone)%surfaceSections(surfSecCounter)%elemNormal(elem,:) = normal
               if(gridDoms(zone)%surfaceSections(surfSecCounter)%isSymmBC) then
-                 symDir = gridDoms(zone)%surfaceSections(surfSecCounter)%elemNormal(elem,:)
+                 symDir = abs(gridDoms(zone)%surfaceSections(surfSecCounter)%elemNormal(elem,:))                
+                 iSymm = maxloc(symDir,1)
+                 !print *,'symdir',zone,surfSecCounter,elem,symDir,iSymm
               end if
               deallocate(points,STAT=ierr)
            end do

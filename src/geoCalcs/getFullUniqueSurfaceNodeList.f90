@@ -73,7 +73,7 @@ subroutine getFullUniqueSurfaceNodeList()
                  if(gridDoms(zone)%surfaceSections(surfSecCounter)%isWallBC ) then
                     elemIdx = gridDoms(zone)%surfaceSections(surfSecCounter)%elemPtr(elem)
                     tempSurfPoints(surfCounter)%globalIndex = &
-                         gridDoms(zone)%surfaceSections(surfSecCounter)%elemConn(elemIdx+conn-1)
+                         gridDoms(zone)%surfaceSections(surfSecCounter)%elemConn(elemIdx+conn)!-1)
                     tempSurfPoints(surfCounter)%proc = myID
                     tempSurfPoints(surfCounter)%zone = zone
                     !tempSurfPoints(surfCounter)%surfSection = surfSecCounter
@@ -92,7 +92,7 @@ subroutine getFullUniqueSurfaceNodeList()
                     !print *,'elemidx',elemIdx,conn,nElem,shape(gridDoms(zone)%surfaceSections(surfSecCounter)%elemConn)
                     !print *,'boundary Counter',boundaryCounter,shape(tempBoundaryPoints),nBoundaryNodes
                     tempBoundaryPoints(boundaryCounter)%globalIndex = &
-                         gridDoms(zone)%surfaceSections(surfSecCounter)%elemConn(elemIdx+conn-1)
+                         gridDoms(zone)%surfaceSections(surfSecCounter)%elemConn(elemIdx+conn)!-1)
                     tempBoundaryPoints(boundaryCounter)%proc = myID
                     tempBoundaryPoints(boundaryCounter)%zone = zone
                     !tempBoundaryPoints(boundaryCounter)%surfSection = surfSecCounter
