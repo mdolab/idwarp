@@ -728,7 +728,7 @@ class USMesh(object):
 
 #         return self.familyGroup[groupName]['connectivity']
 
-    def setSurfaceCoordinates(self, groupName, coordinates):
+    def setSurfaceCoordinates(self, coordinates, groupName):
         """ Sets all surface coordinates on this processor in group
         "groupName"
         
