@@ -42,7 +42,7 @@ subroutine getSurfaceElementCenterAndArea()
                  elemIdx = gridDoms(zone)%surfaceSections(surfSecCounter)%elemPtr(elem)
                  !print *,'elemidx',zone,elem,surfSecCounter,elemIdx+i,elemidx,i,shape( gridDoms(zone)%surfaceSections(surfSecCounter)%elemPtr),shape(gridDoms(zone)%surfaceSections(surfSecCounter)%elemConn)
                  pointIdx = gridDoms(zone)%surfaceSections(surfSecCounter)%elemConn(elemIdx+i)
-                 points(i,:) = gridDoms(zone)%points(pointIdx,:)
+                 points(i,:) = gridDoms(zone)%points0(pointIdx,:)
               end do
               !print *,'elem',elem
               call getElementCenter(nPts,nDim,points,center)
