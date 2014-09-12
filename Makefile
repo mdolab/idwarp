@@ -117,6 +117,14 @@ LINUX_INTEL_OPENMPI_SCINET:
 	make module
 	(cd src/f2py && make)
 
+LINUX_INTEL_FLUX:
+	mkdir -p obj
+	if [ ! -f "config/config.LINUX_INTEL_FLUX.mk" ]; then cp "config/defaults/config.LINUX_INTEL_FLUX.mk" ./config; fi
+	ln -sf config/config.LINUX_INTEL_FLUX.mk config.mk
+	ln -sf Common_real.mk Common.mk
+	make module
+	(cd src/f2py && make)
+
 
 TAPENADE:
 	(cd src/missionAnalysis && make tapenade)
