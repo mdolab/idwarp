@@ -8,7 +8,7 @@
 FoamFile
 {
     version     2.0;
-    format      binary;
+    format      ascii;
     class       volScalarField;
     location    "0";
     object      k;
@@ -32,19 +32,13 @@ boundaryField
     inlet
     {
         type            fixedValue;
-        value           nonuniform 
-0
-;
+        value           nonuniform 0();
     }
     outlet
     {
         type            inletOutlet;
-        inletValue      nonuniform 
-0
-;
-        value           nonuniform 
-0
-;
+        inletValue      nonuniform 0();
+        value           nonuniform 0();
     }
     lowerWall
     {
