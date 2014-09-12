@@ -8,7 +8,7 @@
 FoamFile
 {
     version     2.0;
-    format      binary;
+    format      ascii;
     class       volVectorField;
     location    "0";
     object      U;
@@ -37,12 +37,8 @@ boundaryField
     outlet
     {
         type            inletOutlet;
-        inletValue      nonuniform 
-0
-;
-        value           nonuniform 
-0
-;
+        inletValue      nonuniform 0();
+        value           nonuniform 0();
     }
     lowerWall
     {
