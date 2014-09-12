@@ -1,0 +1,95 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  2.3.x                                 |
+|   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      binary;
+    class       volScalarField;
+    location    "0";
+    object      omega;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [0 0 -1 0 0 0 0];
+
+internalField   uniform 1.78;
+
+boundaryField
+{
+    slip
+    {
+        type            slip;
+    }
+    sym
+    {
+        type            symmetry;
+    }
+    inlet
+    {
+        type            fixedValue;
+        value           nonuniform 
+0
+;
+    }
+    outlet
+    {
+        type            inletOutlet;
+        inletValue      nonuniform 
+0
+;
+        value           nonuniform 
+0
+;
+    }
+    lowerWall
+    {
+        type            omegaWallFunction;
+        value           uniform 1.78;
+        Cmu             0.09;
+        kappa           0.41;
+        E               9.8;
+        beta1           0.075;
+    }
+    wall
+    {
+        type            omegaWallFunction;
+        value           uniform 1.78;
+        Cmu             0.09;
+        kappa           0.41;
+        E               9.8;
+        beta1           0.075;
+    }
+    procBoundary1to0
+    {
+        type            processor;
+        value           uniform 1.78;
+    }
+    procBoundary1to2
+    {
+        type            processor;
+        value           uniform 1.78;
+    }
+    procBoundary1to3
+    {
+        type            processor;
+        value           uniform 1.78;
+    }
+    procBoundary1to4
+    {
+        type            processor;
+        value           uniform 1.78;
+    }
+    procBoundary1to5
+    {
+        type            processor;
+        value           uniform 1.78;
+    }
+}
+
+
+// ************************************************************************* //

@@ -103,6 +103,15 @@ class USMesh(object):
             self.comm = MPI.COMM_WORLD
         else:
             self.comm = comm
+
+        # check whether we are running in parallel
+        nProc = self.comm.size
+        
+        self.parallel = False
+        if nProc > 1:
+            self.parallel = True
+        # end
+        print('comm.size',nProc)
             
         # Check if warp has already been set. If this is true, this has been
         # inherited to the complex version
@@ -191,12 +200,26 @@ class USMesh(object):
         
         # Copy the reference points file to points to ensure consistant starting
         # point
-        self.refPointsFile = os.path.join(caseDir,'constant/polyMesh/points_orig')
-        self.pointsFile = os.path.join(caseDir,'constant/polyMesh/points')
+      
+        if self.comm.size >1:
+            '''
+            Run is parallel, write points to decomposed locations
+            '''
+            self.refPointsFile = os.path.join(caseDir,'processor%d/constant/polyMesh/points_orig'%self.comm.rank)
+            self.pointsFile = os.path.join(caseDir,'processor%d/constant/polyMesh/points'%self.comm.rank)
+            print('run is parallel')
+            print('filename',self.comm.rank,self.pointsFile)
+        else:
+            self.refPointsFile = os.path.join(caseDir,'constant/polyMesh/points_orig')
+            self.pointsFile = os.path.join(caseDir,'constant/polyMesh/points')
+        # end
+      
+        # self.refPointsFile = os.path.join(caseDir,'constant/polyMesh/points_orig')
+        # self.pointsFile = os.path.join(caseDir,'constant/polyMesh/points')
 
         status = subprocess.call("cp " + "%s %s"%(self.refPointsFile,self.pointsFile), shell=True)
         if status != 0:
-            raise Error('pyWarpUstruct: status %d: Unable to copy points_orig to points.'%status)
+            raise Error('pyWarpUstruct: proc %d: status %d: Unable to copy points_orig to points.'%(self.comm.rank,status))
 
         # Create an instance of mesh info
         self.mInfo = MeshInformation(caseDir)
@@ -223,7 +246,7 @@ class USMesh(object):
 
         # use PyFoam to determine the number of points in the file
         self.nPoints = self.mInfo.nrOfPoints()
-        #print('nPoints',self.nPoints)
+        print('nPoints',self.nPoints,self.comm.rank)
        
         # Open the points file for reading
         pointHandle = open(self.pointsFile,'r')
@@ -260,6 +283,8 @@ class USMesh(object):
         # end
 
         pointHandle.close()
+        #print('points',self.comm.rank,x.shape)
+
         #print('setting volumePoints')
         self.warp.setvolumecoordinates(1,1,x,True)
         #print('volume PointsSet')
@@ -1854,6 +1879,8 @@ I will ignore this family'%(fam),comm=self.comm)
         exception
 
         """
+        print('groupname',groupName)
+        indices = self.familyGroup[groupName]['indices']
         try: 
             indices = self.familyGroup[groupName]['indices']
         except:
