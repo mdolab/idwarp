@@ -12,13 +12,17 @@ subroutine updateVolumeCoordinates()
 
 
   ! Local Variables
-  integer(kind=intType):: zone,sec,node,pt,nodeNumber
+  integer(kind=intType):: zone,sec,node,pt,nodeNumber,i
   integer(kind=intType):: volSecCounter, surfSecCounter,globalIndex
-  real(kind=realType), dimension(physDim):: numerator
+  real(kind=realType), dimension(3):: numerator
   real(kind=realType)::  denomenator
-  real(kind=realType), dimension(physDim)::r,si
+  real(kind=realType), dimension(3)::r,si
   real(kind=realType):: wi
   real(kind=realType):: timeA,timeB
+  real(kind=realType), dimension(3)::bi
+  real(kind=realType), dimension(3,3)::Mi
+  real(kind=realType), dimension(3)::ri,dx
+  real(kind=realType):: Ai,dist
 
   ! Begin Execution
   call cpu_time(timeA)
@@ -47,7 +51,14 @@ subroutine updateVolumeCoordinates()
                  ! First loop over the Farfield boundaries
                  do pt = 1, nUniqueBoundaryPoints
                     !print *,'boundarypoint',pt
-                    call computeWi(pt,.false.,r,wi)
+                    !call computeWi(pt,.false.,r,wi)
+                    Ai = uniqueBoundaryNodes(pt)%Ai
+                    ri = uniqueBoundaryNodes(pt)%loc0
+                    dx = r-ri
+                    dist = sqrt(dx(1)*dx(1)+dx(2)*dx(2)+dx(3)*dx(3))
+
+                    wi = Ai *((Ldef/dist)**aExp+(alpha*Ldef/dist)**bExp)
+
                     !call computeSi(pt,.false.,r,Si)
                     !numerator = numerator + Wi*Si
                     denomenator = denomenator + Wi
@@ -56,8 +67,21 @@ subroutine updateVolumeCoordinates()
                  !print *,'r',r
                  do pt = 1, nUniqueSurfPoints
                     !print *,'SurfacePoint',pt
-                    call computeWi(pt,.true.,r,wi)
-                    call computeSi(pt,.true.,r,Si)
+                    !call computeWi(pt,.true.,r,wi)
+                    Ai = uniqueSurfaceNodes(pt)%Ai
+                    ri = uniqueSurfaceNodes(pt)%loc0
+                    dx = r-ri
+                    dist = sqrt(dx(1)*dx(1)+dx(2)*dx(2)+dx(3)*dx(3))
+                    wi = Ai *((Ldef/dist)**aExp+(alpha*Ldef/dist)**bExp)
+
+                    !call computeSi(pt,.true.,r,Si)
+                    bi =  uniqueSurfaceNodes(pt)%bi
+                    Mi =  uniqueSurfaceNodes(pt)%Mi
+                    
+                    do i=1,3
+                       Si(i) = Mi(i,1)*r(1)+Mi(i,2)*r(2)+Mi(i,3)*r(3)+bi(i)-r(i)
+                    end do
+                          
                     !print *,pt,'Wi,Si',Wi,Si
                     numerator = numerator + Wi*Si
                     denomenator = denomenator + Wi
@@ -69,15 +93,33 @@ subroutine updateVolumeCoordinates()
                  if(hasSymmetry)then
                     do pt = 1, nUniqueBoundaryPoints
                        !print *,'symmBoundaryPoint',pt
-                       call computeWiSymm(pt,.false.,r,wi)
+                       !call computeWiSymm(pt,.false.,r,wi)
+                       Ai = uniqueBoundaryNodes(pt)%Ai
+                       ri = uniqueBoundaryNodes(pt)%symloc0
+                       dx = r-ri
+                       dist = sqrt(dx(1)*dx(1)+dx(2)*dx(2)+dx(3)*dx(3))
+                       
+                       wi = Ai *((Ldef/dist)**aExp+(alpha*Ldef/dist)**bExp)
                        !call computeSiSymm(pt,.false.,r,Si)
                        !numerator = numerator + Wi*Si
                        denomenator = denomenator + Wi
                     end do
                     do pt = 1, nUniqueSurfPoints
                        !print *,'symmSurfacePoint',pt
-                       call computeWiSymm(pt,.true.,r,wi)
-                       call computeSiSymm(pt,.true.,r,Si)
+                       !call computeWiSymm(pt,.true.,r,wi)
+                       Ai = uniqueSurfaceNodes(pt)%Ai
+                       ri = uniqueSurfaceNodes(pt)%symloc0
+                       dx = r-ri
+                       dist = sqrt(dx(1)*dx(1)+dx(2)*dx(2)+dx(3)*dx(3))
+                       wi = Ai *((Ldef/dist)**aExp+(alpha*Ldef/dist)**bExp)
+                       
+                       !call computeSiSymm(pt,.true.,r,Si)
+                       bi =  uniqueSurfaceNodes(pt)%symbi
+                       Mi =  uniqueSurfaceNodes(pt)%symMi
+                    
+                       do i=1,3
+                          Si(i) = Mi(i,1)*r(1)+Mi(i,2)*r(2)+Mi(i,3)*r(3)+bi(i)-r(i)
+                       end do
                        !print *,pt,'Wi,Si',Wi,Si
                        numerator = numerator + Wi*Si
                        denomenator = denomenator + Wi
