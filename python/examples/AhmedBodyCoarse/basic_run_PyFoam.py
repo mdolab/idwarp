@@ -40,10 +40,10 @@ z = [0.1,0.1,0.1,0.1,0.1]
 nLength = len(x)
 
 c1 = pySpline.Curve(x=x, y=y, z=z, k=2)
-DVGeo.addRefAxis('bodyAxis', curve = c1,axis='z')#,rotType=0)
+DVGeo.addRefAxis('bodyAxis', curve = c1,axis='z')
 
 DVGeoChild = DVGeometry('./FFD/bodyFittedFFD.fmt', child=True)
-#DVGeo = DVGeometry('./FFD/bodyFittedFFD.fmt')
+
 # Setup curves for ref_axis
 x1 = [0.,0.1,0.862,1.044]
 y1 = [0.1,0.1,0.1,0.1]
@@ -54,8 +54,7 @@ z1 = [0.194,0.194,0.194,0.13]
 nLengthChild = len(x1)
 
 c2 = pySpline.Curve(x=x1, y=y1, z=z1, k=2)
-DVGeoChild.addRefAxis('localBodyAxis', curve = c2,axis='z')#,rotType=0)
-#DVGeo.addRefAxis('localBodyAxis', curve = c2,axis='z')#,rotType=0)
+DVGeoChild.addRefAxis('localBodyAxis', curve = c2,axis='z')
 
 def rampAngle(val,geo):
     C = geo.extractCoef('localBodyAxis')
@@ -67,16 +66,6 @@ def rampAngle(val,geo):
     # Overall length needs to stay a 1.044, so use that as a ref for
     # the final mesh point
     
-    # # Get current length
-    # dx = C[3,0]-C[2,0]
-    # dy = C[3,1]-C[2,1]
-    # dz = C[3,2]-C[2,2]
-    # print('deltas',dx,dy,dz)
-    # length = numpy.sqrt(dx**2+dy**2+dz**2)
-    # print('length',length)
-    # currentAngle = numpy.arctan(abs(dz)/abs(dx))*180/numpy.pi
-    # print('currAngle',currentAngle)
-    
     # set the target length
     lTarget = 0.222
     hInit = 0.21 - 0.05 
@@ -84,27 +73,60 @@ def rampAngle(val,geo):
     # compute the coefficient deltas
     dx = lTarget*numpy.cos(angle)
     dz = (lTarget*numpy.sin(angle))
-    #print('deltas',dx,dz)
 
     topEdge = 0.338-dz
     rearHeight = topEdge-0.05
     coefPoint = rearHeight/2.0 +0.05
     scalez = rearHeight/hInit
+
     # Set the coefficients
     C[3,0] = 1.044
     C[2,0] = C[3,0]-dx
     C[2,2] = 0.194
-    C[3,2] = coefPoint#C[2,2]#-#(dz/2.0)
-    #print('coeffs',C[3,0],C[2,0],C[2,2],C[3,2])
+    C[3,2] = coefPoint
+
     geo.restoreCoef(C, 'localBodyAxis')
 
-    # hNew =  C[3,2]-0.05
-    # scalez = hNew/hInit
-    #print('scalez',scalez)
     geo.scale_z['localBodyAxis'].coef[3] = scalez
 
     return
 
+def doubleRampAngle(val,geo):
+    C = geo.extractCoef('localBodyAxis')
+    
+    # the values will be the upper and lower ramp angle
+    # in degree. Start with a conversion to rads.
+    upperAngle = (val[0])*numpy.pi/180.0
+    lowerAngle = (val[1])*numpy.pi/180.0
+    
+    # Overall length needs to stay a 1.044, so use that as a ref for
+    # the final mesh point
+    
+    # set the target length
+    lTarget = 0.222
+    hInit = 0.21 - 0.05 
+
+    # compute the coefficient deltas
+    dx = lTarget*numpy.cos(upperAngle)
+    dzUpper = (lTarget*numpy.sin(upperAngle))
+    dzLower = (lTarget*numpy.sin(lowerAngle))
+
+    topEdge = 0.338-dzUpper
+    rearHeight = topEdge-0.05+dzLower
+    coefPoint = rearHeight/2.0 +0.05-dzLower
+    scalez = numpy.sqrt((rearHeight/hInit)**2)
+
+    # Set the coefficients
+    C[3,0] = 1.044
+    C[2,0] = C[3,0]-dx
+    C[2,2] = 0.194
+    C[3,2] = coefPoint
+
+    geo.restoreCoef(C, 'localBodyAxis')
+
+    geo.scale_z['localBodyAxis'].coef[3] = scalez
+
+    return
 
 
 def length(val, geo):
@@ -122,29 +144,34 @@ def angleVars(val, geo):
     C = geo.extractCoef('localBodyAxis')
 
     for i in xrange(len(C)):
-        #print 'CA',i,C[i,2],val[i]
-        C[i,2] = val[i]
-        
+        C[i,2] = val[i]        
     # end
     geo.restoreCoef(C, 'localBodyAxis')
 
 def noseLength(val, geo):
-    C = geo.extractCoef('localBodyAxis')
+    C = geo.extractCoef('bodyAxis')
 
-    for i in xrange(len(C)):
-        #print 'CA',i,C[i,2],val[i]
-        C[i,0] = val[i]
+    length = val[0]
+    currentLength = C[2,0]-C[1,0]
+
+    C[1,0] = C[2,0]-length
         
-    # end
-    geo.restoreCoef(C, 'localBodyAxis')
+    geo.restoreCoef(C, 'bodyAxis')
+    
+    return
 
-lower = [-2.,-2.,-2.,-2.,5.]
-upper = [-2.,5.,5.,5.,5.]
-DVGeo.addGeoDVGlobal('length', x, length,
-                     lower=lower, upper=upper, scale=1.0)
+# lower = [-2.,-2.,-2.,-2.,5.]
+# upper = [-2.,5.,5.,5.,5.]
+# DVGeo.addGeoDVGlobal('length', x, length,
+#                      lower=lower, upper=upper, scale=1.0)
 
-DVGeoChild.addGeoDVGlobal('rampAngle', 75.1, rampAngle,
-                     lower=0., upper=90., scale=1.0)
+DVGeo.addGeoDVGlobal('noseLength', 0.3, noseLength,
+                     lower=0, upper=0.5, scale=1.0)
+
+# DVGeoChild.addGeoDVGlobal('rampAngle', 35.1, rampAngle,
+#                      lower=0., upper=90., scale=1.0)
+DVGeoChild.addGeoDVGlobal('doubleRampAngle', [35.1,-5.], doubleRampAngle,
+                     lower=[0.,-45.], upper=[45.,5.], scale=[1.0,1.0])
 # lowerA = [0.,0.,0.,0.]
 # upperA = [0.3,0.3,0.3,0.3]
 # DVGeoChild.addGeoDVGlobal('angleVars', z1, angleVars,
@@ -180,7 +207,7 @@ xDV = DVGeo.getValues()
 # Case 2: Upper and lower ramp angles, fixed length
 # Case 3: Nose length ( Do with global FFD)
 # Case 4: Overall length ( Do with global FFD)
-# Case 5: Ground separation
+# Case 5: Shape
 
 # xDV['length'][2] = 1.75#2.0#1.05
 # xDV['angleVars'][2] = 0.15

@@ -70,22 +70,50 @@ def returnBlockPoints(corners,nx,ny,nz):
                 
     return points
 
-nBlocks = 1
+nBlocks = 4
 
-nx = [15]#4
-ny = [3]
-nz = [2]
+nx = [3,3,3,3]#4
+ny = [3,3,3,3]
+nz = [2,2,2,2]
 
-corners = np.zeros([8,3])
+corners = np.zeros([nBlocks,8,3])
 
-corners[0] = [-2.,0.,0.]
-corners[1] = [-2.,0.,0.5]
-corners[2] = [-2.,1.,0.]
-corners[3] = [-2.,1.,0.5]
-corners[4] = [5.,0.,0.]
-corners[5] = [5.,0.,0.5]
-corners[6] = [5.,1.,0.]
-corners[7] = [5.,1.,0.5]
+corners[0,0,:] = [-2.,0.,0.]
+corners[0,1,:] = [-2.,0.,0.5]
+corners[0,2,:] = [-2.,1.,0.]
+corners[0,3,:] = [-2.,1.,0.5]
+corners[0,4,:] = [0.,0.,0.]
+corners[0,5,:] = [0.,0.,0.5]
+corners[0,6,:] = [0.,1.,0.]
+corners[0,7,:] = [0.,1.,0.5]
+
+corners[1,0,:] = [0.,0.,0.]
+corners[1,1,:] = [0.,0.,0.5]
+corners[1,2,:] = [0.,1.,0.]
+corners[1,3,:] = [0.,1.,0.5]
+corners[1,4,:] = [0.1,0.,0.]
+corners[1,5,:] = [0.1,0.,0.5]
+corners[1,6,:] = [0.1,1.,0.]
+corners[1,7,:] = [0.1,1.,0.5]
+
+corners[2,0,:] = [0.1,0.,0.]
+corners[2,1,:] = [0.1,0.,0.5]
+corners[2,2,:] = [0.1,1.,0.]
+corners[2,3,:] = [0.1,1.,0.5]
+corners[2,4,:] = [1.044,0.,0.]
+corners[2,5,:] = [1.044,0.,0.5]
+corners[2,6,:] = [1.044,1.,0.]
+corners[2,7,:] = [1.044,1.,0.5]
+
+corners[3,0,:] = [1.044,0.,0.]
+corners[3,1,:] = [1.044,0.,0.5]
+corners[3,2,:] = [1.044,1.,0.]
+corners[3,3,:] = [1.044,1.,0.5]
+corners[3,4,:] = [5.,0.,0.]
+corners[3,5,:] = [5.,0.,0.5]
+corners[3,6,:] = [5.,1.,0.]
+corners[3,7,:] = [5.,1.,0.5]
+
 
 # corner1 = [[-2.,0.,0.]]
 # corner2 = [[5.,1.,0.5]]
@@ -97,7 +125,7 @@ corners[7] = [5.,1.,0.5]
 points = []
 #points.append(np.zeros([nx[0],ny[0],nz[0],3]))
 for i in range(nBlocks):
-    points.append(returnBlockPoints(corners,nx[i],ny[i],nz[i]))
+    points.append(returnBlockPoints(corners[i],nx[i],ny[i],nz[i]))
 # end
 
 # for k in range(nz[0]):
