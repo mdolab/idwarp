@@ -289,7 +289,7 @@ class USMesh(object):
         pointHandle.close()
         print('points',self.comm.rank,x.shape)
         
-        sys.exit(0)
+        #sys.exit(0)
         #print('setting volumePoints')
         self.warp.setvolumecoordinates(1,1,x,True)
         #print('volume PointsSet')
