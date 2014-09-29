@@ -1,33 +1,31 @@
 # a basic script to run the case in this directory
 import sys,os
 from mpi4py import MPI
-#from pyopenfoam import *
 from pygeo import *
 from pyspline import *
 from pywarpustruct import *
 import numpy
 gcomm = MPI.COMM_WORLD
 
-meshOptions = {'fileType':'openfoam'}
+meshOptions = {
+    'gridFile':os.getcwd(),
+    'aExp':3,
+    'bExp':5,
+    'alpha':1.0,
+    'LdefFact':.20,
+}
 
-mesh = USMesh(os.getcwd(),comm=gcomm,meshOptions=meshOptions)
+mesh = USMesh(options=meshOptions, comm=gcomm)
+mesh.writeOFGridTecplot('test.dat')
 
 # First see what families are in the file:
 mesh.printFamilyList()
-#print 'no families added',mesh.familyGroup
+
 # Add two family groups: 
-mesh.addFamilyGroup('body',['wall']) 
-mesh.addFamilyGroup('ground',['lowerwall'])
-if gcomm.rank==0:print 'families added',mesh.familyGroup
-#sys.exit(0)
-#coords0 = mesh.getSurfaceCoordinates('body')
+mesh.addFamilyGroup('body', ['wall']) 
+mesh.addFamilyGroup('ground', ['lowerwall'])
+
 coords0 = mesh.getSurfaceCoordinates('all')
-#print 'surf coords',coords0.shape
-# for i in range(coords0.shape[0]):
-#     if coords0[i,1]==0:
-#         print 'x',coords0[i,:]
-#     # end
-# # end
 
 # setup FFD
 FFDFile = './FFD/globalFFD.fmt'
@@ -164,7 +162,6 @@ def noseLength(val, geo):
 # upper = [-2.,5.,5.,5.,5.]
 # DVGeo.addGeoDVGlobal('length', x, length,
 #                      lower=lower, upper=upper, scale=1.0)
-
 DVGeo.addGeoDVGlobal('noseLength', 0.3, noseLength,
                      lower=0, upper=0.5, scale=1.0)
 
@@ -191,9 +188,7 @@ DVGeo.addChild(DVGeoChild)
 ptSetName = 'allSurfs'
 freezeDict = {}#'0':['jLow'],'1':['jLow'],'2':['jLow']}#'0':['jLow'],'1':['jHigh','jLow']}
 DVGeo.addPointSet(coords0, ptSetName, faceFreeze = freezeDict)
-
 xDV = DVGeo.getValues()
-#print 'xDV',xDV
 
 # Required design variables
 # Rear ramp angle, fixed 200 mm length
@@ -218,18 +213,11 @@ xDV = DVGeo.getValues()
 # xDV['angleVars'][3] = 0.12
 
 DVGeo.setDesignVars(xDV)
-#coords = DVGeo.update(ptSetName)
-
 mesh.setSurfaceCoordinates(DVGeo.update(ptSetName),'all')
-DVGeo.writeTecplot('warpedFFD.dat')
-
 mesh.warpMesh()
-#print 'mesh warped'
-mesh.writeOpenFOAMVolumePoints()
-#print 'points updated'
-meshName = os.path.join(os.getcwd(),"testAhmedMesh")
-mesh.writeGridTecplot(meshName)
-#print 'file written'
+DVGeo.writeTecplot('warpedFFD.dat')
+mesh.writeOFGridTecplot('warped.dat')
+
 
 # # Repeat ================
 # #xDV['length'][2] = 1.25#2.0#1.05

@@ -32,9 +32,7 @@ module constants
 
   real(kind=realType), parameter :: pi    = 3.1415926535897931_realType
 
-
   ! Floating point parameters.
-
   real(kind=realType), parameter :: zero  = 0.0_realType
   real(kind=realType), parameter :: one   = 1.0_realType
   real(kind=realType), parameter :: two   = 2.0_realType

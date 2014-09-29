@@ -1,10 +1,10 @@
 #!/usr/bin/python
 from __future__ import print_function
-"""
-Unstructure Mesh
+"""Unstructurde Mesh
 
-The UnstructuredMesh module is used for interacting with an unstructured
-mesh - typically used in a 3D CFD program.
+The UnstructuredMesh module is used for interacting with an
+unstructured (or structured!)  mesh - typically used in a 3D CFD
+program.
 
 It contains the following classes:
 
@@ -17,38 +17,23 @@ Revision: 1.0   $Date: 09/07/2014$
 Developers:
 -----------
 - C.A.(Sandy) Mader (CAM)
-
+- Gaetan. K. W. Kenway (GKK)
 History
 -------
 	v. 1.0 - Initial Class Creation (CAM, 2014)
 
 """
 # =============================================================================
-# Standard Python modules
+# Imports
 # =============================================================================
-import sys, os, time
-import subprocess,re
-
-# =============================================================================
-# External Python modules
-# =============================================================================
+import sys
+import os
+import re
+import shutil
 import numpy as np
-try:
-    # import the necessary modules from PyFoam
-    from PyFoam.RunDictionary.ParsedParameterFile import ParsedParameterFile
-    from PyFoam.RunDictionary.ListFile import ListFile
-    from PyFoam.RunDictionary.MeshInformation import MeshInformation
-except:
-    print('PyFoam is unavailable, OpenFOAM case will not run...')
-# end
-
-
-# =============================================================================
-# Extension modules
-# =============================================================================
-from pygeo import geo_utils
+from pprint import pprint
 from mpi4py import MPI
-from MExt import MExt
+from .MExt import MExt
 
 class Error(Exception):
     """
@@ -57,7 +42,7 @@ class Error(Exception):
     """
     def __init__(self, message):
         msg = '\n+'+'-'*78+'+'+'\n' + '| pyWarpUstruct Error: '
-        i = 23
+        i = 22
         for word in message.split():
             if len(word) + i + 1 > 78: # Finish line and start new one
                 msg += ' '*(78-i)+'|\n| ' + word + ' '
@@ -72,6 +57,8 @@ class Error(Exception):
 # =============================================================================
 # UnstructuredMesh class
 # =============================================================================
+IWALL = 0
+IFAR  = 1
 
 class USMesh(object):
     """
@@ -80,57 +67,47 @@ class USMesh(object):
     interface functions.
  
     """
-    def __init__(self, fileName, comm=None, meshOptions=None,*args,**kwargs):
+    def __init__(self, options=None, comm=None, debug=False):
         """
         Create the USMesh object. 
 
-        Input Arguments:
-            fileName, str: either a CGNS file name or and OpenFOAM case
-                           directory from which to create the mesh
-        Optional Arguments:
-            comm, MPI_INTRA_COMM: MPI communication (as obtained 
-                from mpi4py) on which to create the USMesh object.
-                If not provided, MPI_COMM_WORLD is used. 
-             meshOptions, dictionary: A dictionary containing the 
-                 the options for the mesh movement strategies. 
+        Parameters
+        ----------
+        options :  dictionary
+            A dictionary containing the options for the mesh movement 
+            strategies. THIS IS NOT OPTIONAL.
 
-         Returns:
-             None
+        comm : MPI_INTRA_COMM
+            MPI communication (as obtained from mpi4py) on which to create 
+            the USMesh object. If not provided, MPI_COMM_WORLD is used. 
 
-             """
+        debug : bool
+            Flag specifying if the MExt import is automatically deleted. 
+            This needs to be true ONLY when a symbolic debugger is used.
+        """
 
         if comm is None:
             self.comm = MPI.COMM_WORLD
         else:
             self.comm = comm
 
-        # check whether we are running in parallel
-        nProc = self.comm.size
-        
-        self.parallel = False
-        if nProc > 1:
-            self.parallel = True
-        # end
-        print('comm.size',nProc)
-            
-        # Check if warp has already been set. If this is true, this has been
-        # inherited to the complex version
+        # Check if warp has already been set if this is this has been
+        # interhited to complex version
         try: 
             self.warp
-        except:
-            if 'debug' in kwargs:
-                debug = kwargs['debug']
-            else:
-                debug = False
+        except AttributeError:
             curDir = os.path.dirname(os.path.realpath(__file__))
-            self.warp = MExt('warpustruct',path=[curDir], debug=debug)._module
-        # end try
+            self.warp = MExt('warpustruct', [curDir], debug=debug)._module
 
-        if meshOptions is not None:
-            self.solverOptions = meshOptions
+        if options is not None:
+            self.solverOptions = options
         else:
-            self.solverOptions = {}
-        # end if
+            raise Error("The 'options' keyword argument is *NOT* "
+                        "optional. An options dictionary must be passed upon "
+                        "creation of this object")
+
+        # Initialize PETSc if not done so
+        self.warp.initpetsc(comm.py2f())
 
         # Set realtype of 'd'. 'D' is used in Complex and set in
         # UnstructuredMesh_C.py
@@ -138,96 +115,61 @@ class USMesh(object):
 
         # Defalut options for mesh warping
         self.solverOptionsDefault = {
-            # Warp Type
-            'warpType':'inversedistance',#alt: rbf
+            'gridFile':None,
             'aExp': 3,
             'bExp': 5,
-            'fileType':'cgns', # other option openfoam
-            'binaryPointsFile':False,
-            'binaryFacesFile':False,
-            'binaryCellsFile':False,
-            'binaryOwnersFile':False,
-            'binaryNeighboursFile':False,
-            }
+            'LdefFact':1.0,
+            'alpha':0.25,
+            'farFieldTol':5.0,
+            'evalMode':'exact',
+            'symmTol':1e-6,
+        }
         
-        # # Set remaining default values
-        # self.FETopo = None
+        # Set remaining default values
         self._checkOptions(self.solverOptions)
-        #self._setMeshOptions()
-        # self.warpMeshDOF = self.warp.block.nnodeslocal*3
-        # self.solverMeshDOF = 0
+        self._setMeshOptions()
+
+        # Initialize various bits of stored information
+        self.OFData = {}
         self.warpInitialized = False
-        self.IDWarpInitialized = False
+        self.patchSizes = None
+        self.familyList = None
+        self.solverMeshDOF = 0
+        fileName = self.solverOptions['gridFile']
 
+        # Determine how to read:
+        if os.path.isfile(fileName):
+            self.warp.readstructuredcgns(fileName)
+            self._getCGNSFamilyList()
 
-        # Read the grid from the CGNS file
-#        print(fileName)
-        fileName, ext = os.path.splitext(fileName)
-        #print('filename after',fileName,ext)
-       
-        if self.solverOptions['fileType'] == 'cgns':
-            self.warp.readunstructuredcgnsfile(fileName+'.cgns', self.comm.py2f())
-
-        elif self.solverOptions['fileType'] == 'openfoam':
-            # we are dealing with an OpenFOAM case
-            self._readOpenFOAMGrid(fileName)
-
+        elif os.path.isdir(fileName):
+            self._readOFGrid(fileName)
         else:
-            print('Invalid input file type. CGNS or OpenFOAM required...Exiting')
-            sys.exit(0)
-        # end if
-       
-        # Figure out the unique surface numbering
-        self.preprocessSurfaces()
+            raise Error('Invalid input file type. CGNS or OpenFOAM required')
 
-        # Extract family info and add default group "all"
-        self._getFamilyList()
+        # Add a default family group 'all' which will always be there.
         self.familyGroup = {}
-        #print('adding family group')
         self.addFamilyGroup('all')
-
-
-        return
 
 # =========================================================================
 #                  Local mesh reading functionality
 # =========================================================================
 
-    def _readOpenFOAMGrid(self,caseDir):
-        '''
-        Read in the mesh points and connectivity from the polyMesh directory
-        '''
+    def _readOFGrid(self, caseDir):
+        """Read in the mesh points and connectivity from the polyMesh
+        directory
+    
+        Parameters
+        ----------
+        caseDir : str
+            The directory containing the openFOAM Mesh files
+        """
         
-        # Copy the reference points file to points to ensure consistant starting
-        # point
+        # Copy the reference points file to points to ensure
+        # consistant starting point
+        self._getOFFileNames(caseDir)
+        shutil.copyfile(self.OFData['refPointsFile'], self.OFData['pointsFile'])
       
-        if self.comm.size >1:
-            '''
-            Run is parallel, write points to decomposed locations
-            '''
-            self.refPointsFile = os.path.join(caseDir,'processor%d/constant/polyMesh/points_orig'%self.comm.rank)
-            self.pointsFile = os.path.join(caseDir,'processor%d/constant/polyMesh/points'%self.comm.rank)
-            print('run is parallel')
-            print('filename',self.comm.rank,self.pointsFile)
-        else:
-            self.refPointsFile = os.path.join(caseDir,'constant/polyMesh/points_orig')
-            self.pointsFile = os.path.join(caseDir,'constant/polyMesh/points')
-        # end
-      
-        # self.refPointsFile = os.path.join(caseDir,'constant/polyMesh/points_orig')
-        # self.pointsFile = os.path.join(caseDir,'constant/polyMesh/points')
-
-        status = subprocess.call("cp " + "%s %s"%(self.refPointsFile,self.pointsFile), shell=True)
-        if status != 0:
-            raise Error('pyWarpUstruct: proc %d: status %d: Unable to copy points_orig to points.'%(self.comm.rank,status))
-
-        # Create an instance of mesh info
-        if self.comm.size >1:
-            self.mInfo = MeshInformation(caseDir,processor='processor%d'%self.comm.rank)
-        else:
-            self.mInfo = MeshInformation(caseDir)
-        # end
-
         # Read in the volume points
         self._readVolumeMeshPoints()
 
@@ -238,494 +180,326 @@ class USMesh(object):
         self._readBoundaryInfo()
       
         # Read the cell info for the mesh
-        #print('reading owner info')
         self._readCellInfo()
 
-        return
+        # Finally create the underlying data structure:
+        faceSizes = []
+        faceConn = []
+        pts = []
+        x0 = self.OFData['x0']
+        faces = self.OFData['faces']
+        connCount = 0
+        localFamilies = []
+        localType = []
+        self.patchNames = []
+        self.patchPtr = [0]
+        symNodes = []
+        for bName in self.OFData['boundaries']:
+            bType = self.OFData['boundaries'][bName]['type'].lower()
+            if bType in ['patch', 'wall']:
+                localFamilies.append(bName)
+                if bType == 'wall':
+                    localType.append(IWALL)
+                if bType == 'patch':
+                    localType.append(IFAR)
+
+                # Apparently openfoam will list boundaries with zero faces on them:
+                nFace = len(self.OFData['boundaries'][bName]['faces'])
+                if nFace > 0:
+                    for iFace in self.OFData['boundaries'][bName]['faces']:
+                        face = faces[iFace]
+                        nNodes = len(face)
+                        # Pull out the 'len(face)' nodes from x0.
+                        for j in range(nNodes):
+                            pts.append(x0[face[j]])
+                        faceSizes.append(nNodes)
+                        faceConn.extend(range(connCount, connCount + nNodes))
+                        connCount += nNodes
+
+                    self.patchNames.append(bName.lower())
+                    self.patchPtr.append(connCount)
+            if bType.lower() == 'symmetry':
+                # Gather up all the sym nodes
+                for iFace in self.OFData['boundaries'][bName]['faces']:
+                    face = faces[iFace]
+                    for j in range(len(face)):
+                        symNodes.append(x0[face[j]])
+
+        # Gather all symmetry nodes:
+        if len(symNodes) == 0:
+            symNodes = np.zeros((0, 3))
+        else:
+            symNodes = np.array(symNodes)
+        
+        allSymNodes = self.comm.allgather(symNodes)
+        allSymNodes = np.vstack(allSymNodes)
+        iSymm = 0
+        if len(allSymNodes > 0):
+            symmSum = np.sum(allSymNodes, axis=0)
+            n = len(symmSum)
+            if symmSum[0] / n < self.solverOptions['symmTol']:
+                iSymm = 1
+            elif symmSum[1] / n < self.solverOptions['symmTol']:
+                iSymm = 2
+            elif symmSum[2] / n < self.solverOptions['symmTol']:
+                iSymm = 3
+            self.warp.gridinput.isymm = iSymm
+
+        # Create the internal structures for volume mesh
+        self.warp.createvolumegrid(x0.T)
+        pts = np.array(pts)
+        # And run the common routine for setting up the surface
+        self.warp.initializewarping(np.ravel(pts.real.astype('d')),
+                                    faceSizes, faceConn)
+
+        # Run the compute nodal properties to initialize the normal
+        # vectors.
+        self.warp.computenodalproperties(True)
+        self.warpInitialized = True
+
+        # Now communicate all the family stuff
+        tmpFamilies = self.comm.allgather(localFamilies)
+        tmpPatchType = self.comm.allgather(localType)
+        
+        self.familyList = {}
+        for iProc in range(self.comm.size):
+            for j in range(len(tmpFamilies[iProc])):
+                fam = tmpFamilies[iProc][j]
+                pType = tmpPatchType[iProc][j]
+                if fam not in self.familyList:
+                    self.familyList[fam.lower()] = pType
 
     def _readVolumeMeshPoints(self):
         '''
         return an numpy array of the mesh points
         '''
 
-        # use PyFoam to determine the number of points in the file
-        self.nPoints = self.mInfo.nrOfPoints()
-        print('nPoints',self.nPoints,self.comm.rank)
-
         # Open the points file for reading
-        pointHandle = open(self.pointsFile,'r')
-
-        self._parseHeaderNumerical(pointHandle,self.nPoints)
-      
-        # now read the points into x
-        #print (self.solverOptions)
-        #print ('binaryPointsFile?',self.solverOptions['binaryPointsFile'])
-        if self.solverOptions['binaryPointsFile']:
-            # read the points in binary using fromfile
-            x = np.fromfile(pointHandle, dtype='float', count=self.nPoints*3, sep="").reshape((self.nPoints,3))
-
-        else:
-            #print('reading points file')
-            # read the file in as ascii
-            x = np.zeros([self.nPoints,3])
-            counter = 0
-            for line in pointHandle.readlines():
-                #print 'before',line
-                line = re.sub('[)(]', '', line)
-                #print('after',line)
-                vals = line.split()
-                #print(len(vals),vals)
-                if len(vals)==3 and counter<self.nPoints:
-                    #print 'points found',counter
-                    x[counter,0] = float(vals[0])
-                    x[counter,1] = float(vals[1])
-                    x[counter,2] = float(vals[2])
-                    #print('x',counter,x[counter,:])
-                    counter += 1
-                # end
-            # end
-        # end
-
-        pointHandle.close()
-        print('points',self.comm.rank,x.shape)
+        f = open(self.OFData['pointsFile'], 'r')
+        lines = f.readlines()
+        f.close()
         
-        #sys.exit(0)
-        #print('setting volumePoints')
-        self.warp.setvolumecoordinates(1,1,x,True)
-        #print('volume PointsSet')
+        # Read Regular Header
+        foamHeader, i, N = self._parseFoamHeader(lines, i=0)
+        
+        try:
+            fmt = foamHeader['format'].lower() 
+        except:
+            fmt = 'ascii' # assume ascii if format is missing.
 
-        return 
+        x = np.zeros((N, 3), self.dtype)
+        pointLine = re.compile(r'\((\S*)\s*(\S*)\s*(\S*)\)\s*\n')
 
-    def _setOpenFoamVolumePoints(x):
-        '''
-        take in the OpenFoam data Points and set in the warping
-        '''
-        self.warp.setvolumecoordinates(1,1,x,False)
+        if fmt == 'binary':
+            raise Error('Binary Reading is not yet supported.')
+        else:
+            k = 0
+            for j in range(N):
+                res = pointLine.match(lines[j + i])
+                if res:
+                    k += 1
+                    for idim in range(3):
+                        x[j, idim] = float(lines[j + i][res.start(idim+1):res.end(idim+1)])
 
-        return
+            if k != N:
+                raise Error('Error reading grid coordinates. Expected %d'
+                            ' coordinates but found %d'%(N, k))
+        self.OFData['x0'] = x
 
     def _readBoundaryInfo(self):
         '''
         read the boundary file information for this case and store in a dict.
         '''
-        dirName = os.getcwd()
-        
-        boundaryFile = os.path.join(dirName,'constant/polyMesh/boundary')
-        meshDir = os.path.join(dirName,'constant/polyMesh/')
 
-        boundary=ListFile(meshDir,"boundary")
-        
-        nBoundaries = boundary.getSize()
+        # Open the boundary file
+        f = open(self.OFData['boundaryFile'], 'r')
+        lines = f.readlines()
+        f.close()
 
-        boundaryHandle = open(boundaryFile, 'r')
+        # Read Regular Header
+        foamHeader, i, N = self._parseFoamHeader(lines, i=0)
 
-        self._parseHeaderNumerical(boundaryHandle,nBoundaries)
-
-        #print ('boundary',dir(boundary),boundary.getSize())
-        
+        # We don't actually need to know the number of blocks...just read them all:
         boundaries = {}
-        boundaryKeys = []
-        boundaryCounter = 0
-        startDict = True
-        for line in boundaryHandle.readlines():
-            #print(line)
-            vals = line.split()
-            #print('vals',vals,'len',len(vals))
-            if len(vals)==0:
-                continue
+        keyword = re.compile(r'\s*([a-zA-Z]{1,100})\s*\n')
+        while i < len(lines):
+            res = keyword.match(lines[i])
+            if res:
+                boundaryName = lines[i][res.start(1):res.end(1)]
+                i, blkData = self._readBlock(lines, i)
+
+                # Now we can just read out the info we need:
+                startFace = int(blkData['startFace'])
+                nFaces = int(blkData['nFaces'])
+                faces = np.arange(startFace, startFace+nFaces)
+                nodes = []
+                for face in faces:
+                    nodes.extend(self.OFData['faces'][face])
+                boundaries[boundaryName] = {
+                    'faces':faces,
+                    'nodes':nodes,
+                    'type':blkData['type']}
             else:
-                if startDict:
-                    if vals[0]==')':
-                        startDict = False
-                        continue
-                    else:
-                        boundaries[vals[0]] = {}
-                        boundaryKeys.append(vals[0])
-                        startDict = False
-                    # end
-                elif boundaryCounter<nBoundaries:
-                    if '{' in line:
-                        continue
-                    elif '}' in line:
-                        startDict=True
-                        boundaryCounter+=1
-                        #print(boundaryCounter,nBoundaries)
-                    else:
-                        #print('appending boundary',boundaryKeys[boundaryCounter],vals[0],vals[1].split(';')[0])
-                        boundaries[boundaryKeys[boundaryCounter]][vals[0]] = vals[1].split(';')[0]
-                    # end
-                # end
-                #print vals
-
-            # end
-        # end
-#        print(boundaries.keys())
-
-                        
-        boundaryHandle.close()
-        # for key in boundaries.keys():
-        #     print(key,boundaries[key])
-        # sys.exit(0)
-        # loop over the boundary sections and create a list of nodes and elements
-        # associated with each one. Note that on the surface, the faces are the
-        # elements.
-            
-
-        for key in boundaries.keys():
-            #print(key)
-            nodeCounter = 0#1#0 #start from 1 not zero for fortran numbering
-            nFaces = int(boundaries[key]['nFaces'])
-            startFaces = int(boundaries[key]['startFace'])
-            boundaries[key]['faceList'] = np.zeros(nFaces+1,int)
-            boundaries[key]['nodeIndexList']=[]
-            #print(key,nFaces,startFaces)
-            for counter in range(nFaces):
-                face = counter+startFaces
-                #print('face',face)
-                boundaries[key]['faceList'][counter] = nodeCounter
-                nNodes = len(self.faces[face])
-                for node in range(nNodes):
-                    #print('node',node)
-                    index = self.faces[face][node]+1
-                    boundaries[key]['nodeIndexList'].append(index)
-                    nodeCounter+=1
-                # endfor
-            # end
-            boundaries[key]['faceList'][-1] = nodeCounter
-            # print('facelist',boundaries[key]['faceList'][-3:])
-            # print('nodeIndexlist',len(boundaries[key]['nodeIndexList']),boundaries[key]['nodeIndexList'][-3:])
-        # end for
-
-        #print('nBound',len(boundaries),nBoundaries)
-        #Now Allocate the memory and set in fortran
-        self.warp.createsections(1,nBoundaries)
-
-        isVolumeSec = np.array([False]*nBoundaries)
-        # print('isVolSec',isVolumeSec)
-        # sys.exit(0)
-        self.warp.setsectiontypes(1,isVolumeSec)
-        
-        counter = 1
-        for key in sorted(boundaries.keys()):
-            #print(key)
-            nFaces = int(boundaries[key]['nFaces'])
-            secName = key
-            eBeg = int(boundaries[key]['startFace'])
-            eEnd = int(eBeg+nFaces)
-            #print('eend',eEnd)
-            self.warp.setsectiondata(1,counter,counter,secName,
-                                     eBeg,eEnd,
-                                     np.array(boundaries[key]['nodeIndexList']),
-                                     boundaries[key]['faceList'])
-            isBoundary = True
-            isWall = False
-            isSymm = False
-            if(boundaries[key]['type']=='wall'):
-                isBoundary = False
-                isWall=True
-            elif(boundaries[key]['type']=='symmetry'):
-                isBoundary = False
-                isSymm = True
-            # end
-            #print('boundary',key,counter,isBoundary,isWall,isSymm)
-            self.warp.setboundarydata(1,counter,counter,key,isWall,isSymm,
-                                      isBoundary)
-            counter +=1
-        # end
-        #print('sectionDataSet')
-        
-        return
+                i += 1
+        self.OFData['boundaries'] = boundaries
 
     def _readFaceInfo(self):
-        '''
+        """
         Read the face info for this case.
-        '''
-        dirName = os.getcwd()
+        """
+
+        f = open(self.OFData['faceFile'], 'r')
+        lines = f.readlines()
+        f.close()
         
-        faceFile = os.path.join(dirName,'constant/polyMesh/faces')
-        #faceFile2 = os.path.join(dirName,'constant/polyMesh/faces_test')
-        meshDir = os.path.join(dirName,'constant/polyMesh/')
+        # Read Regular Header
+        foamHeader, i, N = self._parseFoamHeader(lines, i=0)
+        
+        try:
+            fmt = foamHeader['format'].lower() 
+        except:
+            fmt = 'ascii' # assume ascii if format is missing.
 
-        faces=ListFile(meshDir,"faces")
-
-        self.nFaces = faces.getSize()
-
-        faceHandle = open(faceFile, 'r')
-        #faceHandle2 = open(faceFile2, 'rb')
-
-        # parse through the header to get to the start of the binary data
-        self._parseHeaderNumerical(faceHandle,self.nFaces)
-
-        if self.solverOptions['binaryFacesFile']:
-            for  i in range(30):
-                print(ord(faceHandle2.read(1)))
-            # end
-
-            for i in range(2):
-                value = np.fromfile(faceHandle2, dtype='short', count=1, sep="")
-                #print('val',value)
-                # values = np.fromfile(faceHandle2, dtype='<i4', count=value, sep="")
-                # print values
-            sys.exit(0)
-            for i in range(80):#5):#nFaces):
-                print(ord(faceHandle2.read(1)))
-
-            # for i in range(50):
-            #     #value = faceHandle2.read(8)
-            #     value = np.fromfile(faceHandle, dtype='int', count=1, sep="")
-            #     print 'val',value
-            
-            # for i in range(2):#5):#nFaces):
-            #     print faceHandle.read(1)
-            # for i in range(6):#5):#nFaces):
-            #     nFacePoints = np.fromfile(faceHandle, dtype='int', count=nFaces, sep="")
-            #     print nFacePoints
-            #     # print nFacePoints
-                
-            #     # pointIndices = np.fromfile(faceHandle, dtype=np.int32, count=nFacePoints, sep="")
-            #     # print pointIndices
-
-
-            # end
-            sys.exit(0)
+        if fmt == 'binary':
+            raise Error('Binary Reading is not yet supported.')
         else:
-            # read the file in as ascii
-            faces = []#{}
-            counter = 0
-            for line in faceHandle.readlines():
-                line = re.sub('[)(]', ' ', line)
-                vals = line.split()
-                if len(vals)==0:
-                    continue
-                elif "//" in line:
-                    continue
-                elif counter<self.nFaces:
-                    nPoints = int(vals[0])
-                    faces.append(np.zeros(nPoints,int))
-                    for i in range(nPoints):
-                        faces[counter][i] = int(vals[i+1])
-                    # end
-                    counter += 1
-                # end
-            # end
-
-        self.faces = faces
-        #print('faces',len(faces))
-
-        faceHandle.close()
-        return
+            faces = [[] for k in range(N)]
+            for j in range(N):
+                line = lines[j+i].replace('(', ' ')
+                line = line.replace(')', ' ')
+                aux = line.split()
+                nNode = int(aux[0])
+                for k in range(1, nNode+1):
+                    faces[j].append(int(aux[k]))
+        
+            self.OFData['faces'] = faces
 
     def _readCellInfo(self):
-        '''
-        read the boundary file information for this case and store in a dict.
-        '''
-        dirName = os.getcwd()
+        """Read the boundary file information for this case and store in the
+        OFData dictionary."""
+
+        # ------------- Read the owners file --------------- 
+        f = open(self.OFData['ownerFile'], 'r')
+        lines = f.readlines()
+        f.close()
+
+        # Read Regular Header
+        foamHeader, i, N = self._parseFoamHeader(lines, i=0)
         
-        #cellFile = os.path.join(dirName,'constant/polyMesh/cells')
-        ownerFile = os.path.join(dirName,'constant/polyMesh/owner')
-        neighbourFile = os.path.join(dirName,'constant/polyMesh/neighbour')
-        meshDir = os.path.join(dirName,'constant/polyMesh/')
+        try:
+            fmt = foamHeader['format'].lower() 
+        except:
+            fmt = 'ascii' # assume ascii if format is missing.
 
-        #cells=ListFile(meshDir,"cells")
-        owners = ListFile(meshDir,"owner")
-        neighbours = ListFile(meshDir,"neighbour")
+        owner = np.zeros(N, 'intc')
+
+        if fmt == 'binary':
+            raise Error('Binary Reading is not yet supported.')
+        else:
+            for j in range(N):
+                owner[j] = int(lines[j + i])
+
+        # ------------- Read the neighbour file --------------- 
+        f = open(self.OFData['neighbourFile'], 'r')
+        lines = f.readlines()
+        f.close()
+
+        # Read Regular Header
+        foamHeader, i, N = self._parseFoamHeader(lines, i=0)
         
-        self.nOwners = owners.getSize()
-        self.nNeighbours = neighbours.getSize()
-        #self.nCells = cells.getSize()
+        try:
+            fmt = foamHeader['format'].lower() 
+        except:
+            fmt = 'ascii' # assume ascii if format is missing.
 
-        #cellHandle = open(cellFile, 'r')
-        ownerHandle = open(ownerFile, 'r')
-        neighbourHandle = open(neighbourFile, 'r')
-
-        # parse through the header to get to the start of the binary data
-        #self._parseHeaderNumerical(cellHandle,self.nCells)
-        self._parseHeaderNumerical(ownerHandle,self.nOwners)
-        self._parseHeaderNumerical(neighbourHandle,self.nNeighbours)
-
-        # # read the cells
-        # if self.solverOptions['binaryCellsFile']:
-        #     pass
-        # else:
-        #     # read the file in as ascii
-        #     cells = {}
-        #     counter = 0
-        #     for line in cellHandle.readlines():
-        #         line = re.sub('[)(]', ' ', line)
-        #         vals = line.split()
-        #         if len(vals)==0:
-        #             continue
-        #         elif "//" in line:
-        #             continue
-        #         elif counter<self.nCells:
-        #             nFacesPerCell = int(vals[0])
-        #             cells[counter]= np.zeros(nFacesPerCell,int)
-        #             for i in range(nFacesPerCell):
-        #                 cells[counter][i] = int(vals[i+1])
-        #             # end
-        #             counter += 1
-        #         # end
-        #     # end
-
-        # read the owners
-        if self.solverOptions['binaryOwnersFile']:
-            pass
+        neighbour = np.zeros(N, 'intc')
+        if fmt == 'binary':
+            raise Error('Binary Reading is not yet supported.')
         else:
-            # read the file in as ascii
-            #owners = {}
-            self.owners = np.zeros(self.nOwners,int)
-            counter = 0
-            for line in ownerHandle.readlines():
-                line = re.sub('[)(]', ' ', line)
-                vals = line.split()
-                if len(vals)==0:
-                    continue
-                elif "//" in line:
-                    continue
-                elif counter<self.nOwners:
-                    self.owners[counter]=int(vals[0])
-                    counter += 1
-                # end
-            # end
-            #print('nowners',self.nOwners,counter,self.owners.shape,np.max(self.owners))
-            cellFaceList = []
-            self.nCells = np.max(self.owners)+1
-            for i in range(self.nCells):
-                cellFaceList.append([])
-            # end
-            for i in range(self.nOwners):
-                faceCell = self.owners[i]
-                #print('faceCell',faceCell,i,len(cellFaceList))
-                cellFaceList[faceCell].append(i)
-            # end
-            #print(cellFaceList)
+            for j in range(N):
+                neighbour[j] = int(lines[j + i])
 
-        # read the neighbours
-        if self.solverOptions['binaryNeighboursFile']:
-            pass
-        else:
-            # read the file in as ascii
-            self.neighbours = np.zeros(self.nNeighbours,int)
-            counter = 0
-            for line in neighbourHandle.readlines():
-                line = re.sub('[)(]', ' ', line)
-                vals = line.split()
-                if len(vals)==0:
-                    continue
-                elif "//" in line:
-                    continue
-                elif counter<self.nNeighbours:
-                    self.neighbours[counter]=int(vals[0])
-                    counter += 1
-                # end
-            # end
-            #print('nNeighbours',self.nNeighbours,counter,self.neighbours.shape,np.max(self.neighbours))
-            # now append neighbour faces
-            for i in range(self.nNeighbours):
-                faceCell = self.neighbours[i]
-                #print('faceCell',faceCell,i,len(cellFaceList))
-                cellFaceList[faceCell].append(i)
-            # end
-            # #print(cellFaceList)
-            # for i in range(len(cellFaceList)):
-            #     print('faceList',i,len(cellFaceList[i]))
+        self.OFData['owner'] = owner
+        self.OFData['neighbour'] = neighbour
 
-
-    def _parseHeaderNumerical(self,handle,stopValue):
-        '''
-        a generic function to parse through a file and return when a certain
-        number is detected in the file
-        '''
-
-        # Setup a character based check to find the start of the list entries
-        # Turn the number of entries into a string
-        nEntriesChar = '%d'%stopValue
-        # determine the length of the string
-        lenNEntries = len(nEntriesChar)
-        # create a boolean array with an entry for each character of the string
-        # if we match all of the characters consecutively, we will set a logical
-        # which will combine with the '(' character to indicate the start of the list
-        entriesCheck = np.zeros(lenNEntries,bool)
-
-        # set and index for the character boolean and create the logical to indicate
-        # when we have found the consecutive string of characters that represent the
-        # number of points
-        eIdx = 0
-        nEntriesFound = False
-        # loop over the characters in the file one byte at a time
-        while True:
-            c = handle.read(1)
-            if not nEntriesFound:
-                # check to see if the current character matches the required 
-                # character in the sequence
-                if c == nEntriesChar[eIdx]:
-                    # if they match, set the current entry in the boolean array 
-                    # to true and increment the index to the next entry in the 
-                    # array
-                    #print(c)
-                    entriesCheck[eIdx] = True
-                    eIdx += 1
-
-                else:
-                    # Otherwise we haven't found the string so we need to start over
-                    # reset everything
-                    entriesCheck[:] = False
-                    eIdx = 0
-
-                # end
-
-                # check if all of the entries in the boolean array are True
-                # if so we have found the nEntries string and we can start searching
-                # for the start of the list of entries
-                if all(entriesCheck):
-                    nEntriesFound = True
-                # end
-                        
+    def addFamilyGroup(self, groupName, families=None):
+        """ 
+        Create a grouping of CGNS families called "groupName"
+        
+        Input Arguments:
+            groupName, str: The name to call this collection of families
+        Optional Arguments:
+            families, list: A list containing the names of the CGNS familes
+                the user wants included in "groupName". The items in the list
+                must be valid family names. The user can call printFamilyList() 
+                to determine what families are present in the CGNS grid.
+                Default: All families
+            """
+      
+        # Use whole list by default
+        if families == None: 
+            families = []
+            for fam in self.familyList:
+                if self.familyList[fam] == IWALL:
+                    families.append(fam)
+                    
+        groupFamList = []
+        for fam in families:
+            if fam.lower() in self.familyList:
+                if self.familyList[fam.lower()] == IWALL:
+                    groupFamList.append(fam.lower())
             else:
-                # Now that we have found the nEntries Character string, we can start
-                # looking for the '(' that represents the start of the entries list
-                # once we have found that character, exit the loop.
-                if c=='(':
-                    #print("final Character",c)
-                    #print("End of header")
-                    break
-                # end
-            # end
-            #print "Read a character:", c
-        # end
-
-        return
+                raise Error("%s was not in family list!"% fam)
         
-# ============================
-# Local grid geometry calcs
-# ============================
-    def preprocessSurfaces(self):
-        '''
-        Run the routines to separate out the surfaces and determine the 
-        node orderings
-        '''
+        self.familyGroup[groupName] = {'families':groupFamList}
 
-        #self.warp.getuniquesurfacenodelist()
-        self.warp.getfulluniquesurfacenodelist()
-        self.updateGridMetrics(True)
+        if self.warpInitialized: # Warp is initialized so we can continue
+            nodeIndices = []
+            nodeCount = 0
+
+            # Loop over all possible patch Names
+            for i in range(len(self.patchNames)):
+                sizeOfPatch = self.patchPtr[i+1] - self.patchPtr[i]
+                
+                # Check if the current patch is part of what we are adding
+                if self.patchNames[i] in groupFamList:
+                    # Get the nodes indices:
+                    nodeIndices.extend(range(
+                        3*self.patchPtr[i], 3*self.patchPtr[i+1]))
+                nodeCount += sizeOfPatch
+
+            self.familyGroup[groupName]['indices'] = nodeIndices
+
+            if self.patchSizes is not None:
+                # Now we will compute the connectivity of the
+                # requested family group. This is currently only
+                # possible when the mesh object has been initialized
+                # using and external structured surface mesh.
+                cellConn = []
+                nNodesSkipped = 0
+                cCnt = 0
+          
+                for i in range(len(self.patchNames)):
+                    cellSize = (self.patchSizes[i][0]-1)*(self.patchSizes[i][1]-1)
+                    if self.patchNames[i] in groupFamList: 
+                        # Add the connecitivity minus the number of nodes
+                        # we've skipped so far. 
+                        cellConn.extend(
+                            self.conn[4*cCnt:4*(cCnt+cellSize)].copy() - nNodesSkipped)
+                    else:
+                        # If we didn't add this patch increment the number
+                        # of nodes we've skipped
+                        nNodesSkipped += (self.patchPtr[i+1] - self.patchPtr[i])
+                    cCnt += cellSize
+
+                self.familyGroup[groupName]['connectivity'] = (
+                    np.array(cellConn).reshape((len(cellConn)/4, 4)))
+
+    def printFamilyList(self):
+        """ Prints the families in the CGNS file"""
         
-        return
-
-    def updateGridMetrics(self,initialPoint=False):
-        '''
-        run the fortran level routines to compute area for 
-        the surface elements/faces
-        '''
-
-        self.warp.getsurfaceelementcenterandarea()
-        self.warp.computenodalproperties(initialPoint)
-
-
-        return
-
-# =========================================================================
-#                  Local Multi-disciplinary Surface Functionality
-# =========================================================================
+        if self.comm.rank == 0:
+            print('Family list is:', self.familyList.keys())
 
     def getSurfaceCoordinates(self, groupName):
         """ 
@@ -743,20 +517,18 @@ class USMesh(object):
         """
         self._setInternalSurface()
         indices = self._getIndices(groupName)
-        coords = np.zeros((len(indices),3), self.dtype)
-        #print('about to get coords',groupName,len(indices))
+        coords = np.zeros((len(indices)//3, 3), self.dtype)
         self.warp.getsurfacecoordinates(indices, np.ravel(coords))
-        #print('points',coords.shape)
 
         return coords
    
-#     def getSurfaceConnectivity(self, groupName):
-#         """
-#         Returns the connectivities of the surface coordinates that
-#          were obtained with getSurfaceCoordinates()
-#         """
+    def getSurfaceConnectivity(self, groupName):
+        """
+        Returns the connectivities of the surface coordinates that were
+        obtained with getSurfaceCoordinates()
+        """
 
-#         return self.familyGroup[groupName]['connectivity']
+        return self.familyGroup[groupName]['connectivity']
 
     def setSurfaceCoordinates(self, coordinates, groupName):
         """ Sets all surface coordinates on this processor in group
@@ -769,354 +541,326 @@ class USMesh(object):
            coordinates, numpy array, size(N,3): The coordinate to set. This MUST
                be exactly the same size as the array obtained from 
                getSurfaceCoordinates()
-         Output Arguements:
-            Noneupd
-
-            """
+        """
 
         indices = self._getIndices(groupName)
-        #print ('indices',indices)
         self.warp.setsurfacecoordinates(indices, np.ravel(coordinates))
-        
-        return 
- 
-    def addFamilyGroup(self, groupName, families=None):
+
+    def setExternalMeshIndices(self, ind):
         """ 
-        Create a grouping of CGNS families called "groupName"
+        Set the indicies defining the transformation of an external
+        solver grid to the original CGNS grid. This is required to use
+        MBMesh functions that involve the word "Solver" and warpDeriv
         
-        Input Arguments:
-            groupName, str: The name to call this collection of families
-        Optional Arguments:
-            families, list: A list containing the names of the CGNS familes
-                the user wants included in "groupName". The items in the list
-                must be valid family names. The user can call printFamilyList() 
-                to determine what families are present in the CGNS grid.
-                Default: All families
-        Output Arguements:
-            None
+        Parameters
+        ----------
+        ind : numpy integer array
+            The list of indicies this processor needs from the common mesh file
+        """
+        self.warp.setexternalmeshindices(ind)
+        self.solverMeshDOF = len(ind)
 
-            """
-      
-        # Use whole list by default
-        if families == None: 
-            families = self.familyList
-        # end if
-
-        groupFamList = []
-        for fam in families:
-            if fam.lower() in self.familyList:
-                groupFamList.append(fam)
-            else:
-                print('* WARNING: %s was not in family list. \
-I will ignore this family'%(fam),comm=self.comm)
-            # end if
-        # end for
-        
-        self.familyGroup[groupName] = {'families':groupFamList}
-#        print ('family Group',groupName,self.familyGroup[groupName])
-        if self.warpInitialized: # We can add the indices
-            nodeIndices = []
-            nodeCount = 0
-
-            for i in xrange(len(self.patchNames)):
-                sizeOfPatch = self.patchSizes[i]#[0]*self.patchSizes[i][1]*3
-                
-                if self.patchNames[i] in groupFamList:
-                    # Get the nodes indices:
-                    nodeIndices.extend(np.array(self.patchIndices[i]))
-#                    print('nodeLength',len(self.patchIndices[i]),len(nodeIndices))
-                # end if
-                nodeCount += sizeOfPatch
-            # end for
-#            print('groupName',groupName,nodeCount,len(nodeIndices))
-            self.familyGroup[groupName]['indices'] = nodeIndices
-            
-        #     cellConn = np.zeros((0,4),'intc')
-        #     if self.connectivity is None:
-        #         self.familyGroup[groupName]['connectivity'] = cellConn
-        #         return 
-         
-        #     nNodesSkipped = 0
-        #     cCnt = 0
-          
-        #     for i in xrange(len(self.patchNames)):
-        #         cellSize = (self.patchSizes[i][0]-1)*(self.patchSizes[i][1]-1)            
-        #         if self.patchNames[i] in groupFamList: 
-        #             # Add the connecitivity minus the number of nodes
-        #             # we've skipped so far. 
-        #             tmp = self.connectivity[cCnt:cCnt+cellSize,:].copy() - nNodesSkipped
-        #             cellConn = np.append(cellConn, tmp)
-        #         else:
-        #             # If we didn't add this patch increment the number
-        #             # of nodes we've skipped
-        #             nNodesSkipped += self.patchSizes[i][0]*self.patchSizes[i][1]
-        #         # end if
-        #         cCnt += + cellSize
-        #     # end for
-
-          
-        #     self.familyGroup[groupName]['connectivity'] = cellConn
-
-        return
-   
-    def printFamilyList(self):
-        """ Prints the families in the CGNS file"""
-        
-        if self.comm.rank == 0:
-            print('Family list is:', self.familyList)
-
-        return
-
-# # =========================================================================
-# #                         Interface Functionality
-# # =========================================================================
-
-#     def setExternalMeshIndices(self, ind):
-#         """ 
-#         Set the indicies defining the transformation of an external
-#         solver grid to the original CGNS grid. This is required to use
-#         MBMesh functions that involve the word "Solver" and warpDeriv
-        
-#         Input Arguments:
-#             ind, numpy integer array: The list of indicies this processor
-#                 needs from the CGNS mesh
-
-#                 """
-#         self.warp.setexternalmeshindices(ind)
-#         self.solverMeshDOF = len(ind)
-
-#         return 
-
-    def setExternalSurface(self, patchNames, patchSizes, patchIndices, conn, pts):
+    def setExternalSurface(self, patchNames, patchSizes, conn, pts):
         """
         This is the Master function that defines the surface
-        coordinates the external solver wants to use. The actual
-        coordinates themselves MUST match exactly with the warp's
-        surface (i.e. you must use the same mesh), but they need not
-        match by processor or and the solver may have split pataches. 
-        """
+        coordinates the external solver wants to use.
 
-        self.patchNames = patchNames
+        This function is **not** typically called by the user, but is
+        done automatically by an external solver (ex. SUmb) in the
+        setMesh() call. 
+
+        Parameters
+        ----------
+        patchName : list of strings, length nPatch
+            The names of each patch
+        patchSizes : array size (nPatch, 2)
+            The size of sizes of the patches
+        conn : int array, size (N, 4)
+            Connectivity of the nodes on this processor
+        pts : array, size (M, 3)
+            Nodes on this processor. 
+           """
+
+        # Since this routine is called by an external structured
+        # solver we will unstructured-itize the data. Essentially we
+        # just turn the patch sizes in to pointer of length patchNames
+        # + 1 such that we can figure out what indices correspond to
+        # the particular family. 
+
+        patchPtr = np.zeros(len(patchSizes) + 1, 'intc')
+        for i in range(len(patchSizes)):
+            patchPtr[i+1] = patchPtr[i] + patchSizes[i][0]*patchSizes[i][1]
         self.patchSizes = patchSizes
-        self.patchIndices = patchIndices
-        self.connectivity = conn
+        self.patchPtr = patchPtr
+        self.patchNames = patchNames
+        self.conn = np.array(conn).flatten()
+        # All faces are quads so just use '4' for them all
+        self.faceSizes = 4*np.ones(len(conn), 'intc') 
         
-        # Call the fortran initialze warping command withe the
-        # coordiantes we now have'
+        # Call the fortran initialze warping command with  the
+        # coordinates and the patch connectivity given to us. 
 
-        # self.warp.initializewarping(np.ravel(pts.real.astype('d')))
-        # self._initializeSolidWarping()
+        self.warp.initializewarping(np.ravel(pts.real.astype('d')),
+                                    self.faceSizes, self.conn)
+
+        # Run the compute nodal properties to initialize the normal
+        # vectors.
+        self.warp.computenodalproperties(True)
         self.warpInitialized = True
 
         # We can now back out the indices that should go along with
         # the groupNames that may have already been added. 
-        #print('running add families')
         for key in self.familyGroup.keys():
             self.addFamilyGroup(key, self.familyGroup[key]['families'])
-        # end for
-        
-        return 
 
-    def _setInternalSurface(self):
+    def getSolverGrid(self):
         """
-        This function is used by default if setExternalSurface() is not
-        set BEFORE an operation is requested that requires this information. 
+        Return the current grid in the order specified by
+        setExternalMeshIndices()
+
+        Returns
+        -------
+        solverGrid, numpy array, real: The resulting grid. 
+           The output is returned in flatted 1D coordinate
+           format. The len of the array is 3*len(indices) as
+           set by setExternalMeshIndices()
+        """
+        solverGrid = np.zeros(self.solverMeshDOF, self.dtype)
+        warpGrid = self.getWarpGrid()
+        self.warp.warp_to_solver_grid(warpGrid, solverGrid)
+        
+        return solverGrid
+
+    def getWarpGrid(self):
+        """
+        Return the current grid. This funtion is typically unused. See
+        getSolverGrid for the more useful interface functionality. 
+        
+        Returns
+        -------
+        warpGrid, numpy array, real: The resulting grid. 
+            The output is returned in flatted 1D coordinate
+            format. 
         """
 
-        if self.warpInitialized is False:
-            print(' -> Info: Using Internal pyWarp Surfaces')
-            # get the number of wall patches on this proc
-            npatch = self.warp.getnpatches()
-            patchNames = []
-            patchIndices = []
-            patchSectionIndices = []
-            patchSizes = []
-            ptSize = 0
-            #print ('Npatches',npatch)
-            # loop over the patches to get their names and sizes
-            for i in xrange(npatch):               
-                tmp = self.warp.getpatchname(i)
-                patchIdx = self.warp.getpatchindex(i)
-                #print ('patchname',i,tmp,patchIdx)
-                patchSectionIndices.append(patchIdx)
-                patchNames.append(
-                    ''.join([tmp[j] for j in range(32)]).lower().strip())
-                patchSizes.append(self.warp.getpatchsize(patchSectionIndices[i]))
-                #print('patchSizes',patchSizes[i])
-                patchIndices.append(self.warp.getpatchindexlist(patchSectionIndices[i],patchSizes[i]))
-                #print('index length',len(patchIndices[i]))
-                ptSize += patchSizes[-1]#[0]
-            # end for
-
-            # get the patch points
-            conn = None
-            pts = np.zeros((ptSize,3), 'd') #Explicitly real...even in complex
-            self.warp.getpatches(np.ravel(pts))
-            #print(pts.shape,patchNames,patchSizes[0])
-
-            # Run the "external" command
-            self.setExternalSurface(patchNames, patchSizes, patchIndices, conn, pts)
-
-            self.warpInitialized = True
-        return
-
-#     def getSolverGrid(self):
-#         """
-#         Return the current grid in the order specified by
-#         setExternalMeshIndices()
-
-#         Input Arguments: 
-#             None
-#         Output Arguments:
-#             solverGrid, numpy array, real: The resulting grid. 
-#                 The output is returned in flatted 1D coordinate
-#                 format. The len of the array is 3*len(indices) as
-#                 set by setExternalMesIndices()
-#                 """
-
-#         solverGrid = np.zeros(self.solverMeshDOF, self.dtype)
-#         warpGrid   = np.zeros(self.warpMeshDOF, self.dtype)
-#         self.warp.packblocks(warpGrid)
-#         self.warp.warp_to_solver_grid(warpGrid, solverGrid)
+        return self.warp.getvolumecoordinates(self.warp.griddata.warpmeshdof)
         
-#         return solverGrid
+    def getdXs(self, groupName):
+        """
+        Return the current values in dXs. This is typically the result
+        of a mesh warp-derivative computation.
 
-#     def getWarpGrid(self):
-#         """
-#         Return the current grid. This funtion is typically unused. See
-#         getSolverGrid for the more useful interface functionality. 
+        Parameters
+        ----------
+        groupName : str
+            The group from which to obtain the derivatives.  This name
+            must have been obtained from addFamilyGroup() or be the
+            default 'all' which contains all surface coordiantes
 
-#         Input Arguments: 
-#             None
-#         Output Arguments:
-#             warpGrid, numpy array, real: The resulting grid. 
-#                 The output is returned in flatted 1D coordinate
-#                 format. 
-#                 """
+        Returns
+        -------
+        dXs :  numpy array
+            The specific components of dXs.  size(N,3) where N is the
+            number of points associated with the families defined by
+            'groupName'
+            """
 
-#         warpGrid = np.zeros(self.warpMeshDOF, self.dtype)
-#         self.warp.packblocks(warpGrid)
+        indices = self._getIndices(groupName)
+        dXs = np.zeros((len(indices)//3, 3), self.dtype)
+        self.warp.getdxs(indices, np.ravel(dXs))
+
+        return dXs
+
+    def setdXs(self, dXs, groupName):
+        """
+        Set just the components into dXs given by groupName
+
+        Parameters
+        ----------
+        dXs : numpy array
+            The components correponding to groupName to set in dXs.
+
+        groupName : str
+            The group defining where components will be set in dXs
+            """
         
-#         return warpGrid
+        indices = self._getIndices(groupName)
+        self.warp.setdxs(indices, np.ravel(dXs))
 
-#     def getdXs(self, groupName):
-#         """
-#         Return the current values in dXs
+    def sectionVectorByFamily(self, groupName, inVec):
+        """
+        Partition a dXs-like vector (inVec) that is 'full size', ie
+        size of the 'all' group and return just the part corresponding
+        to 'groupName'.
+
+        Parameters
+        ----------
+        groupName : str
+            The group defining where components will be returned
+        inVec : real numpy array
+            The components to section whose length corresponds to the
+            len of the 'all' group groupName to set in dXs.
+
+        Returns
+        -------
+        dXs : numpy array
+            The section of inVec that corresponds to the groupName
+            """
+        indices = self._getIndices('all')
+        self.warp.setdxs(indices, np.ravel(inVec))
+        indices = self._getIndices(groupName)
+        outVec = np.zeros((len(indices)//3, 3), self.dtype)
+        self.warp.getdxs(indices, np.ravel(outVec))
+
+        return outVec
+
+    def expandVectorByFamily(self, groupName, inVec):
+        """
+        Expand a dXs like vector (inVec) that correponds to
+        'groupName' and return a vector that is of full size, ie the
+        'all' group. It does the reverse operation of
+        :func:`sectionVectorByFamily`. All other entries of the output
+        are zeroed.
+
+        Parameters
+        ----------
+        groupName : str
+            The group defining where components will be added
+        inVec : numpy array
+            The components to section whose length corresponds to the
+            len of 'groupName' section
+
+        Returns
+        -------
+        dXs : numpy array
+            The expanded form of dXs corresponding to the 'all' group
+            """
+        indices = self._getIndices(groupName)
+        self.warp.setdxs(indices, np.ravel(inVec))
+        indices = self._getIndices('all')
+        outVec = np.zeros((len(indices)//3, 3), self.dtype)
+        self.warp.getdxs(indices, np.ravel(outVec))
         
-#         Input Arguments:
-#             groupName, str: The group defining which components will be
-#                returned from dXs
-#         Output Arguments:
-#             dXs, numpy array real: The specific components of dXs. 
-#                 size(N,3) where N is the number of points associated
-#                 with the families defined by "groupName"
-                
-#                 """
+        return outVec
 
-#         indices = self._getIndices(groupName)
-#         dXs = np.zeros((len(indices)/3,3),self.dtype)
-#         self.warp.getdxs(indices, np.ravel(dXs))
+    def warpMesh(self):
+        """ 
+        Run the applicable mesh warping strategy.
 
-#         return dXs
+        This will update the volume coordinates to match surface
+        coordinates set with setSurfaceCoordinates()
+        """
+        self._setMeshOptions()
+        self.warp.computenodalproperties(False)
+        self.warp.warpmesh()
 
-#     def setdXs(self, dXs, groupName):
-#         """
-#         Return the current values in dXs
+    def warpDeriv(self, dXv, solverVec=True, surfOnly=False):
+        """
+        Compute the warping derivative (dXvdXs^T)*Vec
+
+        This is the main routine to compute the mesh warping
+        derivative. 
+
+        Input Arguments:
+
+            solverdXv, numpy array: Vector of size external
+                solver_grid. This is typically obtained from the
+                external solver's dRdx^T * psi calculation. 
         
-#         Input Arguments:
-#             dXs, real numpy array: The components correponding to
-#                 groupName to set in dXs. 
-#             groupName, str: The group defining where components will be
-#                 set in dXs
-#         Output Arguments:
-#             None
-            
-#             """
+            solverVec, logical: Flag to indicate that the dXv vector
+                 is in the solver ordering and must be converted
+                 to the warp ordering first. This is the usual approach
+                 and thus defaults to True.
+
+            surfOnly, logical: Flag to indicate that a "fake" mesh
+                 warp is to be done. In this case, only dXv values that
+                 are ALREADY on the surface are taken. This is only used
+                 in a few select cases and thus defaults to False.
+
+        Output Arguments:
+
+            None. However, the resulting calculation is available from
+            the getdXs() function. 
+
+        """
+        if solverVec:
+            dXvWarp = np.zeros(self.warp.griddata.warpmeshdof, self.dtype)
+            self.warp.solver_to_warp_grid(dXv, dXvWarp)
+        else:
+            dXvWarp = dXv
+
+        if surfOnly:
+            self.warp.warpderivsurfonly(dXvWarp)
+        else:
+            self.warp.warpderiv(dXvWarp)
+
+    def verifyWarpDeriv(self, dXv=None, solverVec=True, dofStart=0, 
+                        dofEnd=25):
+        """Run an internal verification of the solid warping
+        derivatives"""
+
         
-#         indices = self._getIndices(groupName)
-#         self.warpsetdxs(indices, np.ravel(dXs))
+        if dXv is None:
+            np.random.seed(314) # 'Random' seed to ensure runs are same
+            dXvWarp = np.random.random(self.warp.griddata.warpmeshdof)
+        else:
+            if solverVec:
+                dXvWarp = np.zeros(self.warp.griddata.warpmeshdof, self.dtype)
+                self.warp.solver_to_warp_grid(dXv, dXvWarp)
+            else:
+                dXvWarp = dXv
+        # end if
 
-#         return
+        self.warp.verifywarpderiv(dXvWarp, dofStart, dofEnd)
 
-#     def sectionVectorByFamily(self, groupName, inVec):
-#         """
-#         Partition a dXs like vector (inVec) that is "full size", ie
-#         size of the "all" group and return just the part corresponding
-#         to "groupName"
-#         Input Arguments:
-#             groupName, str: The group defining where components will be
-#                 returned
-#             inVec, real numpy array: The components to section whose length
-#                 corresponds to the len of the "all" group
-#                 groupName to set in dXs. 
-#         Output Arguments:
-#             dXs: The sectioned form of inVec
-            
-#             """
-#         indices = self._getIndices('all')
-#         self.warp.setdxs(indices, np.ravel(inVec))
-#         indices = self._getIndices(groupName)
-#         outVec = np.zeros((len(indices)/3,3), self.dtype)
-#         self.warp.getdxs(indices, np.ravel(outVec))
-
-#         return outVec
-
-#     def expandVectorByFamily(self, groupName, inVec):
-#         """
-#         Expand a dXs like vector (inVec) that correponds to
-#         "groupName" and return a vector that is of full size, ie the
-#         "all" group. It does the reverse operation of
-#         sectionVectorByFamily(). All other entries of the output are
-#         zeroed
-#         Input Arguments:
-#             groupName, str: The group defining where components will be
-#                 added
-#             inVec, real numpy array: The components to section whose length
-#                 corresponds to the len of "groupName"
-#         Output Arguments:
-#             dXs: The expanded form of dXs corresponding to the "all"
-#                 group
-                
-#                 """
-#         indices = self._getIndices(groupName)
-#         self.warp.setdxs(indices, np.ravel(inVec))
-#         indices = self._getIndices('all')
-#         outVec = np.zeros((len(indices)/3,3), self.dtype)
-#         self.warp.getdxs(indices, np.ravel(outVec))
-        
-#         return outVec
-
-# # ==========================================================================
-# #                        Output Functionality
-# # ==========================================================================
+# ==========================================================================
+#                        Output Functionality
+# ==========================================================================
     def writeGridCGNS(self,fileName):
-        '''
-        write the current grid to a CGNS File
-        '''
-        self.warp.writeunstructuredcgnsfile(fileName, self.comm.py2f())
+        """
+        Write the current grid to a CGNS file
+        """
+        raise Error("Not implemented yet")
         
-        return
+    def writeOFGridTecplot(self, fileName):
+        """
+        Write the current openFOAM grid to a tepplot FE polyhedron file
+
+        Parameters
+        ----------
+        fileName : str
+            Filename to use. Should end in .dat for tecplot ascii file.
+        """
+        if not self.OFData:
+            return
+        if self.comm.size == 1:
+            f = open(fileName, 'w')
+        else:
+            fname, fext = os.path.splitext(fileName)
+            fileName = fname + '%d'%self.comm.rank + fext
+            f = open(fileName, 'w')
+
+        # Extract the data we need from the OFDict to make the code a
+        # little easier to read:
+        nodes = self.getWarpGrid()
+        nodes = nodes.reshape((len(nodes)/3, 3))
+        nPoints = len(nodes)
+
+        faces = self.OFData['faces']
+        nFaces = len(faces)
+
+        owner = self.OFData['owner']
+        nCells = np.max(owner) + 1
         
-    def writeGridTecplot(self,fileName):
-        '''
-        write the current grid coordinates in a tecplot FE
-        File.
-        '''
-        f = open(fileName+'.dat','w')
-        
-        nPoints = self.nPoints
-        nFaces = self.nFaces
-        nCells = self.nCells
+        neighbour = self.OFData['neighbour']
+        nNeighbours = len(neighbour)
 
         # write the node numbers for each face
         faceNodeSum = 0
         for i in range(nFaces):   
-            nPointsFace = len(self.faces[i])
-            faceNodeSum+=nPointsFace
-        # end
-        #print('getting volume coords')
-        nodes = self.warp.getvolumecoordinates(1,nPoints)
-        #print('nodes retrieved',nodes.shape)
+            faceNodeSum += len(faces[i])
+
+        # Tecplot Header Info:
         f.write('TITLE = "Example Grid File"\n')
         f.write('FILETYPE = GRID\n')
         f.write('VARIABLES = "X" "Y" "Z"\n')
@@ -1128,63 +872,45 @@ I will ignore this family'%(fam),comm=self.comm)
         f.write('TotalNumFaceNodes=%d\n'%faceNodeSum)
         f.write('NumConnectedBoundaryFaces=%d\n'%0)
         f.write('TotalNumBoundaryConnections=%d\n'%0)
+
         # Write the points to file in block data format
-        for i in range(3):
+        for idim in range(3):
             for j in range(nPoints):
-                f.write('%f\n'%nodes[j,i])
-            # end
-        # end
-        # Write the number of nodes in each face to the
-        # file
-        counter = 0
+                f.write('%g\n'% nodes[j, idim])
+
+        # Write the number of nodes in each face
         for i in range(nFaces):
-            nPointsFace = len(self.faces[i])
-            f.write('%d '%nPointsFace)
-            counter += 1
-            if counter>300:
+            f.write('%d '%len(faces[i]))
+            if i%300 == 0:
                 f.write('\n')
-                counter=0
-        # end
+
         f.write('\n')
-        # write the node numbers for each face
+        # write the node numbers for each face (+1 for tecplot 1-based
+        # ordering)
         for i in range(nFaces):   
-            nPointsFace = len(self.faces[i])
+            nPointsFace = len(faces[i])
             for j in range(nPointsFace):
-                f.write('%d '%(self.faces[i][j]+1))
-            # end
+                f.write('%d '% (faces[i][j]+1))
             f.write('\n')
-        # end
-        # write left elements
+
+        # write left elements (+1 for 1 based ordering)
         for i in range(nFaces):
-            f.write('%d\n'%(self.owners[i]+1))
-        # write right elements
+            f.write('%d\n'%(owner[i]+1))
+
+        # write right elements (+1 for 1 based ordering)
         for i in range(nFaces):
-            if i<self.nNeighbours:
-                f.write('%d\n'%(self.neighbours[i]+1))
+            if i< nNeighbours:
+                f.write('%d\n'% (neighbour[i]+1))
             else:
                 f.write('%d\n'%(0))
-            
-
+                
         f.close()
-        return
+
     def writeOpenFOAMVolumePoints(self):
         '''
         Write the most recent points to a file
         '''
-
-        # get current directory
-        dirName = os.getcwd()
-
-
-        if self.comm.size >1:
-            '''
-            Run is parallel, write points to decomposed locations
-            '''
-            fileName = os.path.join(dirName,'processor%d/constant/polyMesh/points'%self.comm.rank)
-        else:
-             fileName = os.path.join(dirName,'constant/polyMesh/points')
-        # end
-
+        fileName = self.OFData['pointsFile']
         f = open(fileName,'w')
 
         # write the file header
@@ -1206,677 +932,162 @@ I will ignore this family'%(fam),comm=self.comm)
         f.write('// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //\n')
         f.write('\n')
         f.write('\n')
-        # write the number of points in the file
-        nPoints = self.nPoints
-        nodes = self.warp.getvolumecoordinates(1,nPoints)
 
-        f.write('%d\n'%nPoints)
+        nodes = self.getWarpGrid()
+        nodes = nodes.reshape((len(nodes)/3, 3))
+        nPoints = len(nodes)
+        f.write('%d\n'% nPoints)
         f.write('(\n')
         for i in range(nPoints):
-            # write the points
-            f.write('(%f %f %f)\n'%(nodes[i,0],nodes[i,1],nodes[i,2]))
-        # end
-        f.write(')\n')
-        f.write('\n')
-        f.write('\n')
+            f.write('(%f %f %f)\n'%(nodes[i, 0], nodes[i, 1], nodes[i, 2]))
+        f.write(')\n\n\n')
         f.write('// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //\n')
 
-        return
-
-#     def writeVolumeGrid(self, fileName):
-#         """
-#         Write the current state the mesh to a volume CGNS file
-        
-#         Input Arguments: 
-#             fileName: cgns file name for output file
-
-#         Output Arguments:
-#             None
-
-#             """
-        
-#         self.warp.writevolumegrid(fileName)
-
-#         return
-
-#     def writeSuperNodeVolumeGrid(self, fileName):
-#         """
-#         Write the current state the super node mesh to a volume CGNS
-#         file
-        
-#         Input Arguments: 
-#             fileName: cgns file name for output file
-
-#         Output Arguments:
-#             None
-
-#             """ 
-
-#         self._setInternalSurface()
-#         if self.solverOptions['warpType'] != 'algebraic':
-#             self.warp.writevolumegrid_super(fileName)
-#         # end if
-
-#         return
-
-#     def writeXswVolumeGrid(self, fileName):
-#         """
-#         Write the solid warp fill approximation of the volume grid. This is
-#         normally only used for illustrative purposes. 
-
-        
-#         Input Arguments: 
-#             fileName: cgns file name for output file
-
-#         Output Arguments:
-#             None
-
-#             """ 
-
-#         self._setInternalSurface()
-#         if self.solverOptions['warpType'] != 'algebraic':
-#             self.warp.swap_x_and_xsw()
-#             self.warp.writevolumegrid(fileName)
-#             self.warp.swap_x_and_xsw()
-#         # end if
-        
-#         return
-
-#     def writeSurfaceGrid(self, fileName):
-#         """
-#         Write the current state the surface mesh to a volume CGNS file
-        
-#         Input Arguments: 
-#             fileName: cgns file name for output file
-
-#         Output Arguments:
-#             None
-
-#             """
-
-#         self.warp.writesurfacegrid(fileName)
-
-#         return
-
-#     def writeSuperNodeSurfaceGrid(self, fileName):
-#         """
-#         Write the current state the Super Node surface mesh to a
-#         surface CGNS file
-        
-#         Input Arguments: 
-#             fileName: cgns file name for output file
-
-#         Output Arguments:
-#             None
-
-#             """ 
-
-#         self._setInternalSurface()
-#         if self.solverOptions['warpType'] != 'algebraic':
-#             self.warp.writesurfacegrid_super(fileName)
-#         # end if
-
-#         return
-
-#     def writeXswSurfaceGrid(self, fileName):
-#         """
-#         Write the solid warp fill approximation of the surface
-#         grid. This is normally only used for illustrative purposes.
-
-        
-#         Input Arguments: 
-#             fileName: cgns file name for output file
-
-#         Output Arguments:
-#             None
-
-#             """ 
-
-#         self._setInternalSurface()
-#         if self.solverOptions['warpType'] != 'algebraic':
-#             self.warp.swap_x_and_xsw()
-#             self.warp.writesurfacegrid(fileName)
-#             self.warp.swap_x_and_xsw()
-#         # end if
-
-#         return
-        
-#     def writeTopology(self, fileName):
-#         """
-#         Write the computed grid topology to a file
-
-#         Input Arguments: 
-#             fileName, str: The file name for the .con file
-
-#         Usage Notes: This function write out the grid connectivity as
-#         well an ASCII Tecplot file defining the edges. The idea is to
-#         run your script once, use this function to create the topo
-#         file along with the design group labels. The design group
-#         labels can be loaded into tecplot along with the volume grid
-#         and the user can determine the desired number of "Super Nodes"
-#         along each design group. The desired numbers can then be
-#         entered in the topology file.  On subsequent runs, the user
-#         uses the options:
-
-#         'solidWarpType':'topo', 
-#         'topo':'topo_file.con'
-
-#         to use the supplied supplied topology file.
-        
-#         """
-#         if self.FE_topo is not None:
-#             if self.comm.rank == 0:
-#                 self.FETopo.writeConnectivity(fileName + '.con')
-            
-#             # Get the set of corners and mid points from the file:
-#             nBlocks, coords, BCs, blockDims = self._getCGNSCoords()        
-
-#             # Next write out edge file:
-#             if self.comm.rank == 0:
-#                 labelFilename = fileName + '.dat'
-#                 f = open(labelFilename, 'w')
-#                 for iVol in xrange(nBlocks):
-#                     # We ONLY want to write the edge if its on a
-#                     # surface so as to not clutter the output.
-#                     for iFace in xrange(6):
-#                         if BCs[iVol, iFace] <> 0:
-#                             edges = geo_utils.edgesFromFace(iFace)
-#                             for iEdge in edges:
-                        
-#                                 ue = self.FETopo.edge_link[iVol, iEdge]
-#                                 dg = self.FETopo.edges[ue].dg
-#                                 pt = coords[iVol, 8+iEdge]
-#                                 textString = 'TEXT CS=GRID3D X=%f,Y=%f,Z=%f,\
-# T=\"DG%d\"\n'% (pt[0], pt[1], pt[2], dg)
-#                                 f.write('%s'%(textString))
-#                             # end for
-#                         # end if
-#                     # end for
-#                 # end for
-#                 f.close()
-#             # end if
-#         # end if
-
-#         return 
-
-# # =========================================================================
-# #                      Mesh Warping Functionality
-# # =========================================================================
+# =========================================================================
+#                     Internal Private Functions
+# =========================================================================
+    def _setInternalSurface(self):
+        """
+        This function is used by default if setExternalSurface() is
+        not set BEFORE an operation is requested that requires this
+        information. Currently not written.
+        """
+        pass
 
     def _setMeshOptions(self):
         """ Private function to set the options currently in
         self.solverOptions to the corresponding place in Fortran"""
-        
-#         # Solid/Algebraic Warping
-#         if self.solverOptions['warpType'] == 'algebraic':
-#             self.warp.solidwarpmodule.warptype = \
-#                 self.warp.solidwarpmodule.algebraicwarping
-#         elif self.solverOptions['warpType'] == 'solid':
-#             self.warp.solidwarpmodule.warptype = \
-#                 self.warp.solidwarpmodule.solidwarping
-#         else:
-#             mpiPrint('warpType is not reconginzed. Applicable\
-# values are \'solid\' and \'algebraic\'')
-#             sys.exit(1)
-#         # end if
-            
+        o = self.solverOptions
+        self.warp.gridinput.ldeffact = o['LdefFact']
+        self.warp.gridinput.alpha = o['alpha']
+        self.warp.gridinput.aexp = o['aExp']
+        self.warp.gridinput.bexp = o['bExp']
+        self.warp.gridinput.symmtol = o['symmTol']
 
-        return
+        #self.warp.gridinput.aaexp = o['aaExp']
+        #self.warp.gridinput.bbexp = o['bbExp']
 
-    def _initializeIDWarping(self):
+    def releaseMemory(self):
+        """Release all the mesh warping memory"""
+        self.warp.destroyall()
+
+    def _getOFFileNames(self, caseDir):
         """
-        Internal function to setup the necessary data for the inverse distance warping
+        Generate the standard set of filename for an openFoam grid.
+
+        Parameters
+        ----------
+        caseDir : str
+            The folder where the files are stored. 
         """
+        if self.comm.size > 1:
+            self.OFData['refPointsFile'] = os.path.join(caseDir, 'processor%d/constant/polyMesh/points_orig'%self.comm.rank)
+            self.OFData['pointsFile'] = os.path.join(caseDir, 'processor%d/constant/polyMesh/points'%self.comm.rank)
+            self.OFData['boundaryFile'] = os.path.join(caseDir, 'processor%d/constant/polyMesh/boundary'%self.comm.rank)
+            self.OFData['faceFile'] = os.path.join(caseDir, 'processor%d/constant/polyMesh/faces'%self.comm.rank)
+            self.OFData['ownerFile'] = os.path.join(caseDir, 'processor%d/constant/polyMesh/owner'%self.comm.rank)
+            self.OFData['neighbourFile'] = os.path.join(caseDir, 'processor%d/constant/polyMesh/neighbour'%self.comm.rank)
+        else:
+            self.OFData['refPointsFile'] = os.path.join(caseDir, 'constant/polyMesh/points_orig')
+            self.OFData['pointsFile'] = os.path.join(caseDir, 'constant/polyMesh/points')
+            self.OFData['boundaryFile'] = os.path.join(caseDir,'constant/polyMesh/boundary')
+            self.OFData['faceFile'] = os.path.join(caseDir,'constant/polyMesh/faces')
+            self.OFData['ownerFile'] = os.path.join(caseDir, 'constant/polyMesh/owner')
+            self.OFData['neighbourFile'] = os.path.join(caseDir, 'constant/polyMesh/neighbour')
+
+    def _parseFoamHeader(self, lines, i):
+        """Generic function to read the openfoam file header up to the point
+        where it determines the number of subsequent 'stuff' to read
         
-        if not self.IDWarpInitialized and \
-                self.solverOptions['warpType'] == 'inverseDistance':
-
-            print('\nInitializating InverseDistance Mesh Warping...',
-                     comm=self.comm)
-
-            # Determine the Boundary nodes
-
-            # compute Ldef
-            
-            # Compute Alpha
-            
-            # Compute the area weighting of the boundary nodes
-                         
-
-            print('  -> Inverse Distance Mesh Warping Initialized.', comm=self.comm)
-            self.IDWarpInitialized = True
-        # end if
-
-        return
-
-    def warpMesh(self):
-        """ 
-        Run the applicable mesh warping strategy.
-
-        This will update the volume coordinates to match surface
-        coordinates set with setSurfaceCoordinates()
+        Parameters
+        ----------
+        lines : list of string
+            Lines of file obtained from f.readlines()
+        i : int
+            The starting index to look
         
+        Returns
+        -------
+        foamDict : dictionary
+             Dictionary of the data contained in the header
+        i : int 
+             The next line to start at
+        N : int
+             The number of entries to read
+        """
+        keyword = re.compile(r'\s*[a-zA-Z]{1,100}\s*\n')
+
+        blockOpen = False
+        foamDict = {}
+        imax = len(lines)
+        while i < imax:
+            res = keyword.match(lines[i])
+            if res:
+                i, foamData = self._readBlock(lines, i)
+                break
+            else:
+                i += 1
+        if i == imax:
+            raise Error("Error parsing openFoam file header.")
+
+        # Now we need to match the number followed by an open bracket:
+        numberHeader = re.compile(r'\s*(\d{1,100})\s*\n')
+        while i < imax:
+            res = numberHeader.match(lines[i])
+            if res:
+                N = int(lines[i][res.start(0):res.end(0)])
+                # We return +2 lines to skip the next '('
+                return foamDict, i+2, N
+            i += 1
+        raise Error("Could not find the starting data in openFoam file")
+
+    def _readBlock(self, lines, i):
+        """
+        Generic code to read an openFoam type block structure
         """
 
-        # Initialize internal surface if one isn't set
-        self._setInternalSurface()
+        openBracket = re.compile(r'\s*\{\s*\n')
+        closeBracket = re.compile(r'\s*\}\s*\n')
+        data= re.compile(r'\s*([a-zA-Z]*)\s*(.*);\s*\n')
 
-        # Set Options
-        self._setMeshOptions()
+        blockOpen = False
+        imax = len(lines)
+        blk = {}
+        while i < imax:
+            if not blockOpen:
+                res = openBracket.match(lines[i])
+                if res:
+                    blockOpen = True
+                i += 1
+            else:
+                res = data.match(lines[i])
+                if res:
+                    blk[res.group(1)] = res.group(2)
+                if closeBracket.match(lines[i]):
+                    i += 1
+                    break
+                i += 1
+        return i, blk
 
-        # Make sure solid warping is initialized if necessary
-        self._initializeIDWarping()
-
-        # Warp the mesh
-
-        # Compute the updated surface element centers, areas and normals
-        #print('updating grid metrics')
-        self.updateGridMetrics()
-        #sys.exit(0)
-        # loop over the unique surface nodes to compute the rotations and
-        # displacements
-        
-        # compute Si for eache surface node
-
-        # compute Smean
-
-        # Compute alpha for current displacement
-
-        # For each volume node not on the boundary
-        # loop over the surface and compute wi and si
-        # Sum s(r) on the fly
-        #print('updateingVolume')
-        self.warp.updatevolumecoordinates()
-        
-        return
-
-#     def resetWarping(self):
-#         """
-#         This function is used to reset the non-linear warping
-#         solution. If a bad solution is found and the mesh is invalid
-#         this will reset the solution vector such that on a subsequent
-#         movement a new starting point will be found using the stepped
-#         approach with 'nSolutionSteps'
-#         """
-        
-#         self.warp.resetwarping()
-
-#         return
-
-#     def warpDeriv(self, dXv, solverVec=True, surfOnly=False):
-#         """
-#         Compute the warping derivative (dXvdXs^T)*Vec
-
-#         This is the main routine to compute the mesh warping
-#         derivative. 
-
-#         Input Arguments:
-
-#             solverdXv, numpy array: Vector of size external
-#                 solver_grid. This is typically obtained from the
-#                 external solver's dRdx^T * psi calculation. 
-        
-#             solverVec, logical: Flag to indicate that the dXv vector
-#                  is in the solver ordering and must be converted
-#                  to the warp ordering first. This is the usual approach
-#                  and thus defaults to True.
-
-#             surfOnly, logical: Flag to indicate that a "fake" mesh
-#                  warp is to be done. In this case, only dXv values that
-#                  are ALREADY on the surface are taken. This is only used
-#                  in a few select cases and thus defaults to False.
-
-#         Output Arguments:
-
-#             None. However, the resulting calculation is available from
-#             the getdXs() function. 
-
-#         """
-#         if solverVec:
-#             dXvWarp = np.zeros(self.warpMeshDOF, self.dtype)
-#             self.warp.solver_to_warp_grid(dXv, dXvWarp)
-#         else:
-#             dXvWarp = dXv
-#         # end if
-#         if surfOnly:
-#             self.warp.warpderivsurfonly(dXvWarp)
-#         else:
-#             self.warp.warpderiv(dXvWarp)
-#         # end if
-
-#         return 
-
-#     def verifyWarpDeriv(self, dXv=None, solverVec=True, dofStart=0, 
-#                         dofEnd=25):
-#         """Run an internal verification of the solid warping
-#         derivatives"""
-
-        
-#         if dXv is None:
-#             np.random.seed(314) # 'Random' seed to ensure runs are same
-#             dXvWarp = np.random.random(self.warpMeshDOF)
-#         else:
-#             if solverVec:
-#                 dXvWarp = np.zeros(self.warpMeshDOF, self.dtype)
-#                 self.warp.solver_to_warp_grid(dXv, dXvWarp)
-#             else:
-#                 dXvWarp = dXv
-#         # end if
-
-#         self.warp.verifywarpderiv(dXvWarp, dofStart, dofEnd)
-
-#         return
-
-#     def verifyWarpDerivFwd(self, callMode):
-#         """Run an tapenade forward mode AD verification. Call mode
-#         must be 1 for first call and 2 after"""
-
-#         self.warp.verifywarpderivfwd(callMode)
-
-#         return
-
-#     def verifyWarpDerivBwd(self, callMode):
-#         """Run an tapenade forward mode AD verification. Call mode
-#         must be 1 for first call and 2 after"""
-
-#         self.warp.verifywarpderivbwd(callMode)
-
-#         return
-
-# # =========================================================================
-# #                         Utiliy Functions
-# # =========================================================================
-
-#     def getMeshQuality(self, bins=None):
-#         """
-#         Determine the mesh quality of the current volume mesh
-        
-#         Optional Arguments:
-#             bins, numpy array: A list of numbers from -1 to -1 used 
-#                 in binning the histogram. 
-
-#         Output Arguments:
-#             qualityMin, real: The minimum element quality
-#             qualityMax, real: The maximum element quality
-#             qualityAvg, real: The average element quality
-#             hist, numpy array: The values for the resulting histogram
-#             binEdges, numpy array: Values for the edges of the histogram
-
-#             """
-#         if bins is None:
-#             bins = np.linspace(-1, 1, 21)
-#         # end if
-
-#         nvolLocal = self.warp.getnvolproc()
-#         qualityLocal = self.warp.getquality(nvolLocal)
-#         res = self.comm.gather(qualityLocal, root=0)
-
-#         if self.comm.rank == 0:
-#             quality = []
-#             for i in range(self.comm.size):
-#                 quality.extend(res[i])
-#             # end for
-                
-#             qualityMin = np.min(quality)
-#             qualityMax = np.max(quality)
-#             qualityAvg = np.average(quality)
-
-#             hist, binEdges = np.histogram(quality, bins=bins)
-#         else:
-#             qualityMin = None
-#             qualityMax = None
-#             qualityAvg = None
-#             hist       = None
-#             binEdges   = None
-#         # end if
-        
-#         # Broadcast:
-#         qualityMin = self.comm.bcast(qualityMin, root=0)
-#         qualityMax = self.comm.bcast(qualityMax, root=0)
-#         qualityAvg = self.comm.bcast(qualityAvg, root=0)
-#         hist       = self.comm.bcast(hist, root=0)
-#         binEdges   = self.comm.bcast(binEdges, root=0)
-            
-#         return qualityMin, qualityMax, qualityAvg, hist, binEdges
-
-#     def computeArea(self, *args, **kwargs):
-#         mpiPrint("computeArea() has moved to SUmb", comm=self.comm)
-
-#         return 0.0
-
-#     def computeAreaSensitivity(self, *args, **kwargs):
-#         mpiPrint("computeAreaSensitivity() has moved to SUmb", comm=self.comm)
-
-#         return []
-
-#     def computeVolume(self, *args, **kwargs):
-#         mpiPrint("computeVolume() has moved to SUmb", comm=self.comm)
-
-#         return 0.0
-
-#     def computeVolumeSensitivity(self, *args, **kwargs):
-#         mpiPrint("computeVolumeSensitivity() has moved to SUmb",comm=self.comm)
-
-#         return []
-
-#     def releaseMemory(self):
-#         """Release all the mesh warping memory"""
-#         self.warp.destroyall()
-        
-#         return 
-
-# # =========================================================================
-# #                     Internal Private Functions
-# # =========================================================================
-        
-    def _getFamilyList(self):
+    def _getCGNSFamilyList(self):
+        """Obtain the family list from fortran. Only the root proc has this,
+        so we need to bcast. 
         """
-        Obtain the family list from fortran. 
+        familyList = None
+        if self.comm.rank == 0:
+            fullList = self.warp.griddata.familylist.transpose().flatten()
+            nFamilies = self.warp.griddata.nwallfamilies
+            familyList = ["" for i in range(nFamilies)]
+            for i in range(nFamilies):
+                tempName = fullList[i*32:(i+1)*32]
+                newName = ''.join([tempName[j] for j in range(32)]).lower()
+                familyList[i] = newName.strip()
+        familyList = self.comm.bcast(familyList)
 
-        """
-        fullList = self.warp.griddata.familylist.transpose().flatten()
-        nFamilies = self.warp.griddata.nwallfamilies
-        #print ('Full list',fullList,nFamilies)
-        self.familyList = ["" for i in range(nFamilies)]
-        for i in range(nFamilies):
-            tempName = fullList[i*32:(i+1)*32]
-            newName = ''.join([tempName[j] for j in range(32)]).lower()
-            self.familyList[i] = newName.strip()
-        # end for
-
-        return
-
-#     def _reOrderIndices(self,  FETopo,  faceBCs,  sym):
-#         """This funcion takes the order from self.FE_topo and reorders
-#         them according to the Boundary Condition types in each volume
-#         class. The sole purpose of this is to facilitate the
-#         structural mesh warping algorithim for matrix assembly."""
-#         # We want the global indicies ordered according to:
-#         #[ freedof ]
-#         #[ constrained dof ]
-
-#         ptDOF = np.zeros((FETopo.nGlobal, 3), 'intc')
-#         wallDOF = np.zeros((FETopo.nGlobal, 3), 'intc')
-#         for ii in range(FETopo.nGlobal):
-#             for jj in range(len(FETopo.g_index[ii])):
-
-#                 ivol = FETopo.g_index[ii][jj][0]
-#                 i    = FETopo.g_index[ii][jj][1]
-#                 j    = FETopo.g_index[ii][jj][2]
-#                 k    = FETopo.g_index[ii][jj][3]
-
-#                 N = FETopo.l_index[ivol].shape[0]
-#                 M = FETopo.l_index[ivol].shape[1]
-#                 L = FETopo.l_index[ivol].shape[2]
-              
-#                 ptType, number, index1, index2 = \
-#                     geo_utils.indexPosition3D(i, j, k, N, M, L)
-
-#                 checkFaces = []
-#                 if ptType == 0:
-#                     ptDOF[ii] = [0, 0, 0]
-#                 else: # Face
-#                     if ptType == 1: # Face
-#                         checkFaces.append(number)
-#                     elif ptType == 2: # Edge
-#                         if number in [0, 1, 2, 3]:
-#                             checkFaces.append(0)
-#                         if number in [4, 5, 6, 7]:
-#                             checkFaces.append(1)
-#                         if number in [2, 6, 8, 10]:
-#                             checkFaces.append(2)
-#                         if number in [3, 7, 9, 11]:
-#                             checkFaces.append(3)
-#                         if number in [0, 4, 8, 9]:
-#                             checkFaces.append(4)
-#                         if number in [1, 5, 10, 11]:
-#                             checkFaces.append(5)
-#                     elif ptType == 3: # Corner
-#                         if number == 0:
-#                             checkFaces.extend([0, 2, 4])
-#                         elif number == 1:
-#                             checkFaces.extend([0, 3, 4])
-#                         elif number == 2:
-#                             checkFaces.extend([0, 2, 5])
-#                         elif number == 3:
-#                             checkFaces.extend([0, 3, 5])
-#                         elif number == 4:
-#                             checkFaces.extend([1, 2, 4])
-#                         elif number == 5:
-#                             checkFaces.extend([1, 3, 4])
-#                         elif number == 6:
-#                             checkFaces.extend([1, 2, 5])
-#                         elif number == 7:
-#                             checkFaces.extend([1, 3, 5])
-#                     # end if
-                    
-#                     # We now know all faces a point that belong to a
-#                     # pt, check each for boundary conditions
-
-#                     for iii in range(len(checkFaces)):
-#                         iface = checkFaces[iii]
-#                         if faceBCs[ivol][iface] == 1: # Wall
-#                             ptDOF[ii] = [1, 1, 1]
-#                             wallDOF[ii] = [1, 1, 1]
-
-#                         if faceBCs[ivol][iface] == 2: # Farfield
-#                             ptDOF[ii] = [1, 1, 1]
-                           
-#                         if faceBCs[ivol][iface] == 3:
-#                             # Only set it as a symmetry plane if
-#                             # nothing is already set
-#                             indexSet = np.where(sym==-1)[0][0]
-#                             ptDOF[ii][indexSet] = 1
-
-#                         # end if
-#                     # end for
-#                 # end if
-#             # end for
-#         # end for
-      
-#         nus = int(sum(sum(ptDOF)))
-#         nuu = FETopo.nGlobal*3-nus
-#         nwall = int(sum(sum(wallDOF)))
-#         mpiPrint('  -> Total DOF  : %d'%(FETopo.nGlobal*3), comm=self.comm)
-#         mpiPrint('  -> Unknown DOF: %d'%(nuu), comm=self.comm)
-#         mpiPrint('  -> Known DOF  : %d'%(nus), comm=self.comm)
-#         mpiPrint('  -> Wall DOF   : %d'%(nwall), comm=self.comm)
-#         # We will forgo the g_index reorganization...it is not
-#         # strictly necessary We want l_index[ivol] to be of size
-#         # (nu,nv,nw,3) with each entry pointing to the dof in the
-#         # global matrix
-
-#         freeDOFCount = 0
-#         constrDOFCount = 0
-#         l_index = []
-#         for ivol in range(len(FETopo.l_index)):
-#             l_index.append(np.zeros((3,
-#                                   FETopo.l_index[ivol].shape[0],
-#                                   FETopo.l_index[ivol].shape[1],
-#                                   FETopo.l_index[ivol].shape[2]),
-#                                  'intc', order='f'))
-#         # end for
-            
-#         for ii in range(FETopo.nGlobal):
-#             for iii in range(3):
-#                 if ptDOF[ii][iii] == 0:
-#                     for jj in range(len(FETopo.g_index[ii])):
-#                         ivol = FETopo.g_index[ii][jj][0]
-#                         i    = FETopo.g_index[ii][jj][1]
-#                         j    = FETopo.g_index[ii][jj][2]
-#                         k    = FETopo.g_index[ii][jj][3]
-#                         l_index[ivol][iii, i, j, k] = freeDOFCount
-#                     # end for
-#                     freeDOFCount += 1
-#                 # end if
-#                 if ptDOF[ii][iii] == 1:
-#                     for jj in range(len(FETopo.g_index[ii])):
-#                         ivol = FETopo.g_index[ii][jj][0]
-#                         i    = FETopo.g_index[ii][jj][1]
-#                         j    = FETopo.g_index[ii][jj][2]
-#                         k    = FETopo.g_index[ii][jj][3]
-#                         l_index[ivol][iii, i, j, k] = nuu + constrDOFCount
-#                     # end for
-#                     constrDOFCount += 1
-#                 # end if
-#             # end for (iii loop)
-#         # end for (ii loop)
-
-#         # Lastly, we need to flatten the l_index for fortran use
-
-#         l_index_flat = []
-#         lPtr = [0] # -> Zero Based Here
-#         lSizes = np.zeros((len(l_index), 3), 'intc')
-#         for i in range(len(l_index)):
-#             l_index_flat.extend(l_index[i].flatten('f'))
-#             lPtr.append(lPtr[-1] + l_index[i].size)
-#             lSizes[i] = [l_index[i].shape[1],
-#                          l_index[i].shape[2],
-#                          l_index[i].shape[3]]
-#         # end for
-
-#         return nuu, nus, l_index_flat, lPtr, lSizes
-
-#     def _checkSizes(self, sizes, blockDims):
-#         """
-#         Make sure the sizes we specify are not larger than the
-#         dimension of the block. This can easily happen with "2d"
-#         grids, ie. 3d grids only 2 nodes wide
-
-#         We also need to check that odd blockDims have off sizes and
-#         even blockDims have even sizes.
-
-#         """
-#         for i in range(len(sizes)):
-#             for j in range(3):
-
-#                 if sizes[i, j] > blockDims[i, j]:
-#                     mpiPrint(' * Warning: Reduced n to %d for an edge'\
-#                                  %(blockDims[i, j]))
-#                     sizes[i, j] = blockDims[i, j]
-#                 # end if
-
-#                 sizeEven = np.mod(sizes[i, j], 2)
-#                 dimsEven = np.mod(blockDims[i, j], 2)
-
-#                 if sizeEven == 1 and dimsEven == 1:
-#                     pass
-#                 elif  sizeEven == 0 and dimsEven == 0:
-#                     pass
-#                 elif sizes[i, j] == 2:
-#                     pass
-#                 else:
-#                     # Decrease size by 1 to make it even
-#                     sizes[i, j] -= 1
-#                     sizes[i, j] = np.max([sizes[i, j], 2])
-                    
-#                     mpiPrint(' * Warning: Reduced n to %d for an edge'\
-#                                  %(sizes[i, j]))
-#                 # end if
-#             # end for
-#         # end for
-
-#         return sizes
+        # Converto back to a dict and assume all are walls:
+        self.familyList = {}
+        for fam in familyList:
+            self.familyList[fam] = IWALL
 
     def _getIndices(self, groupName):
         """
@@ -1884,53 +1095,13 @@ I will ignore this family'%(fam),comm=self.comm)
         exception
 
         """
-        print('groupname',groupName)
-        indices = self.familyGroup[groupName]['indices']
         try: 
             indices = self.familyGroup[groupName]['indices']
         except:
-            mpiPrint('+----------------------------------------------------+')
-            mpiPrint('Error: %s has not been set using addFamilyGroup.'\
-                         %(groupName), comm=self.comm)
-            mpiPrint('+----------------------------------------------------+')
-        # end try
+            raise Error('%s has not been set using addFamilyGroup'%groupName)
 
         return indices
 
-#     def _getCGNSCoords(self):
-#         """
-#         Internal function to return the block coordinates and
-#         Bcoundary conditions. It used in several places hence the the function
-
-#         """
-
-#         nBlocks = self.warp.block.nblocktotal
-#         dimsTemp = self.warp.blockdims(nBlocks).reshape((nBlocks, 3))
-#         dimsTemp = self.comm.bcast(dimsTemp, root=0)
-
-#         temp0, temp1, CGNSIDs = self.warp.warpmeshsolid_preprocess(
-#             nBlocks)
-
-#         # CGNSIDs is 1 based, make it zero based:
-#         CGNSIDs -= 1
-
-#         # Reshpae coordinates
-#         temp0 = temp0.reshape((nBlocks, 26, 3))
-#         temp1 = temp1.reshape((nBlocks, 6))
- 
-#         # Re-order coordiantes based on CGNSIDs to produce
-#         # "standard" original CGNS ordering
-#         coords = np.zeros_like(temp0)
-#         BCs    = np.zeros_like(temp1)
-#         blockDims = np.zeros_like(dimsTemp)
-#         for i in range(nBlocks):
-#             coords[CGNSIDs[i]] = temp0[i]
-#             BCs[CGNSIDs[i]] = temp1[i]
-#             blockDims[CGNSIDs[i]] = dimsTemp[i]
-#         # end for
-
-#         return nBlocks, coords, BCs, blockDims
-      
     def _checkOptions(self, solverOptions):
         """
         Check the solver options against the default ones
@@ -1943,7 +1114,5 @@ I will ignore this family'%(fam),comm=self.comm)
                 solverOptions[key] = self.solverOptionsDefault[key]
             else:
                 self.solverOptionsDefault[key] = solverOptions[key]	
-            # end if
-        # end for
-        #print('solveroptions',solverOptions)
+
         return solverOptions
