@@ -1,8 +1,3 @@
-#*********************************************************
-# Makefile for pywarpustruct
-# C.A.Mader  July 10, 2014
-#*********************************************************
-
 MAIN_DIR = ../../
 COMMON_FILE = $(MAIN_DIR)/Common.mk
 RULES_FILE  = $(MAIN_DIR)/Rules.mk
@@ -11,17 +6,9 @@ include ${RULES_FILE}
 vpath %.o $(OBJDIR)
 
 FILES_TO_COMPLEXIFY = \
-	computeNodalProperties.F90\
-	getdXs.F90\
-	getElementProps.F90\
-	getSurfaceCoordinates.F90\
-	getVolumeCoordinates.F90\
-	gridTransform.F90\
-	initializeWarping.F90\
-	setdXs.F90\
-	setExternalMeshIndices.F90\
-	setSurfaceCoordinates.F90\
-	warpMesh.F90\
+	initPETSc.F90\
+	pointReduce.f90\
+	vectorUtils.f90\
 
 FILES_TO_COPY = 
 
@@ -41,16 +28,16 @@ src : $(OFILES)
 
 complexify:
 	@for file in $(FILES_TO_COMPLEXIFY); do \
-		if [ $$file -nt ../../src_cs/warp/$$file -o ! -e ../../src_cs/warp/$$file ]; then \
+		if [ $$file -nt ../../src_cs/utils/$$file -o ! -e ../../src_cs/utils/$$file ]; then \
 			echo complexifying file $$file; \
 			python ../complexify.py $$file; \
-			mv c_$$file ../../src_cs/warp/$$file; \
+			mv c_$$file ../../src_cs/utils/$$file; \
 		fi;\
 		done
 	@for file in $(FILES_TO_COPY); do \
-		if [ $$file -nt ../../src_cs/warp/$$file -o ! -e ../../src_cs/warp/$$file ]; then \
+		if [ $$file -nt ../../src_cs/utils/$$file -o ! -e ../../src_cs/utils/$$file ]; then \
 			echo copying file $$file; \
-			cp $$file ../../src_cs/warp/$$file; \
+			cp $$file ../../src_cs/utils/$$file; \
 		fi;\
 		done
 

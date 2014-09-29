@@ -10,58 +10,41 @@ include ${COMMON_FILE}
 include ${RULES_FILE}
 vpath %.o $(OBJDIR)
 
-# Name of files to be compiled:
-#MODS0 = 
+FILES_TO_COMPLEXIFY = \
+	readUnstructuredCGNS.f90\
+	writeUnstructuredCGNS.f90\
+	readStructuredCGNS.F90\
+	createGrid.F90\
+	writeStructuredCGNS.F90\
 
-OBJS = allocateGridDoms.o\
-       createSections.o\
-       readUnstructuredCGNS.o\
-       setGetVolumeCoordinates.o\
-       writeUnstructuredCGNS.o\
+FILES_TO_COPY = 
 
-#FILES_TO_COMPLEXIFY =  enginemodules.F90\
-		       kriging_data.F90\
-	               weightmodules.F90\
-		       krigingInputs.F90\
-	               krigingModels.F90\
-		       missionParameters.F90\
-		       aircraftParameters.F90\
-		       computationParameters.f90\
-		       conversion.f90\
-		       missionParameters.F90\
+ALL_FILES = $(FILES_TO_COMPLEXIFY) $(FILES_TO_COPY)
+OFILES := $(ALL_FILES:%.f90=%.o) $(ALL_FILES:%.F90=%.o) $(ALL_FILES:%.c=%.o)
 
-#FILES_TO_COPY = complexify.f90\
-		diffSizes.f90\
-		communication.f90\
-	        diffSizes.f90\
-	       	dvParameters.f90\
-		modulesPETSc.F90\
-		precision.f90\
-		rbf_data.f90\
+default: all
 
-default:
-#	$(MAKE) $(MODS0)
-#	$(MAKE) $(MODS1)
-#	cp -f *.mod $(MODDIR)
-	$(MAKE) $(OBJS)
+all: 
+	$(PMAKE) src
 
 clean:
-	@echo "        Making clean in src... "
+	@echo "        Making clean in IO ... "
 	rm -f $(MAKE_CLEAN_ARGUMENTS)
+
+src : $(OFILES)
 
 complexify:
 	@for file in $(FILES_TO_COMPLEXIFY); do \
-		if [ $$file -nt ../../src_cs/modules/$$file -o ! -e ../../src_cs/modules/$$file ]; then \
+		if [ $$file -nt ../../src_cs/IO/$$file -o ! -e ../../src_cs/IO/$$file ]; then \
 			echo complexifying file $$file; \
 			python ../complexify.py $$file; \
-			mv c_$$file ../../src_cs/modules/$$file; \
+			mv c_$$file ../../src_cs/IO/$$file; \
 		fi;\
 		done
 	@for file in $(FILES_TO_COPY); do \
-		if [ $$file -nt ../../src_cs/modules/$$file -o ! -e ../../src_cs/modules/$$file ]; then \
+		if [ $$file -nt ../../src_cs/IO/$$file -o ! -e ../../src_cs/IO/$$file ]; then \
 			echo copying file $$file; \
-			cp $$file ../../src_cs/modules/$$file; \
+			cp $$file ../../src_cs/IO/$$file; \
 		fi;\
 		done
 
-	cp Makefile ../../src_cs/modules

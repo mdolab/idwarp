@@ -11,46 +11,36 @@ include ${RULES_FILE}
 vpath %.o $(OBJDIR)
 
 # Name of files to be compiled:
-MODS0 = complexify.o\
+FF90_OBJECTS_1 = precision.o\
 
-MODS1 = precision.o\
-	constants.o\
-	gridTypes.o\
-        communication.o\
+FF90_OBJECTS_2 = constants.o\
 
-MODS2 = gridData.o\
-	cgnsData.o\
-	sortModule.o\
+FF90_OBJECTS_3 = communication.o\
+		 gridData.o\
+		 gridInput.o\
+		 kd_tree.o\
+		 structuredCGNS.o\
 
-#FILES_TO_COMPLEXIFY =  enginemodules.F90\
-		       kriging_data.F90\
-	               weightmodules.F90\
-		       krigingInputs.F90\
-	               krigingModels.F90\
-		       missionParameters.F90\
-		       aircraftParameters.F90\
-		       computationParameters.f90\
-		       conversion.f90\
-		       missionParameters.F90\
+FILES_TO_COMPLEXIFY =	precision.F90\
+			constants.f90\
+			communication.f90\
+			gridData.f90\
+			gridInput.f90\
+			kd_tree.f90\
+			structuredCGNS.F90\
 
-#FILES_TO_COPY = complexify.f90\
-		diffSizes.f90\
-		communication.f90\
-	        diffSizes.f90\
-	       	dvParameters.f90\
-		modulesPETSc.F90\
-		precision.f90\
-		rbf_data.f90\
+FILES_TO_COPY = 
 
-default:
-	$(MAKE) $(MODS0)
-	$(MAKE) $(MODS1)
-	$(MAKE) $(MODS2)
+default: all
+
+all: 
+	make $(FF90_OBJECTS_1)
+	make $(FF90_OBJECTS_2)
+	make $(FF90_OBJECTS_3)
 	cp -f *.mod $(MODDIR)
-#	$(MAKE) $(OBJS)
 
 clean:
-	@echo "        Making clean in src... "
+	@echo "        Making clean in modules ... "
 	rm -f $(MAKE_CLEAN_ARGUMENTS)
 
 complexify:
@@ -67,5 +57,3 @@ complexify:
 			cp $$file ../../src_cs/modules/$$file; \
 		fi;\
 		done
-
-	cp Makefile ../../src_cs/modules

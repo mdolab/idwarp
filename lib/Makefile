@@ -22,5 +22,3 @@ makelib:
 	@echo "        library libwarpustruct.a created."
 	@echo
 
-# Also create a shared object in the src directory for TACS
-	$(FF90)  -shared $(OBJDIR)/*.o -o ../src/libwarpustruct.so
