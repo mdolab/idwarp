@@ -1,18 +1,19 @@
-# Makefile for pymissionanalysis
+#      ******************************************************************
+#      *                                                                *
+#      * File:          Makefile                                        *
+#      * Author:        Gaetan Kenway                                   *
+#      * Starting date: 05-23-2010                                      *
+#      * Last modified: 12-23-2012                                      *
+#      *                                                                *
+#      ******************************************************************
 
-SUBDIR_SRC    = src/modules\
-		src/IO\
-		src/geoCalcs\
-		src/sort\
-	        src/warp\
-#		src/common\
-		src/kriging\
-		src/rbf\
-		src/engine\
-		src/weightAndBalance\
-		src/missionAnalysis\
-		src/derivativeRoutines\
-		src/tapenade/output\
+SUBDIR_SRC    = src/modules	\
+		src/warp	\
+	        src/IO		\
+	        src/utils 
+
+WARP_SUBDIRS       = $(SUBDIR_SRC)
+WARP_CLEAN_SUBDIRS = $(SUBDIR_SRC)
 
 #      ******************************************************************
 #      *                                                                *
@@ -22,22 +23,16 @@ SUBDIR_SRC    = src/modules\
 
 default:
 	@echo "Usage: make <arch>"
-	@echo "Supported architectures: LINUX_INTEL"
+	@echo "Supported architectures: LINUX_GFORTRAN_OPENMPI"
 	@echo "                         LINUX_INTEL_OPENMPI"
 	@echo "                         LINUX_INTEL_OPENMPI_SCINET"
-	@echo "                         LINUX_GFORTRAN"
-	@echo "                         LINUX_GFORTRAN_OPENMPI"
-	@echo "                         LINUX_INTEL_SCINET"
-	@echo "                         BASALT"
 
 all:	 default
 
 clean:
-	ln -sf Common_real.mk Common.mk
-
 	@echo " Making clean ... "
 
-	@for subdir in $(SUBDIR_SRC) ; \
+	@for subdir in $(WARP_CLEAN_SUBDIRS) ; \
 		do \
 			echo; \
 			echo "making $@ in $$subdir"; \
@@ -45,7 +40,7 @@ clean:
 			(cd $$subdir && make $@) || exit 1; \
 		done
 	rm -f *~ config.mk;
-	rm -f lib/lib* mod/*.mod obj/*
+	rm -f lib/lib* mod/* obj/*
 
 #      ******************************************************************
 #      *                                                                *
@@ -54,8 +49,8 @@ clean:
 #      *                                                                *
 #      ******************************************************************
 
-module:
-	@for subdir in $(SUBDIR_SRC) ; \
+warp:
+	@for subdir in $(WARP_SUBDIRS) ; \
 		do \
 			echo "making $@ in $$subdir"; \
 			echo; \
@@ -69,62 +64,27 @@ module:
 #      *                                                                *
 #      ******************************************************************
 
-LINUX_INTEL:
+LINUX_GFORTRAN_OPENMPI:
 	mkdir -p obj
-	if [ ! -f "config/config.LINUX_INTEL.mk" ]; then cp "config/defaults/config.LINUX_INTEL.mk" ./config; fi
-	ln -sf config/config.LINUX_INTEL.mk config.mk
-	ln -sf Common_real.mk Common.mk
-	make module
+	mkdir -p mod
+	if [ ! -f "config/config.LINUX_GFORTRAN_OPENMPI.mk" ]; then cp "config/defaults/config.LINUX_GFORTRAN_OPENMPI.mk" ./config; fi
+	ln -sf config/config.LINUX_GFORTRAN_OPENMPI.mk config.mk
+	make warp
 	(cd src/f2py && make)
 
 LINUX_INTEL_OPENMPI:
 	mkdir -p obj
+	mkdir -p mod
 	if [ ! -f "config/config.LINUX_INTEL_OPENMPI.mk" ]; then cp "config/defaults/config.LINUX_INTEL_OPENMPI.mk" ./config; fi
 	ln -sf config/config.LINUX_INTEL_OPENMPI.mk config.mk
-	ln -sf Common_real.mk Common.mk
-	make module
-	(cd src/f2py && make)
-
-LINUX_GFORTRAN:
-	mkdir -p obj
-	if [ ! -f "config/config.LINUX_GFORTRAN.mk" ]; then cp "config/defaults/config.LINUX_GFORTRAN.mk" ./config; fi
-	ln -sf config/config.LINUX_GFORTRAN.mk config.mk
-	ln -sf Common_real.mk Common.mk
-	make module
-	(cd src/f2py && make)
-
-LINUX_GFORTRAN_OPENMPI:
-	mkdir -p obj
-	if [ ! -f "config/config.LINUX_GFORTRAN_OPENMPI.mk" ]; then cp "config/defaults/config.LINUX_GFORTRAN_OPENMPI.mk" ./config; fi
-	ln -sf config/config.LINUX_GFORTRAN_OPENMPI.mk config.mk
-	ln -sf Common_real.mk Common.mk
-	make module
-	(cd src/f2py && make)
-
-LINUX_INTEL_SCINET:
-	mkdir -p obj
-	if [ ! -f "config/config.LINUX_INTEL_SCINET.mk" ]; then cp "config/defaults/config.LINUX_INTEL_SCINET.mk" ./config; fi
-	ln -sf config/config.LINUX_INTEL_SCINET.mk config.mk
-	ln -sf Common_real.mk Common.mk
-	make module
+	make warp
 	(cd src/f2py && make)
 
 LINUX_INTEL_OPENMPI_SCINET:
 	mkdir -p obj
+	mkdir -p mod
 	if [ ! -f "config/config.LINUX_INTEL_OPENMPI_SCINET.mk" ]; then cp "config/defaults/config.LINUX_INTEL_OPENMPI_SCINET.mk" ./config; fi
 	ln -sf config/config.LINUX_INTEL_OPENMPI_SCINET.mk config.mk
-	ln -sf Common_real.mk Common.mk
-	make module
+	make warp
 	(cd src/f2py && make)
 
-LINUX_INTEL_FLUX:
-	mkdir -p obj
-	if [ ! -f "config/config.LINUX_INTEL_FLUX.mk" ]; then cp "config/defaults/config.LINUX_INTEL_FLUX.mk" ./config; fi
-	ln -sf config/config.LINUX_INTEL_FLUX.mk config.mk
-	ln -sf Common_real.mk Common.mk
-	make module
-	(cd src/f2py && make)
-
-
-TAPENADE:
-	(cd src/missionAnalysis && make tapenade)

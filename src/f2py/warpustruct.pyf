@@ -3,207 +3,97 @@
 
 python module warpustruct ! in 
     interface  ! in :warpustruct
-        subroutine readunstructuredcgnsfile(cgns_file,comm) ! in :warpustruct:../IO/readUnstructuredCGNS.f90
-            use griddata
-            use communication
-            use precision
-            use cgnsdata
-            character*(*) :: cgns_file
-            integer(kind=inttype) :: comm
-        end subroutine readunstructuredcgnsfile
-        subroutine checkinfamilylist(familylist,famname,nfamily,index_bn) ! in :warpustruct:../IO/readUnstructuredCGNS.f90
-            use precision
-            use constants
-            character dimension((32),32),intent(c) :: familylist
-            character*32 :: famname
-            integer(kind=inttype) :: nfamily
-            integer(kind=inttype) :: index_bn
-        end subroutine checkinfamilylist
-        subroutine deallocatecgnsdata ! in :warpustruct:../IO/readUnstructuredCGNS.f90
-            use griddata
-            use communication
-            use precision
-        end subroutine deallocatecgnsdata
-        subroutine setvolumecoordinates(zone,nzonesin,nvertices,vertices,initcall) ! in :warpustruct:../IO/setGetVolumeCoordinates.f90
-            use griddata
-            use precision
-            integer(kind=inttype) :: zone
-            integer(kind=inttype) :: nzonesin
-            integer(kind=inttype), optional,check(shape(vertices,0)==nvertices),depend(vertices) :: nvertices=shape(vertices,0)
-            real(kind=realtype) dimension(nvertices,3) :: vertices
-            logical :: initcall
-        end subroutine setvolumecoordinates
-        subroutine getvolumecoordinates(zone,nvertices,vertices) ! in :warpustruct:../IO/setGetVolumeCoordinates.f90
-            use griddata
-            use precision
-            integer(kind=inttype) :: zone
-            integer(kind=inttype) :: nvertices
-            real(kind=realtype) dimension(nvertices,3),intent(out),depend(nvertices) :: vertices
-        end subroutine getvolumecoordinates
-        subroutine getnvertices(zone,nvertices) ! in :warpustruct:../IO/setGetVolumeCoordinates.f90
-            use griddata
-            use precision
-            integer(kind=inttype) intent(in) :: zone
-            integer(kind=inttype) intent(out) :: nvertices
-        end subroutine getnvertices
-        subroutine writeunstructuredcgnsfile(cgns_file,comm) ! in :warpustruct:../IO/writeUnstructuredCGNS.f90
-            use griddata
-            use communication
-            use precision
-            use cgnsdata
-            character*(*) :: cgns_file
-            integer(kind=inttype) :: comm
-        end subroutine writeunstructuredcgnsfile
-        subroutine createsections(zone,nsections) ! in :warpustruct:../IO/createSections.f90
-            use griddata
-            use precision
-            integer(kind=inttype) intent(in) :: zone
-            integer(kind=inttype) intent(in) :: nsections
-        end subroutine createsections
-        subroutine setsectiontypes(zone,nsection,isvolumesec) ! in :warpustruct:../IO/createSections.f90
-            use griddata
-            use precision
-            integer(kind=inttype) intent(in) :: zone
-            integer(kind=inttype), optional,intent(in),check(len(isvolumesec)>=nsection),depend(isvolumesec) :: nsection=len(isvolumesec)
-            logical dimension(nsection),intent(in) :: isvolumesec
-        end subroutine setsectiontypes
-        subroutine setsectiondata(zone,sec,seccounter,nelem,nnodeidx,secname,ebeg,eend,nodeindexlist,elemptr) ! in :warpustruct:../IO/createSections.f90
-            use griddata
-            use precision
-            integer(kind=inttype) intent(in) :: zone
-            integer(kind=inttype) intent(in) :: sec
-            integer(kind=inttype) intent(in) :: seccounter
-            integer(kind=inttype), optional,intent(in),check((len(elemptr)-1)>=nelem),depend(elemptr) :: nelem=(len(elemptr)-1)
-            integer(kind=inttype), optional,intent(in),check(len(nodeindexlist)>=nnodeidx),depend(nodeindexlist) :: nnodeidx=len(nodeindexlist)
-            character*32 :: secname
-            integer(kind=inttype) intent(in) :: ebeg
-            integer(kind=inttype) intent(in) :: eend
-            integer(kind=inttype) dimension(nnodeidx) :: nodeindexlist
-            integer(kind=inttype) dimension(nelem + 1) :: elemptr
-        end subroutine setsectiondata
-        subroutine setboundarydata(zone,sec,surfseccounter,famname,iswall,issymm,isboundary) ! in :warpustruct:../IO/createSections.f90
-            use griddata
-            use precision
-            integer(kind=inttype) intent(in) :: zone
-            integer(kind=inttype) intent(in) :: sec
-            integer(kind=inttype) intent(in) :: surfseccounter
-            character*32 :: famname
-            logical :: iswall
-            logical :: issymm
-            logical :: isboundary
-        end subroutine setboundarydata
-        module communication ! in :warpustruct:../modules/communication.f90
-            use precision
-            integer(kind=inttype) :: warp_comm_self
-            integer(kind=inttype) :: myid
-            integer(kind=inttype) :: warp_comm_world
-            integer(kind=inttype) :: nproc
-        end module communication
-        module griddata ! in :warpustruct:../modules/gridData.f90
-            use gridtypes
-            use precision
-            use constants
-!            type(zonedatatype), allocatable,dimension(:) :: griddoms
-            real(kind=realtype) :: aexp
-            integer(kind=inttype) :: nwallfamilies
-            logical :: hassymmetry
-            integer(kind=inttype) :: nsurfnodes
-            real(kind=realtype) dimension(3) :: symdir
-            integer(kind=inttype) :: nuniquesurfpoints
-            real(kind=realtype) :: alpha
-!            type(surfacepointtype), allocatable,dimension(:) :: uniquesurfacenodes
-            integer(kind=inttype) :: nzones
-            character dimension((32),32),intent(c) :: familylist
-            integer(kind=inttype) :: physdim
-            real(kind=realtype) :: bexp
-            integer(kind=inttype) :: celldim
-            real(kind=realtype) :: ldef
-            integer(kind=inttype) :: nboundarynodes
-            integer(kind=inttype) :: nuniqueboundarypoints
-!            type(surfacepointtype), allocatable,dimension(:) :: uniqueboundarynodes
-        end module griddata
-        module cgnsdata ! in :warpustruct:../modules/cgnsData.f90
-            use precision
-            character*32 :: basename
-            integer(kind=inttype) dimension(3) :: sizes
-        end module cgnsdata
-        subroutine getsurfaceelementcenterandarea ! in :warpustruct:../geoCalcs/getSurfaceElementCenters.f90
-            use griddata
-            use precision
-        end subroutine getsurfaceelementcenterandarea
-        subroutine getfulluniquesurfacenodelist ! in :warpustruct:../geoCalcs/getFullUniqueSurfaceNodeList.f90
-            use griddata
-            use communication
-            use sortdata
-            use precision
-        end subroutine getfulluniquesurfacenodelist
-        subroutine computenodalproperties(initialpoint) ! in :warpustruct:../geoCalcs/computeNodalProperties.f90
-            use griddata
-            use precision
-            logical :: initialpoint
-        end subroutine computenodalproperties
-        subroutine getnpatches(npatches) ! in :warpustruct:../warp/patchIO.f90
-            use griddata
-            use precision
-            use constants
-            integer(kind=inttype) intent(out) :: npatches
-        end subroutine getnpatches
-        subroutine getpatchname(ipatch,patchname) ! in :warpustruct:../warp/patchIO.f90
-            use griddata
-            use precision
-            use constants
-            integer(kind=inttype) intent(in) :: ipatch
-            character*32 intent(out) :: patchname
-        end subroutine getpatchname
-        subroutine getpatchindex(ipatch,patchindex) ! in :warpustruct:../warp/patchIO.f90
-            use griddata
-            use precision
-            use constants
-            integer(kind=inttype) intent(in) :: ipatch
-            integer(kind=inttype) intent(out) :: patchindex
-        end subroutine getpatchindex
-        subroutine getpatchsize(patchindex,patchsize) ! in :warpustruct:../warp/patchIO.f90
-            use griddata
-            use precision
-            use constants
-            integer(kind=inttype) intent(in) :: patchindex
-            integer(kind=inttype) intent(out) :: patchsize
-        end subroutine getpatchsize
-        subroutine getpatchindexlist(patchindex,patchsize,patchindices) ! in :warpustruct:../warp/patchIO.f90
-            use griddata
-            use precision
-            use constants
-            integer(kind=inttype) intent(in) :: patchindex
-            integer(kind=inttype) intent(in) :: patchsize
-            integer(kind=inttype) dimension(patchsize),intent(out),depend(patchsize) :: patchindices
-        end subroutine getpatchindexlist
-        subroutine getpatches(points,ndof) ! in :warpustruct:../warp/patchIO.f90
-            use griddata
-            use precision
-            use constants
-            real(kind=realtype) dimension(ndof),intent(inout) :: points
-            integer(kind=inttype), optional,intent(in),check(len(points)>=ndof),depend(points) :: ndof=len(points)
-        end subroutine getpatches
-        subroutine getsurfacecoordinates(npoints,indices,points) ! in :warpustruct:../warp/patchIO.f90
-            use griddata
-            use precision
-            use constants
-            integer(kind=inttype), optional,intent(in),check(len(indices)>=npoints),depend(indices) :: npoints=len(indices)
-            integer(kind=inttype) dimension(npoints),intent(in) :: indices
-            real(kind=realtype) dimension(3 * npoints),intent(inout),depend(npoints) :: points
-        end subroutine getsurfacecoordinates
-        subroutine setsurfacecoordinates(npoints,indices,points) ! in :warpustruct:../warp/patchIO.f90
-            use griddata
-            use precision
-            use constants
-            integer(kind=inttype), optional,intent(in),check(len(indices)>=npoints),depend(indices) :: npoints=len(indices)
-            integer(kind=inttype) dimension(npoints),intent(in) :: indices
-            real(kind=realtype) dimension(3 * npoints),intent(in),depend(npoints) :: points
-        end subroutine setsurfacecoordinates
-        subroutine updatevolumecoordinates ! in :warpustruct:../warp/updateVolumeCoordinates.f90
-            use griddata
-            use precision
-        end subroutine updatevolumecoordinates
+
+       subroutine initpetsc(comm)
+         integer(kind=inttype) :: comm
+       end subroutine initpetsc
+
+       subroutine createvolumegrid(volnodes,nvollocal) ! in :test:createGrid.F90
+         real(kind=realtype) dimension(3,nvollocal),intent(in) :: volnodes
+         integer(kind=inttype), optional,intent(in),check(shape(volnodes,1)==nvollocal),depend(volnodes) :: nvollocal=shape(volnodes,1)
+       end subroutine createvolumegrid
+       
+       subroutine readstructuredcgns(cgns_file)
+         character*(*) :: cgns_file
+       end subroutine readstructuredcgns
+       
+       subroutine setexternalmeshindices(ndof_solver,solver_indices)
+         integer(kind=inttype) optional,intent(in),check(len(solver_indices)>=ndof_solver),depend(solver_indices) :: ndof_solver=len(solver_indices)
+         integer(kind=inttype) dimension(ndof_solver),intent(in) :: solver_indices
+       end subroutine setexternalmeshindices
+       
+       subroutine getvolumecoordinates(gridnodes,ndof) ! in getVolumeCoordinates.F90
+         real(kind=realtype) dimension(ndof),intent(out),depend(ndof) :: gridnodes
+         integer(kind=inttype) intent(in) :: ndof
+       end subroutine getvolumecoordinates
+       
+       subroutine setvolumecoordinates(gridnodes,ndof) ! in getVolumeCoordinates.F90
+         real(kind=realtype) dimension(ndof),intent(in) :: gridnodes
+         integer(kind=inttype), optional,intent(in),check(len(gridnodes)>=ndof),depend(gridnodes) :: ndof=len(gridnodes)
+       end subroutine setvolumecoordinates
+       
+       subroutine initializewarping(pts,ndof,facesizeslocal,faceconnlocal,nfacesizeslocal,nfaceconnlocal) ! in :test:initializeWarping.F90
+         real(kind=realtype) dimension(ndof),intent(in) :: pts
+         integer(kind=inttype), optional,intent(in),check(len(pts)>=ndof),depend(pts) :: ndof=len(pts)
+         integer(kind=inttype) dimension(nfacesizeslocal),intent(in) :: facesizeslocal
+         integer(kind=inttype) dimension(nfaceconnlocal),intent(in) :: faceconnlocal
+         integer(kind=inttype), optional,intent(in),check(len(facesizeslocal)>=nfacesizeslocal),depend(facesizeslocal) :: nfacesizeslocal=len(facesizeslocal)
+         integer(kind=inttype), optional,intent(in),check(len(faceconnlocal)>=nfaceconnlocal),depend(faceconnlocal) :: nfaceconnlocal=len(faceconnlocal)
+       end subroutine initializewarping
+       
+       subroutine warpmesh()
+       end subroutine warpmesh
+
+       subroutine computenodalproperties(initialpoint) ! in :warpustruct:../geoCalcs/computeNodalProperties.f90
+         logical :: initialpoint
+       end subroutine computenodalproperties
+
+       subroutine setsurfacecoordinates(indices,idof,coordinates, cdof) ! in :test:setSurfaceCoordinatesLocal.f90
+         integer(kind=inttype) dimension(idof),intent(in) :: indices
+         integer(kind=inttype) optional,intent(in),check(len(indices)>=idof),depend(indices) :: idof=len(indices)
+         real(kind=realtype) dimension(cdof),intent(in) :: coordinates
+         integer(kind=inttype) optional,intent(in),check(len(coordinates)>=cdof),depend(coordinates) :: cdof=len(coordinates)
+       end subroutine setsurfacecoordinates
+     
+       subroutine getsurfacecoordinates(indices,idof,coordinates,cdof) ! in :test:getSurfaceCoordinates.F90
+         integer(kind=inttype) dimension(idof),intent(in) :: indices
+         integer(kind=inttype) optional,intent(in),check(len(indices)>=idof),depend(indices) :: idof=len(indices)
+         real(kind=realtype) dimension(cdof),intent(inout) :: coordinates
+         integer(kind=inttype) optional,intent(in),check(len(coordinates)>=cdof),depend(coordinates) :: cdof=len(coordinates)
+       end subroutine getsurfacecoordinates
+       
+       subroutine warp_to_solver_grid(warp_grid,wdof,solver_grid,sdof) ! in :test:gridTransform.F90
+         real(kind=realtype) dimension(wdof),intent(in) :: warp_grid
+         integer(kind=inttype) optional,intent(in),check(len(warp_grid)>=wdof),depend(warp_grid) :: wdof=len(warp_grid)
+         real(kind=realtype) dimension(sdof),intent(inout) :: solver_grid
+         integer(kind=inttype) optional,intent(in),check(len(solver_grid)>=sdof),depend(solver_grid) :: sdof=len(solver_grid)
+       end subroutine warp_to_solver_grid
+
+       subroutine solver_to_warp_grid(solver_grid,sdof,warp_grid,wdof) ! in :test:gridTransform.F90
+         real(kind=realtype) dimension(sdof),intent(in) :: solver_grid
+         integer(kind=inttype) optional,intent(in),check(len(solver_grid)>=sdof),depend(solver_grid) :: sdof=len(solver_grid)
+         real(kind=realtype) dimension(wdof),intent(inout) :: warp_grid
+         integer(kind=inttype) optional,intent(in),check(len(warp_grid)>=wdof),depend(warp_grid) :: wdof=len(warp_grid)
+       end subroutine solver_to_warp_grid
+
+       subroutine writestructuredcgns(cgns_file)
+         character*(*) :: cgns_file
+       end subroutine writestructuredcgns
+
+       module gridinput
+         integer(kind=inttype) :: aexp, bexp
+         integer(kind=inttype) :: isymm
+         real(kind=realtype) :: alpha
+         real(kind=realtype) :: ldeffact, aaexp, bbexp
+         real(kind=realtype) :: symmtol
+       end module gridinput
+
+       module griddata ! in :warpustruct:../modules/gridData.f90
+         character dimension((32),32),intent(c) :: familylist
+         integer(kind=inttype) :: nwallfamilies
+         integer(kind=inttype) :: warpmeshdof
+       end module griddata
+       
     end interface 
 end python module warpustruct
 
