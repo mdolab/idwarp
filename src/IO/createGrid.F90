@@ -72,6 +72,9 @@ subroutine createVolumeGrid(volNodes, nVolLocal)
   call EChk(ierr,__FILE__,__LINE__)
 
   deallocate(volNodesProc)
+  allocate(numerator(3, nVolLocal))
+  allocate(denomenator(nVolLocal), denomenator0(nVolLocal))
+
 end subroutine createVolumeGrid
 
 

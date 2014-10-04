@@ -4,7 +4,7 @@
 ! Date Started: July 10, 2014
 ! Date Modified:
 
-subroutine readUnstructuredCGNSFile(cgns_file, comm)
+! subroutine readUnstructuredCGNSFile(cgns_file, comm)
 
 !   use precision
 !   use communication
@@ -14,8 +14,8 @@ subroutine readUnstructuredCGNSFile(cgns_file, comm)
 
 
 !   ! Input Arguments
-!   character*(*) :: cgns_file
-!   integer(kind=intType) :: comm
+   ! character*(*) :: cgns_file
+   ! integer(kind=intType) :: comm
 
 !   integer(kind=intType):: ierr
 !   ! integer(kind=intType):: index_base, index_zone
@@ -422,6 +422,6 @@ subroutine readUnstructuredCGNSFile(cgns_file, comm)
 !      end do
 !   end do
 
-end subroutine readUnstructuredCGNSFile
+! end subroutine readUnstructuredCGNSFile
 
 
