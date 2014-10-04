@@ -344,41 +344,34 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
   ! Run the compute nodal properties to initialize the normal vectors.
   call initNodalProperties()
 
+  mytree%Ldef = Ldef0 * LdefFact
+  mytree%alphaToBexp = alpha**bExp
+  mytree%errTol = errTol
+
   ! Set some initialization on the tree
-  ! call setAi(mytree, Ai)
-  ! call setXu0(mytree, Xu0)
-  ! call labelNodes(mytree)
-  ! call computeErrors(mytree)
+   call setAi(mytree, Ai)
+   call setXu0(mytree, Xu0)
+   call labelNodes(mytree)
+   call computeErrors(mytree)
 
-  ! ! Compute the approximate denomenator:
-  ! call VecGetArrayF90(Xv0, Xv0Ptr, ierr)
-  ! call EChk(ierr,__FILE__,__LINE__)
+  ! Compute the approximate denomenator:
+  call VecGetArrayF90(Xv0, Xv0Ptr, ierr)
+  call EChk(ierr,__FILE__,__LINE__)
 
-  ! if (myid == 0) then 
-  !    print *, 'Computing Denomenator Estimate...'
-  ! end if
+  if (myid == 0) then 
+     print *, 'Computing Denomenator Estimate...'
+  end if
   
-  ! ! Compute the denomenator. This needs to be done only once. This can
-  ! ! be surprisingly expensive since we don't know what the magnitude
-  ! ! of the denomenator will be, therefore we don't know apriori what
-  ! ! is "small enough". This, of course is the *reason* for doing this
-  ! ! computation once. On all subsequent mesh warps, we know what the
-  ! ! denomenator *will* be so that we can use approximations that will
-  ! ! eventually be less that our tolerance, even if they *are*
-  ! ! greater than the current sum times the tolerance. 
-  ! mytree%Ldef = Ldef0 * LdefFact
-  ! mytree%alphaToBexp = alpha**bExp
-  ! mytree%errTol = errTol
+  ! Compute the denomenator. This needs to be done only once.
+  dryRunLoop: do j=1,size(Xv0Ptr)/3
+     r(1) = Xv0Ptr(3*j-2)
+     r(2) = Xv0Ptr(3*j-1)
+     r(3) = Xv0Ptr(3*j)
+     call getWiEstimate(mytree, r, denomenator0(j))
+  end do dryRunLoop
 
-  ! dryRunLoop: do j=1,size(Xv0Ptr)/3
-  !    r(1) = Xv0Ptr(3*j-2)
-  !    r(2) = Xv0Ptr(3*j-1)
-  !    r(3) = Xv0Ptr(3*j)
-  !    call getWiEstimate(mytree, r, denomenator0(j))
-  ! end do dryRunLoop
-
-  ! call VecRestoreArrayF90(Xv0, Xv0Ptr, ierr)
-  ! call EChk(ierr,__FILE__,__LINE__)
+  call VecRestoreArrayF90(Xv0, Xv0Ptr, ierr)
+  call EChk(ierr,__FILE__,__LINE__)
   
   ! Deallocate the memory from this processor:
   deallocate(nNodesProc, cumNodesProc)
