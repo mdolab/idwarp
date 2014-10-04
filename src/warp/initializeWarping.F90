@@ -22,12 +22,13 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
   real(kind=realType),dimension(:,:), allocatable :: allNodes
   integer(kind=intType), dimension(:), allocatable :: faceSizesMirror, faceConnMirror
   real(kind=realType), dimension(:, :), allocatable :: allMirrorPts, uniquePts
+  real(kind=realType), dimension(:), allocatable :: costs
   integer(kind=intType), dimension(:), allocatable :: surfSizesProc, surfSizesDisp
   integer(kind=intType), dimension(:), allocatable :: surfConnProc, surfConnDisp
   integer(kind=intType), dimension(:), allocatable :: link, tempInt, invIndices
   integer(kind=intType), Pointer :: indices(:)
   real(kind=realtype) :: fact(3), xcen(3), dx(3), r(3)
-  integer(kind=intType) :: nFaceConnMirror, nFaceSizesMirror, nMirrorNodes
+  integer(kind=intType) :: nFaceConnMirror, nFaceSizesMirror, nMirrorNodes, nVol
 
    interface 
      subroutine pointReduce(pts, N, tol, uniquePts, link, nUnique)
@@ -323,7 +324,7 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
      end if
   end do
 
-  ! Compute Ldef based on the size of nmesh
+  ! Compute Ldef based on the size of the mesh
   Xcen = zero
   do i=1,nUnique
      Xcen = Xcen + Xu0(:, i)
@@ -361,15 +362,35 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
   if (myid == 0) then 
      print *, 'Computing Denomenator Estimate...'
   end if
-  
+  nVol = size(Xv0Ptr)/3
   ! Compute the denomenator. This needs to be done only once.
-  dryRunLoop: do j=1,size(Xv0Ptr)/3
-     r(1) = Xv0Ptr(3*j-2)
-     r(2) = Xv0Ptr(3*j-1)
-     r(3) = Xv0Ptr(3*j)
-     call getWiEstimate(mytree, r, denomenator0(j))
+  wiLoop: do j=1, nVol
+     call getWiEstimate(mytree, Xv0Ptr(3*j-2:3*j), denomenator0(j))
+  end do wiLoop
+  if (myid == 0) then 
+     print *, 'Done Denomenator Estimate.'
+  end if
+  ! Now we have to do a dry run loop that determines just the number
+  ! of ops that a mesh warp would use. This integer is scaled by the
+  ! "brute force" cost, so each individual cost will be less than 1. 
+  print *,' start dry run...'
+  allocate(costs(nVol))
+
+  dryRunLoop: do j=1, nVol
+     call dryRun(mytree, Xv0Ptr(3*j-2:3*j), denomenator0(j), ii)
+     costs(j) = dble(ii)/nUnique
   end do dryRunLoop
 
+  ! Now put the costs in cumulative format
+  do j=2,nVol
+     costs(j) = costs(j) + costs(j-1)
+  end do
+
+  print *, 'end dry run.'
+  print *,' costs:'
+  do j=1,1000
+     print *,j,costs(J)
+  end do
   call VecRestoreArrayF90(Xv0, Xv0Ptr, ierr)
   call EChk(ierr,__FILE__,__LINE__)
   
