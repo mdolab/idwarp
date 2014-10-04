@@ -132,8 +132,8 @@ Contains
     nullify(master_record%flatNodes)
     Call build_tree(master_record)
     master_record%rstar = (/two, three, four, five, 7.5_realType, 10_realType, &
-                 20_realType, 40_realType, 80_realType, 160_realType, 320_realType, &
-                 640_realType/)
+         20_realType, 40_realType, 80_realType, 160_realType, 320_realType, &
+         640_realType/)
   Contains
 
     Subroutine build_tree(tp)
@@ -691,67 +691,66 @@ Contains
       integer(kind=intType) :: ii, i, j
 
       if (np%dnum /= 0) then 
-      do j=1, NERR
-         dExact= zero
-         dApprox = zero
-         call getSpherePts(np%X, np%radius*tp%rstar(j), vpts, fpts)
+         do j=1, NERR
+            dExact= zero
+            dApprox = zero
+            call getSpherePts(np%X, np%radius*tp%rstar(j), vpts, fpts)
 
-         np%err(j) = 0
-         do ii=1,20
-            ! Compute exact value:
-            do i=np%l, np%u
-               rr = vpts(:, ii) - tp%Xu0(:, i)
+            np%err(j) = zero
+            do ii=1, 20
+               ! Compute exact value:
+               do i=np%l, np%u
+                  rr = vpts(:, ii) - tp%Xu0(:, i)
+                  dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2)
+                  LdefoDist = tp%Ldef/dist
+                  Ldefodist3 = LdefoDist**3
+                  dExact(ii) = dExact(ii) + tp%Ai(i)*(Ldefodist3 + tp%alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
+               end do
+
+               ! And the approx value:
+               rr = vpts(:, ii) - np%X
                dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2)
                LdefoDist = tp%Ldef/dist
                Ldefodist3 = LdefoDist**3
-               dExact(ii) = dExact(ii) + tp%Ai(i)*(Ldefodist3 + tp%alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
+               dApprox(ii) = dApprox(ii) + np%Ai*(Ldefodist3 + tp%alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
+
+               ! Now set the nodal error:
+               np%err(j) = np%err(j) + (dExact(ii) - dApprox(ii))**2 
             end do
 
-            ! And the approx value:
-            rr = vpts(:, ii) - np%X
-            dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2)
-            LdefoDist = tp%Ldef/dist
-            Ldefodist3 = LdefoDist**3
-            dApprox(ii) = dApprox(ii) + np%Ai*(Ldefodist3 + tp%alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
-
-            ! Now set the nodal error:
-            np%err(j) = np%err(j) + (dExact(ii) - dApprox(ii))**2 
+            ! This the RMS Error:
+            np%err(j) = sqrt(np%err(j)/20)
          end do
-
-         ! This the RMS Error:
-         np%err(j) = sqrt(np%err(j)/20)
-      end do
-
-      ! Now call the children:
-      call computeErrors_node(tp, np%left)
-      call computeErrors_node(tp, np%right)
-   end if
- end subroutine computeErrors_node
- end subroutine computeErrors
-
- subroutine getError(tp, np, dist, err)
-   ! Simple routine to use the stored errors to estimate what the
-   ! error will be for dist 'dist'.
-   implicit none
-   Type (tree_master_record), Pointer :: tp
-   Type (tree_node), Pointer :: np 
-   real(kind=realType), intent(in) :: dist
-   real(Kind=realType), intent(out) :: err
-   real(kind=realType) :: logDist
-   real(kind=realType) :: fact
-   integer(kind=intType) :: bin, i
-   
-   logDist = dist / np%radius
-   bin = 11
-   do i=2,11
-      if (logDist < tp%rstar(i)) then
-         bin = i-1
-         exit
+         ! Now call the children:
+         call computeErrors_node(tp, np%left)
+         call computeErrors_node(tp, np%right)
       end if
-   end do
-   fact = (logDist - tp%rstar(bin))/(tp%rstar(bin+1)-tp%rstar(bin))
-   err = (one-fact)*np%err(bin) + fact*np%err(bin+1)
- end subroutine getError
+    end subroutine computeErrors_node
+  end subroutine computeErrors
+
+  subroutine getError(tp, np, dist, err)
+    ! Simple routine to use the stored errors to estimate what the
+    ! error will be for dist 'dist'.
+    implicit none
+    Type (tree_master_record), Pointer :: tp
+    Type (tree_node), Pointer :: np 
+    real(kind=realType), intent(in) :: dist
+    real(Kind=realType), intent(out) :: err
+    real(kind=realType) :: logDist
+    real(kind=realType) :: fact
+    integer(kind=intType) :: bin, i
+
+    logDist = dist / np%radius
+    bin = 11
+    do i=2,11
+       if (logDist < tp%rstar(i)) then
+          bin = i-1
+          exit
+       end if
+    end do
+    fact = (logDist - tp%rstar(bin))/(tp%rstar(bin+1)-tp%rstar(bin))
+    err = (one-fact)*np%err(bin) + fact*np%err(bin+1)
+  end subroutine getError
 End Module kd_tree
 
 
@@ -1078,46 +1077,46 @@ End Module kd_tree
 !    end subroutine dryRun_node
 !  end subroutine dryRun
 
-  ! subroutine createFlatList(tp, level)
-  !   implicit none
-  !   ! Create a flat list of tree nodes at a given level. This allows
-  !   ! us to loop over these nodes instead of traversing the tree
-  !   ! from the top all the time which is kinda useless most of the
-  !   ! time.
-  !   Type (tree_master_record), Pointer :: tp    
-  !   integer(kind=intType) :: level, ii
+! subroutine createFlatList(tp, level)
+!   implicit none
+!   ! Create a flat list of tree nodes at a given level. This allows
+!   ! us to loop over these nodes instead of traversing the tree
+!   ! from the top all the time which is kinda useless most of the
+!   ! time.
+!   Type (tree_master_record), Pointer :: tp    
+!   integer(kind=intType) :: level, ii
 
-  !   allocate(tp%flatNodes(2**(level-1)))
-  !   ii = 0
-  !   call createFlatList_node(tp, tp%root, level, ii)
+!   allocate(tp%flatNodes(2**(level-1)))
+!   ii = 0
+!   call createFlatList_node(tp, tp%root, level, ii)
 
-  ! contains 
+! contains 
 
-  !   recursive subroutine createFlatList_node(tp, np, level, ii)
-  !     implicit none
-  !     Type (tree_master_record), Pointer :: tp
-  !     Type (tree_node), Pointer :: np 
-  !     integer(kind=intType) :: ii, level
-  !     if (np%lvl == level) then 
-  !        ii = ii + 1
-  !        tp%flatNodes(ii)%tn => np
-  !        ! This is the base case, no need to go any further
-  !     else
-  !        if (np%dnum > 0) then 
-  !           call createFlatList_node(tp, np%left, level, ii)
-  !           call createFlatList_node(tp, np%right, level, ii)
-  !        end if
-  !     end if
-  !   end subroutine createFlatList_node
-  ! end subroutine createFlatList
+!   recursive subroutine createFlatList_node(tp, np, level, ii)
+!     implicit none
+!     Type (tree_master_record), Pointer :: tp
+!     Type (tree_node), Pointer :: np 
+!     integer(kind=intType) :: ii, level
+!     if (np%lvl == level) then 
+!        ii = ii + 1
+!        tp%flatNodes(ii)%tn => np
+!        ! This is the base case, no need to go any further
+!     else
+!        if (np%dnum > 0) then 
+!           call createFlatList_node(tp, np%left, level, ii)
+!           call createFlatList_node(tp, np%right, level, ii)
+!        end if
+!     end if
+!   end subroutine createFlatList_node
+! end subroutine createFlatList
 
 
 
- ! logDist = log10(dist / np%radius)
- ! rstar = (/zero, half, one, 1.5, 2, 2.5, 3, 3.5, 4.0, 4.5, 5.0, 5.5/)
- ! bin = int((logDist / 0.5_realType)) + 1 ! Left side of bin:
- ! fact = (logDist - rstar(bin))/(rstar(bin+1)-rstar(bin))
- ! lerr = (one-fact)*np%err(bin) + fact*np%err(bin+1)
- ! err = 10**(lerr)
+! logDist = log10(dist / np%radius)
+! rstar = (/zero, half, one, 1.5, 2, 2.5, 3, 3.5, 4.0, 4.5, 5.0, 5.5/)
+! bin = int((logDist / 0.5_realType)) + 1 ! Left side of bin:
+! fact = (logDist - rstar(bin))/(rstar(bin+1)-rstar(bin))
+! lerr = (one-fact)*np%err(bin) + fact*np%err(bin+1)
+! err = 10**(lerr)
 
 
