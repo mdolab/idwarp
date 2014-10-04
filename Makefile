@@ -8,9 +8,12 @@
 #      ******************************************************************
 
 SUBDIR_SRC    = src/modules	\
-		src/warp	\
 	        src/IO		\
-	        src/utils 
+	        src/utils	\
+		src/ADFirstAidKit\
+		src/warp	\
+		src/warp/outputReverse\
+
 
 WARP_SUBDIRS       = $(SUBDIR_SRC)
 WARP_CLEAN_SUBDIRS = $(SUBDIR_SRC)

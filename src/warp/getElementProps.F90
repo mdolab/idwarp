@@ -28,6 +28,7 @@ subroutine getElementProps(points, nPts, area, normal)
 
   ! Now loop around element doing cross products to get directional area
   normal = zero
+  area = zero
   do i=1, nPts
      if (i<nPts) then
         call cross_product_3d(radialVec(:, i), radialVec(:, i+1), cross)

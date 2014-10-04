@@ -1,3 +1,9 @@
+#*********************************************************
+# Makefile for pywarpustruct
+# C.A.Mader       July 10, 2014
+# G. K. W. Kenway Sept 30, 2014
+#*********************************************************
+
 MAIN_DIR = ../../
 COMMON_FILE = $(MAIN_DIR)/Common.mk
 RULES_FILE  = $(MAIN_DIR)/Rules.mk
@@ -9,6 +15,7 @@ FILES_TO_COMPLEXIFY = \
 	initPETSc.F90\
 	pointReduce.f90\
 	vectorUtils.f90\
+	getSpherePts.F90\
 
 FILES_TO_COPY = 
 

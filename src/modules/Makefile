@@ -1,6 +1,7 @@
 #*********************************************************
 # Makefile for pywarpustruct
-# C.A.Mader  July 10, 2014
+# C.A.Mader       July 10, 2014
+# G. K. W. Kenway Sept 30, 2014
 #*********************************************************
 
 MAIN_DIR = ../../
@@ -10,16 +11,18 @@ include ${COMMON_FILE}
 include ${RULES_FILE}
 vpath %.o $(OBJDIR)
 
-# Name of files to be compiled:
+# Name of files to be compiled...Order here matters!
 FF90_OBJECTS_1 = precision.o\
 
 FF90_OBJECTS_2 = constants.o\
 
-FF90_OBJECTS_3 = communication.o\
+FF90_OBJECTS_3 = kd_tree.o\
+
+FF90_OBJECTS_4 = communication.o\
 		 gridData.o\
 		 gridInput.o\
-		 kd_tree.o\
 		 structuredCGNS.o\
+		 diffSizes.o\
 
 FILES_TO_COMPLEXIFY =	precision.F90\
 			constants.f90\
@@ -28,6 +31,7 @@ FILES_TO_COMPLEXIFY =	precision.F90\
 			gridInput.f90\
 			kd_tree.f90\
 			structuredCGNS.F90\
+			diffSizes.f90\
 
 FILES_TO_COPY = 
 
@@ -37,6 +41,7 @@ all:
 	make $(FF90_OBJECTS_1)
 	make $(FF90_OBJECTS_2)
 	make $(FF90_OBJECTS_3)
+	make $(FF90_OBJECTS_4)
 	cp -f *.mod $(MODDIR)
 
 clean:
