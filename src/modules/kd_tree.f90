@@ -336,7 +336,7 @@ Contains
     Type (tree_master_record), Pointer :: tp
     real(kind=realType), intent(in) , pointer, dimension(:) :: Ai
 
-    ! Set the internal pointer to Ai. This shouldnt' change
+    ! Set the internal pointer to Ai. This shouldn't change
     tp%Ai => Ai
     call setAi_node(tp, tp%root)
   contains 
@@ -669,11 +669,61 @@ Contains
     end subroutine getWiEstimate_node
   end subroutine getWiEstimate
 
+  subroutine dryRun(tp, r, approxDen, ii)
+    ! This routine estimates the number of operations that *would* be
+    ! needed to compute the displacement for a given node. No
+    ! computations are actually done. It is used to determine the
+    ! approximate costs so that a load balancing algorithm can used
+    ! to rebalance the nodes. 
+    implicit none
+    Type (tree_master_record), Pointer :: tp
+    real(kind=realType), intent(in), dimension(3) :: r
+    real(kind=realType), intent(in) :: approxDen
+    integer(Kind=intType), intent(out) :: ii
+    ii = 0
+    call dryRun_node(tp, tp%root, r, approxDen, ii)
+
+  contains
+    recursive subroutine dryRun_node(tp, np, r, approxDen, ii)
+      implicit none
+      Type (tree_master_record), Pointer :: tp
+      Type (tree_node), Pointer :: np 
+      real(kind=realType), intent(in), dimension(3) :: r
+      real(kind=realType), intent(in) :: approxDen
+      integer(kind=intType), intent(inout) :: ii
+      real(kind=realType), dimension(3) :: rr
+      real(kind=realType) :: dist, err
+
+      if (np%dnum == 0) then 
+         ii = ii + np%n
+      else
+         rr = r - np%X
+         dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2)
+
+         if (dist/np%radius < two) then ! Too close...call children
+            call dryRun_node(tp, np%left, r, approxDen, ii)
+            call dryRun_node(tp, np%right, r, approxDen, ii)
+         else 
+            ! Use the first error check:
+            call getError(tp, np, dist, err)
+            if (err < tp%errTol * approxDen) then
+               ! This is the approx calc:
+               ii = ii + 1
+            else
+               ! Not good enough error so call children
+               call dryRun_node(tp, np%left, r, approxDen, ii)
+               call dryRun_node(tp, np%right, r, approxDen, ii)
+            end if
+         end if
+      end if
+    end subroutine dryRun_node
+  end subroutine dryRun
+
   subroutine computeErrors(tp)
     ! This routine computes an estimate of the error to be induced in
-    ! the numerator and denomenator at each tree node. Then, when we
-    ! are evaluating the displacment we can determine if the errors
-    ! induced by the approximation are acceptable or not. 
+    ! the denomenator at each tree node. Then, when we are evaluating
+    ! the displacment we can determine if the errors induced by the
+    ! approximation are acceptable or not.
 
     implicit none
     Type (tree_master_record), Pointer :: tp
@@ -736,387 +786,20 @@ Contains
     Type (tree_node), Pointer :: np 
     real(kind=realType), intent(in) :: dist
     real(Kind=realType), intent(out) :: err
-    real(kind=realType) :: logDist
+    real(kind=realType) :: dOvrR
     real(kind=realType) :: fact
     integer(kind=intType) :: bin, i
 
-    logDist = dist / np%radius
+    dOvrR = dist / np%radius
     bin = 11
     do i=2,11
-       if (logDist < tp%rstar(i)) then
+       if (dOvrR < tp%rstar(i)) then
           bin = i-1
           exit
        end if
     end do
-    fact = (logDist - tp%rstar(bin))/(tp%rstar(bin+1)-tp%rstar(bin))
+    fact = (dOvrR - tp%rstar(bin))/(tp%rstar(bin+1)-tp%rstar(bin))
     err = (one-fact)*np%err(bin) + fact*np%err(bin+1)
   end subroutine getError
 End Module kd_tree
-
-
-
-
-! subroutine evalDisp(tp, r, num, den, ii)
-!    use constants
-!    implicit none
-!    Type (tree_master_record), Pointer :: tp
-!    real(kind=realType), intent(in), dimension(3) :: r
-!    real(kind=realType), intent(out), dimension(3) :: num
-!    real(kind=realType), intent(out) :: den
-!    integer(kind=intType) :: ii
-!    call evalDisp_node(tp, tp%root, r, num, den, ii)
-
-!  contains
-!    recursive subroutine evalDisp_node(tp, np, r, num, den, ii)
-!      use constants
-!      implicit none
-!      ! Subroutine arguments
-!      Type (tree_master_record), Pointer :: tp
-!      Type (tree_node), Pointer :: np 
-!      real(kind=realType), intent(in), dimension(3) :: r
-!      real(kind=realType), intent(inout), dimension(3) :: num
-!      real(kind=realType), intent(inout) :: den
-!      integer(kind=intType) :: ii
-!      ! Working variables
-!      real(kind=realType), dimension(3) :: rr, Si
-!      real(kind=realType) :: dist, LdefoDist, LdefoDist3
-!      real(kind=realType) :: Wi
-!      integer(kind=intType) :: i
-!      ! Compute the distance from 'r' to the center of the node, np%X
-!      rr = r - np%X
-!      dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2)
-
-!      if (np%dnum == 0) then 
-!         ! Leaf node. Do regular calc:
-!         call evalNodeExact(tp, np, r, num, den)
-!         ii = ii + np%u - np%l + 1
-!      else
-!         if (np%left%dnum == 0) then 
-!            ! Second layer up:
-
-!            ! Tree Node:
-!            if (dist / np%radius > tp%farField) then 
-!               call evalNodeApprox(tp, np, r, num, den, dist)
-!               ii = ii + 1
-!            else
-!               ! We are too far away...call on the two children
-!               call evalDisp_node(tp, np%left, r, num, den, ii)
-!               call evalDisp_node(tp, np%right, r, num, den, ii)
-!            end if
-!        else
-!           ! Not close enough
-!           call evalDisp_node(tp, np%left, r, num, den, ii)
-!           call evalDisp_node(tp, np%right, r, num, den, ii)
-!        end if
-!      end if
-!    end subroutine evalDisp_node
-!  end subroutine evalDisp
-
-
-! subroutine checkErrors(tp)
-!     implicit none
-!     ! Subroutine arguments
-!     Type (tree_master_record), Pointer :: tp
-!     real(kind=realType) :: fact
-!     integer(kind=intType) :: ii
-!     fact = sqrt(10.0)
-!     do ii=1,10
-!        call checkErrors_node(tp, tp%root, fact)
-!        fact = fact * sqrt(10.0)
-!     end do
-
-!   contains
-!     recursive subroutine checkErrors_node(tp, np, fact)
-!       use constants
-!       implicit none
-!       Type (tree_master_record), Pointer :: tp
-!       Type (tree_node), Pointer :: np
-
-!       real(kind=realType) :: vpts(3, 20)
-!       real(kind=realType) :: fpts(3, 12)
-!       real(kind=realType) :: num(3), den
-!       real(kind=realType) :: dx(3, 20), dxapprox(3, 20)
-!       real(kind=realType) :: err(3, 20), tmp(3), rr(3), dist, ee
-!       integer(kind=intType) :: i, ii
-!       real(kind=realType) :: fact
-
-
-!       call getSpherePts(np%X, np%radius*fact, vpts, fpts) 
-
-!       err = zero
-!       ! Compute exact values at the vpts
-!       do i=1, 20
-!          num = zero
-!          den = zero
-!          call evalNodeExact(tp, np, vpts(:, i), num, den)
-!          dx(:, i) = num/den
-
-!          num = zero
-!          den = zero
-
-!          rr = vpts(:, i) - np%X
-!          dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2)
-
-!          call evalNodeApprox(tp, np, vpts(:, i), num, den, dist)
-!          dxapprox(:, i) = num/den
-!       end do
-
-!       err = dx - dxapprox
-!       ee = sqrt(sum(err**2))
-
-!       !if (np%dnum /= 0) then 
-!       if (np%lvl == 10) then
-!          if (np%id == 114) then
-!             print *, fact, ee
-!             print *, 'Bi:,' ,np%BI
-!             print *, 'X:', np%X
-!             print *,' r:', np%radius
-!             if (fact < 9) then 
-!                do i=np%l, np%u
-!                   print *, tp%xu0(:, i)
-!                end do
-!                do i=np%l, np%u
-!                   print *, tp%Bi(:, i)
-!                end do
-
-!                do i=np%l, np%u
-!                   print *, tp%Ai(i)
-!                end do
-!             end if
-
-!          end if
-!       end if
-!          ! if (abs(ee) > 8) then!  .and. ee < 8.1)  then!.and. abs(ee) < 6.0) then !339 .and. abs(err) < 339.2) then 
-!          !    print *, 'id:', np%id, ee
-
-! !             print *, 'Level, err:', np%lvl, ee
-! !             do i=1,20
-! !                print *, '-------------------'
-! !                print *, dx(:, i)
-! !                print *, dxapprox(:, i)
-! !             end do
-! !             print *, 'l,u:', np%l, np%u
-! !             print *, 'radius:', np%radius
-! !             open(unit=7, file="test.dat", status='replace')
-! ! 102         format(g20.12, g20.12, g20.12, g20.12)
-! !             write(7, *) "ZONE"
-! !             do i=np%l, np%u
-! !                write(7, 102), tp%xu0(1, i), tp%xu0(2, i), tp%xu0(3, i)
-! !             end do
-! !             close(7)
-
-
-! !             do i=np%l, np%u
-! !                print *, tp%xu0(:, i)
-! !             end do
-! !             print *, '0--------------------'
-! !             do i=np%l, np%u
-! !                print *, tp%Bi(:, i)
-! !             end do
-! !             print *, '  Ai -'
-! !             do i=np%l, np%u
-! !                print *, tp%Ai(i)
-! !             end do
-! !           print *, 'X:', np%X
-! !          print *,'node Bi:', np%Bi
-! !          print *,'area:', np%Ai
-! !         end if
-
-! !      end if
-
-!       if (np%dnum /= 0) then
-!          call checkErrors_node(tp, np%left, fact)
-!          call checkErrors_node(tp, np%right, fact)
-!       end if
-
-!     end subroutine checkErrors_node
-!   end subroutine checkErrosr
-
-
-! subroutine computeErrors(tp)
-
-!   ! This routine computes an estimate of the error to be induced in
-!   ! the numerator and denomenator at each tree node. Then, when we
-!   ! are evaluating the displacment we can determine if the errors
-!   ! induced by the approximation are acceptable or not. 
-
-
-!   implicit none
-!   Type (tree_master_record), Pointer :: tp
-!   real(kind=realType) :: fact
-!   integer(kind=intType) :: ii
-
-!   call computeErrors_node(tp, tp%root)
-! contains
-
-!   recursive subroutine computeErrors_node(tp, np)
-
-!     Type (tree_master_record), Pointer :: tp
-!     Type (tree_node), Pointer :: np 
-!     real(kind=realType) , dimension(3, 20) :: vpts
-!     real(kind=realType) , dimension(3, 12) :: fpts
-!     real(kind=realType), dimension (8):: rstar
-!     real(kind=realType) :: dExact(20), dApprox(20), rr(3)
-!     real(kind=realType) :: LdefoDist, LdefODist3, dist
-!     integer(kind=intType) :: ii, i
-
-!     ! Only on non-leaf node:
-!     if (np%dnum /= 0) then
-!        rstar(1) = one
-!        rstar(2) = sqrt(ten)
-!        rstar(3) = rstar(1)*ten !    10
-!        rstar(4) = rstar(2)*ten !   ~30
-!        rstar(5) = rstar(3)*ten !   100
-!        rstar(6) = rstar(4)*ten !  ~300
-!        rstar(7) = rstar(5)*ten !  1000
-!        rstar(8) = rstar(6)*ten ! ~3000
-!        if (np%id == 1) then 
-!           print *,' rstar:', rstar
-!        end if
-!        do ii=1,size(rstar)
-!           dExact= zero
-!           dApprox = zero
-!           call getSpherePts(np%X, np%radius*rstar(ii), vpts, fpts)
-
-!           ! Compute exact value:
-!           do i=np%l, np%u
-!              rr = vpts(:, ii) - tp%Xu0(:, i)
-!              dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2)
-!              LdefoDist = tp%Ldef/dist
-!              Ldefodist3 = LdefoDist**3
-!              dExact(ii) = dExact(ii) + tp%Ai(i)*(Ldefodist3 + tp%alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
-!           end do
-
-!           ! And the approx value:
-!           rr = vpts(:, ii) - np%X
-!           dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2)
-!           LdefoDist = tp%Ldef/dist
-!           Ldefodist3 = LdefoDist**3
-!           dApprox(ii) = dApprox(ii) + np%Ai*(Ldefodist3 + tp%alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
-
-!           ! Now set the nodal error:
-!           np%err(ii) = 0
-!           do i=1,20
-!              np%err(ii) = (dExact(ii) - dApprox(ii))**2
-!           end do
-!           np%err(ii) = log10(sqrt(np%err(ii)))
-!        end do
-!        ! Now call the children:
-!        call computeErrors_node(tp, np%left)
-!        call computeErrors_node(tp, np%right)
-!     end if
-!   end subroutine computeErrors_node
-! end subroutine computeErrors
-
-
-
-! subroutine dryRun(tp, r, den, errTol, ii)
-!    ! This routine needs to be only called once. Essentialy what we
-!    ! are dong is computing just the denomenator (Wi)
-!    ! computation. This is used as a reference value for the 'real'
-!    ! mesh warp, to be used for checking against the errors. A hard
-!    ! coded R-limit of 20 is used here. This should be sufficient to
-!    ! get an good estimate of Wi. 
-!    implicit none
-
-!    Type (tree_master_record), Pointer :: tp
-!    Type (tree_node), Pointer :: np 
-!    real(kind=realType), intent(in), dimension(3) :: r
-!    real(kind=realType), intent(inout) :: den
-!    real(kind=realType), intent(in) :: errTol
-!    integer(kind=intType) :: ii
-!    den = zero
-!    ii = 0
-!    call dryRun_node(tp, tp%root, r, den, errTol, ii)
-
-!  contains
-!    recursive subroutine dryRun_node(tp, np, r, den, errTol, ii)
-!      implicit none
-!      ! Subroutine arguments
-!      Type (tree_master_record), Pointer :: tp
-!      Type (tree_node), Pointer :: np 
-!      real(kind=realType), intent(in), dimension(3) :: r
-!      real(kind=realType), intent(inout) :: den
-!      real(kind=realType), intent(in) :: errTol
-
-!      real(kind=realType), dimension(3) :: rr
-!      real(kind=realType) :: dist, LdefoDist, LdefoDist3, err
-!      integer(kind=intType) :: ii, evals, i
-
-!      if (np%dnum == 0) then 
-!         ! Leaf node. Do regular calc:
-!         do i=np%l, np%u
-!            rr = r - tp%Xu0(:, i)
-!            dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2+1e-16)
-!            LdefoDist = tp%Ldef/dist
-!            Ldefodist3 = LdefoDist**3
-!            den = den + tp%Ai(i)*(Ldefodist3 + tp%alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
-!         end do
-!         ii = ii + np%n
-!      else
-!         rr = r - np%X
-!         dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2)
-
-!         ! Now we get the error:
-!         call getError(np, dist, err)
-!         !print *,'lvl:',np%lvl, den, err
-!         ! Would the addition of 'err' to 'den' cause more than a 'errTol' change:
-!         if (err < errTol * den) then 
-!            !print *, 'acc:',err, den
-!            ! Far field calc is ok:
-!            LdefoDist = tp%Ldef/dist
-!            Ldefodist3 = LdefoDist**3
-!            den = den + np%Ai*(Ldefodist3 + tp%alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
-!            ii = ii + 1
-!         else
-!            ! To far away, recursively call the children
-!            call dryRun_node(tp, np%left, r, den, errTol, ii)
-!            call dryRun_node(tp, np%right, r, den, errTol, ii)
-!         end if
-!      end if
-!    end subroutine dryRun_node
-!  end subroutine dryRun
-
-! subroutine createFlatList(tp, level)
-!   implicit none
-!   ! Create a flat list of tree nodes at a given level. This allows
-!   ! us to loop over these nodes instead of traversing the tree
-!   ! from the top all the time which is kinda useless most of the
-!   ! time.
-!   Type (tree_master_record), Pointer :: tp    
-!   integer(kind=intType) :: level, ii
-
-!   allocate(tp%flatNodes(2**(level-1)))
-!   ii = 0
-!   call createFlatList_node(tp, tp%root, level, ii)
-
-! contains 
-
-!   recursive subroutine createFlatList_node(tp, np, level, ii)
-!     implicit none
-!     Type (tree_master_record), Pointer :: tp
-!     Type (tree_node), Pointer :: np 
-!     integer(kind=intType) :: ii, level
-!     if (np%lvl == level) then 
-!        ii = ii + 1
-!        tp%flatNodes(ii)%tn => np
-!        ! This is the base case, no need to go any further
-!     else
-!        if (np%dnum > 0) then 
-!           call createFlatList_node(tp, np%left, level, ii)
-!           call createFlatList_node(tp, np%right, level, ii)
-!        end if
-!     end if
-!   end subroutine createFlatList_node
-! end subroutine createFlatList
-
-
-
-! logDist = log10(dist / np%radius)
-! rstar = (/zero, half, one, 1.5, 2, 2.5, 3, 3.5, 4.0, 4.5, 5.0, 5.5/)
-! bin = int((logDist / 0.5_realType)) + 1 ! Left side of bin:
-! fact = (logDist - rstar(bin))/(rstar(bin+1)-rstar(bin))
-! lerr = (one-fact)*np%err(bin) + fact*np%err(bin+1)
-! err = 10**(lerr)
-
 
