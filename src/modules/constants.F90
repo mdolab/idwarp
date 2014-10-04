@@ -31,7 +31,7 @@ module constants
   ! Numerical constants
 
   real(kind=realType), parameter :: pi    = 3.1415926535897931_realType
-
+  real(kind=realType), parameter :: phi = 1+sqrt(5.0_realType)/2.0_realType
   ! Floating point parameters.
   real(kind=realType), parameter :: zero  = 0.0_realType
   real(kind=realType), parameter :: one   = 1.0_realType
@@ -41,6 +41,7 @@ module constants
   real(kind=realType), parameter :: five  = 5.0_realType
   real(kind=realType), parameter :: six   = 6.0_realType
   real(kind=realType), parameter :: eight = 8.0_realType
+  reaL(kind=realType), parameter :: ten   = 10.0_realType
 
   real(kind=realType), parameter :: half   = 0.5_realType
   real(kind=realType), parameter :: third  = one/three

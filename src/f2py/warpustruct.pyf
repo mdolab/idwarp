@@ -40,13 +40,12 @@ python module warpustruct ! in
          integer(kind=inttype), optional,intent(in),check(len(facesizeslocal)>=nfacesizeslocal),depend(facesizeslocal) :: nfacesizeslocal=len(facesizeslocal)
          integer(kind=inttype), optional,intent(in),check(len(faceconnlocal)>=nfaceconnlocal),depend(faceconnlocal) :: nfaceconnlocal=len(faceconnlocal)
        end subroutine initializewarping
+
+       subroutine initnodalproperties
+       end subroutine initnodalproperties
        
        subroutine warpmesh()
        end subroutine warpmesh
-
-       subroutine computenodalproperties(initialpoint) ! in :warpustruct:../geoCalcs/computeNodalProperties.f90
-         logical :: initialpoint
-       end subroutine computenodalproperties
 
        subroutine setsurfacecoordinates(indices,idof,coordinates, cdof) ! in :test:setSurfaceCoordinatesLocal.f90
          integer(kind=inttype) dimension(idof),intent(in) :: indices
@@ -76,16 +75,27 @@ python module warpustruct ! in
          integer(kind=inttype) optional,intent(in),check(len(warp_grid)>=wdof),depend(warp_grid) :: wdof=len(warp_grid)
        end subroutine solver_to_warp_grid
 
+       subroutine warpderiv(dxv_f,ndof_warp)
+         real(kind=realtype) dimension(ndof_warp) :: dxv_f
+         integer(kind=inttype) optional,check(len(dxv_f)>=ndof_warp),depend(dxv_f) :: ndof_warp=len(dxv_f)
+       end subroutine warpderiv
+
        subroutine writestructuredcgns(cgns_file)
          character*(*) :: cgns_file
        end subroutine writestructuredcgns
 
        module gridinput
-         integer(kind=inttype) :: aexp, bexp
+         real(kind=realtype) :: aexp
+         real(kind=realtype) :: bexp
          integer(kind=inttype) :: isymm
          real(kind=realtype) :: alpha
-         real(kind=realtype) :: ldeffact, aaexp, bbexp
+         real(kind=realtype) :: ldeffact
          real(kind=realtype) :: symmtol
+         real(kind=realtype) :: errtol
+         logical :: userotations
+         integer(kind=inttype) :: evalmode
+         integer(kind=inttype) :: eval_exact = 0
+         integer(kind=inttype) :: eval_fast = 1
        end module gridinput
 
        module griddata ! in :warpustruct:../modules/gridData.f90

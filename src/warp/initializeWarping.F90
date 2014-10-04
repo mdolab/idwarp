@@ -24,9 +24,11 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
   real(kind=realType), dimension(:, :), allocatable :: allMirrorPts, uniquePts
   integer(kind=intType), dimension(:), allocatable :: surfSizesProc, surfSizesDisp
   integer(kind=intType), dimension(:), allocatable :: surfConnProc, surfConnDisp
-  integer(kind=intType), dimension(:), allocatable :: link, tempInt
-  real(kind=realtype) :: fact(3), xcen(3), dx(3)
+  integer(kind=intType), dimension(:), allocatable :: link, tempInt, invIndices
+  integer(kind=intType), Pointer :: indices(:)
+  real(kind=realtype) :: fact(3), xcen(3), dx(3), r(3)
   integer(kind=intType) :: nFaceConnMirror, nFaceSizesMirror, nMirrorNodes
+
    interface 
      subroutine pointReduce(pts, N, tol, uniquePts, link, nUnique)
        use precision
@@ -162,7 +164,7 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
   deallocate(allNodes)
 
   ! ----------------------------------------------------------------------
-  !   Step 3: Gather up the connectivity information
+  !   Step 4: Gather up the connectivity information
   ! ----------------------------------------------------------------------
 
   ! Gather the displacements
@@ -220,10 +222,40 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
   allocate(uniquePts(3, nMirrorNodes), link(nMirrorNodes))
   call pointReduce(allMirrorPts, nMirrorNodes, symmTol, uniquePts, link, nUnique)
 
+  ! Let the user know the actual number of Surface nodes used for the calc
+  if (myid == 0) then
+     write(*,"(a)", advance="no") '#--------------------------------#'
+     print "(1x)"  
+     write(*,"(a)", advance="no") " Unique Surface Nodes : "
+     write(*,"(I9,1x)",advance="no") nUnique
+     print "(1x)"  
+     write(*,"(a)", advance="no") '#--------------------------------#'
+     print "(1x)"   
+  end if
+
+
+  ! Before we create the final Xu and friends we will do one final
+  ! aditional mapping: We will create the KD to get the indices that
+  ! *would* sort the tree. By doing this first, this removes the
+  ! additional layer of indirection during the tree traversals of the
+  ! nodal properties to be interpolated. Since this will be done
+  ! BILLIONS and BILLIONS of times, it is worth making these accesses
+  ! fast and essentially in order in memory.
+  mytree=>create_tree(uniquePts(:, 1:nUnique))
+  call labelNodes(mytree)
+  call setCenters(mytree)
+
+  indices => mytree%indexes
+  ! Compute the inverse of the indices
+  allocate(invIndices(nUnique))
+  do i=1, nUnique
+     invIndices(indices(i)) = i
+  end do
+
   ! Now we can go through and update the conn. Note that conn is
   ! currently 0-based so we need the plus one when indexing into link
-  do i=1,lenFaceConn
-     faceConn(i) = link(faceConn(i) + 1)
+  do i=1, lenFaceConn
+     faceConn(i) = invIndices(link(faceConn(i) + 1))
   end do
 
   ! We also need to compute the nodeToElem pointer....This data
@@ -265,7 +297,9 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
   allocate(Xu(3, nUnique), Xu0(3, nUnique), XuInd(nUnique), XuFact(3, nUnique))
 
   ! Copy uniquePoints into Xu0 which will be fixed for all time:
-  Xu0(:, :) = uniquePts(:, 1:nUnique)
+  do i=1, nUnique
+     Xu0(:, i) = uniquePts(:, indices(i))
+  end do
 
   ! Use zero to indicate an un-assigned node
   XuInd(:) = 0
@@ -277,14 +311,14 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
 
   do i=1, nMirrorNodes
      if (i <= nNodesTotal) then ! Regular part:
-        if (XuInd(link(i)) == 0) then ! Un-assigned
-           XuInd(link(i)) = i
-           XuFact(:, link(i)) = one
+        if (XuInd(invindices(link(i))) == 0) then ! Un-assigned
+           XuInd(invindices(link(i))) = i
+           XuFact(:, invindices(link(i))) = one
         end if
      else ! Mirror part:
-        if (XuInd(link(i)) == 0) then ! Un-assigned
-           XuInd(link(i)) = i - nNodesTotal
-           XuFact(:, link(i)) = fact
+        if (XuInd(invindices(link(i))) == 0) then ! Un-assigned
+           XuInd(invindices(link(i))) = i - nNodesTotal
+           XuFact(:, invindices(link(i))) = fact
         end if
      end if
   end do
@@ -307,10 +341,51 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
   allocate(Mi(3, 3, nUnique), Bi(3, nUnique), Ai(nUnique))
   allocate(normals(3, nUnique), normals0(3, nUnique))
   
+  ! Run the compute nodal properties to initialize the normal vectors.
+  call initNodalProperties()
+
+  ! Set some initialization on the tree
+  ! call setAi(mytree, Ai)
+  ! call setXu0(mytree, Xu0)
+  ! call labelNodes(mytree)
+  ! call computeErrors(mytree)
+
+  ! ! Compute the approximate denomenator:
+  ! call VecGetArrayF90(Xv0, Xv0Ptr, ierr)
+  ! call EChk(ierr,__FILE__,__LINE__)
+
+  ! if (myid == 0) then 
+  !    print *, 'Computing Denomenator Estimate...'
+  ! end if
+  
+  ! ! Compute the denomenator. This needs to be done only once. This can
+  ! ! be surprisingly expensive since we don't know what the magnitude
+  ! ! of the denomenator will be, therefore we don't know apriori what
+  ! ! is "small enough". This, of course is the *reason* for doing this
+  ! ! computation once. On all subsequent mesh warps, we know what the
+  ! ! denomenator *will* be so that we can use approximations that will
+  ! ! eventually be less that our tolerance, even if they *are*
+  ! ! greater than the current sum times the tolerance. 
+  ! mytree%Ldef = Ldef0 * LdefFact
+  ! mytree%alphaToBexp = alpha**bExp
+  ! mytree%errTol = errTol
+
+  ! dryRunLoop: do j=1,size(Xv0Ptr)/3
+  !    r(1) = Xv0Ptr(3*j-2)
+  !    r(2) = Xv0Ptr(3*j-1)
+  !    r(3) = Xv0Ptr(3*j)
+  !    call getWiEstimate(mytree, r, denomenator0(j))
+  ! end do dryRunLoop
+
+  ! call VecRestoreArrayF90(Xv0, Xv0Ptr, ierr)
+  ! call EChk(ierr,__FILE__,__LINE__)
+  
+  ! Deallocate the memory from this processor:
   deallocate(nNodesProc, cumNodesProc)
   deallocate(faceSizesMirror, faceConnMirror, allMirrorPts, uniquePts)
   deallocate(surfSizesProc, surfSizesDisp, surfConnProc, surfConnDisp)
   deallocate(link)
-
+  nullify(indices)
+  deallocate(invIndices)
 end subroutine initializeWarping
 

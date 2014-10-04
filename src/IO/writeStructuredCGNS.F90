@@ -10,12 +10,10 @@ subroutine writeStructuredCGNS(cgns_file)
   character*(*),intent(in) :: cgns_file
 
   ! Working 
-  integer(kind=intType) :: i, j, k, ii, jj
+  integer(kind=intType) :: i,ii, jj
   integer(kind=intType):: ierr, base, cg, curSize, nCon, bcOut, boco, ib2b, zoneid
-  character*100 fileName
   integer(kind=intType) :: sizes(9), cordID
   real(kind=realType), dimension(:), allocatable :: coorX, coorY, coorZ
-  real(kind=realType), dimension(:, :), allocatable :: allNodes
   real(kind=realType), pointer, dimension(:) :: xx
 
   ! This isn't technically scalable...we will dump the entire grid

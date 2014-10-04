@@ -1,5 +1,5 @@
 Module kd_tree
-  use precision
+  use constants
   ! K-D tree routines in Fortran 90 by Matt Kennel.
   ! Original program was written in Sather by Steve Omohundro and
   ! Matt Kennel.  Only the Euclidean metric works so far.
@@ -17,74 +17,58 @@ Module kd_tree
 
   ! .. Parameters ..
   ! you choose this.
-  Integer(kind=IntType), Parameter :: bucket_size = 50
-  ! ..
-  ! .. Derived Type Declarations ..
-  ! Global information about the tree
-  ! pointer to the actual
-  ! data array
-  ! dimensionality and total # of points
-  ! permuted index into the
-  ! data, so that
-  ! indexes[l..u]
-  ! of some bucket represent the indexes of the actual
-  ! points in that bucket.
-  ! root pointer of the tree
-  ! an internal tree node
-  ! the dimension to cut
-  ! where to cut the dimension
-  ! indices of points included in this node,
-  ! referring back to indices
-  ! child pointers
-  ! One of these is created for each search.
-  ! best squared distance found so far
-  ! best index found so far
-  ! Query vector
-  ! indexes of best found so far
-  ! squared distances found so far
-  ! how many best distances we are searching
-  ! for
-  ! how many have been found so far, i.e. il(1:nfound)
-  ! are the only valid indexes.
-  ! exclude points within
-  ! 'correltime'
-  ! of 'centeridx'
+  Integer(kind=IntType), Parameter :: bucket_size = 32
+  integer(kind=intType), Parameter :: NERR = 12
+  ! ..  .. Derived Type Declarations ..  
+
+  ! Global information about the tree pointer to the actual data array
+  ! dimensionality and total # of points permuted index into the data,
+  ! so that indexes[l..u] of some bucket represent the indexes of the
+  ! actual points in that bucket.  root pointer of the tree an
+  ! internal tree node the dimension to cut where to cut the dimension
+  ! indices of points included in this node, referring back to indices
+  ! child pointers 
+
   Type :: tree_master_record
-      real(kind=realType), Dimension (:, :), Pointer :: the_data
-      Integer(kind=IntType) :: dim, n
-      Integer(kind=IntType), Dimension (:), Pointer :: indexes
-      Type (tree_node), Pointer :: root
+     real(kind=realType), Dimension (:, :), allocatable :: the_data
+     Integer(kind=IntType) :: dim, n
+     Integer(kind=IntType), Dimension (:), Pointer :: indexes
+     Type (tree_node), Pointer :: root
+
+     ! Additional information for IDW 
+     integer(kind=intType) :: maxDepth
+     real(kind=realType) :: Ldef
+     real(kind=realType) :: alphaToBExp
+     real(kind=realType) :: farField 
+     real(kind=realType) , dimension(:), pointer :: Ai
+     real(kind=realType) , dimension(:, :), pointer :: Bi
+     real(kind=realType) , dimension(:, :, :), pointer :: Mi
+     real(kind=realType) , dimension(:, :), pointer :: Xu0
+     real(Kind=realType) :: errTol
+     Type(tnp), dimension(:), pointer :: flatNodes
+     real(kind=realType), dimension(NERR) :: rstar
   End Type tree_master_record
 
   Type :: tree_node
-      Integer(kind=IntType) :: dnum
-      real(kind=realType) :: val
-      Integer(kind=IntType) :: l, u
-      Type (tree_node), Pointer :: left, right
+     Integer(kind=IntType) :: dnum
+     real(kind=realType) :: val
+     Integer(kind=IntType) :: l, u, n
+     Type (tree_node), Pointer :: left, right
+
+     ! Additional information for IDW
+     real(kind=realType) :: Ai
+     real(kind=realType) :: Bi(3)
+     real(kind=realType) :: Mi(3, 3)
+     real(kind=realType) :: X(3)
+     real(kind=realType) :: radius
+     integer(kind=intType) :: lvl
+     integer(kind=intType) :: id
+     real(kind=realType) :: err(NERR)
   End Type tree_node
 
-  Type :: tree_search_record
-      Private
-      real(kind=realType) :: bsd
-      Integer(kind=IntType) :: bestind
-      real(kind=realType), Dimension (:), Pointer :: qv
-      Integer(kind=IntType), Dimension (:), Pointer :: il
-      real(kind=realType), Dimension (:), Pointer :: dsl
-      Integer(kind=IntType) :: nbst, nfound
-      Integer(kind=IntType) :: centeridx, correltime
-  End Type tree_search_record
-  ! ..
-  ! set to true if we're doing linfinity metric
-  !
-  
-  logical, parameter :: vectorizing = .true.
-  !
-  ! set to .true. to use optimization designed for a vectorizing machine
-  ! for example, the Intel ifc compiler with -axK or -axW options to use
-  ! the special instructions.
-  !
-  ! Even still it doesn't always improve performance. :(
-  !
+  type :: tnp
+     type(tree_node), pointer :: tn
+  end type tnp
 
 Contains
 
@@ -95,7 +79,11 @@ Contains
     ! ..
     Call destroy_node(tp%root)
     Deallocate (tp%indexes)
+    Deallocate (tp%the_data)
     Nullify (tp%indexes)
+    if (associated(tp%flatNodes)) then 
+       deallocate(tp%flatNodes)
+    end if
     Return
 
   Contains
@@ -134,15 +122,18 @@ Contains
     Intrinsic SIZE
     ! ..
     Allocate (master_record)
-    master_record%the_data => input_data
-    ! pointer assignment
+
     master_record%dim = SIZE(input_data, 1)
     master_record%n = SIZE(input_data, 2)
 
-!    Print *, 'Creating KD tree with N = ', master_record%n, &
-!     ' and dim = ', master_record%dim
+    ! We will store a copy of the data:
+    allocate(master_record%the_data(master_record%dim, master_record%n))
+    master_record%the_data = input_data
+    nullify(master_record%flatNodes)
     Call build_tree(master_record)
-
+    master_record%rstar = (/two, three, four, five, 7.5_realType, 10_realType, &
+                 20_realType, 40_realType, 80_realType, 160_realType, 320_realType, &
+                 640_realType/)
   Contains
 
     Subroutine build_tree(tp)
@@ -153,19 +144,16 @@ Contains
       Integer(kind=IntType) :: j
       ! ..
       Allocate (tp%indexes(tp%n))
-      forall (j=1:tp%n)
+      Do j = 1, tp%n
          tp%indexes(j) = j
-      end forall
-!      Do j = 1, tp%n
-!         tp%indexes(j) = j
-!      End Do
+      End Do
       tp%root => build_tree_for_range(tp, 1, tp%n)
+
     End Subroutine build_tree
 
     Recursive Function build_tree_for_range(tp, l, u) Result (res)
       ! .. Function Return Value ..
-      Type (tree_node), Pointer :: res
-      ! ..
+      Type (tree_node), Pointer :: res      ! ..
       ! .. Structure Arguments ..
       Type (tree_master_record), Pointer :: tp
       ! ..
@@ -192,6 +180,7 @@ Contains
          res%val = 0.0
          res%l = l
          res%u = u
+         res%n = u-l+1
          Nullify (res%left, res%right)
       Else
          Allocate (res)
@@ -203,6 +192,7 @@ Contains
          res%val = tp%the_data(c, tp%indexes(m))
          res%l = l
          res%u = u
+         res%n = u-l+1
          res%left => build_tree_for_range(tp, l, m)
          res%right => build_tree_for_range(tp, m+1, u)
       End If
@@ -213,7 +203,7 @@ Contains
       ! element
       ! is >= those below, <= those above, in the coordinate c.
       ! .. Structure Arguments ..
-!      Type (tree_master_record), Pointer :: tp
+      !      Type (tree_master_record), Pointer :: tp
       ! ..
       ! .. Scalar Arguments ..
       Integer(kind=IntType), Intent (In) :: c, k, li, ui
@@ -301,7 +291,7 @@ Contains
       ind => tp%indexes
       smin = v(c, ind(l))
       smax = smin
-      
+
       ! truncate u here or not?????
       ulocal = min(u, l+200) !!!?????
 
@@ -322,357 +312,812 @@ Contains
          If (smax<last) smax = last
       End If
       res = smax - smin
-      ! write *, "Returning spread in coordinate with res = ", res
     End Function spread_in_coordinate
   End Function create_tree
 
-  ! Search routines:
+  ! --------------------------------------------------------------------
+  !                 Additional routines for IDW Warping
+  ! --------------------------------------------------------------------
 
-  ! * n_nearest_to(tp, qv, n, indexes, distances)
-
-  ! Find the 'n' vectors in the tree nearest to 'qv' in euclidean norm
-  ! returning their indexes and distances in 'indexes' and 'distances'
-  ! arrays already allocated passed to the subroutine.
-
-  
-  Subroutine n_nearest_to(tp, qv, n, indexes, distances)
-    ! find the 'n' nearest neighbors to 'qv', returning
-    ! their indexes in indexes and squared Euclidean distances in
-    ! 'distances'
-    ! .. Structure Arguments ..
+  subroutine setXu0(tp, Xu0)
+    ! Just set the pointer for Xu0
+    implicit none
     Type (tree_master_record), Pointer :: tp
-    ! ..
-    ! .. Scalar Arguments ..
-    Integer(kind=IntType), Intent (In) :: n
-    ! ..
-    ! .. Array Arguments ..
-    real(kind=realType), Target :: distances(n)
-    real(kind=realType), Target, Intent (In) :: qv(:)
-    Integer(kind=IntType), Target :: indexes(n)
-    ! ..
-    ! .. Local Structures ..
-    Type (tree_search_record), Pointer :: psr
-    Type (tree_search_record), Target :: sr
-    ! ..
-    ! .. Intrinsic Functions ..
-    Intrinsic HUGE
-    ! ..
-    ! the largest real number
-    sr%bsd = HUGE(1.0)
-    sr%qv => qv
-    sr%nbst = n
-    sr%nfound = 0
-    sr%centeridx = -1
-    sr%correltime = 0
-    sr%dsl => distances
-    sr%il => indexes
-    sr%dsl = HUGE(sr%dsl)    ! set to huge positive values
-    sr%il = -1               ! set to invalid indexes
-    psr => sr                ! in C this would be psr = &sr
+    real(kind=realType), intent(in) , pointer, dimension(:, :) :: Xu0
 
+    tp%Xu0 => Xu0
+  end subroutine setXu0
 
-    Call n_search(tp, psr, tp%root)
-    Return
-  End Subroutine n_nearest_to
-
-  ! Another main routine you call from your user program
-  Subroutine n_nearest_to_around_point(tp, idxin, correltime, n, indexes, &
-   distances)
-    ! find the 'n' nearest neighbors to point 'idxin', returning
-    ! their indexes in indexes and squared Euclidean distances in
-    ! 'distances'
-    ! .. Structure Arguments ..
+  subroutine setAi(tp, Ai)
+    implicit none
+    ! This routine needs to be called only once . It sets the Ai
+    ! information for all the nodes as well as computing the
+    ! radius for each of the nodes. 
     Type (tree_master_record), Pointer :: tp
-    ! .. 
-    ! .. Scalar Arguments ..
-    Integer, Intent (In) :: correltime, idxin, n
-    ! .. 
-    ! .. Array Arguments ..
-    Real, Target :: distances(n)
-    Integer, Target :: indexes(n)
-    ! ..
-    ! .. Local Structures ..
-    Type (tree_search_record), Pointer :: psr
-    Type (tree_search_record), Target :: sr
-    ! ..
-    ! .. Local Arrays ..
-    Real, Allocatable, Target :: qv(:)
-    ! ..
-    ! .. Intrinsic Functions ..                                                                                   
-    Intrinsic HUGE
-    ! ..
-    Allocate (qv(tp%dim))
-    qv = tp%the_data(:, idxin) ! copy the vector
-    sr%bsd = HUGE(1.0)       ! the largest real number
-    sr%qv => qv
-    sr%nbst = n
-    sr%nfound = 0
-    sr%centeridx = idxin
-    sr%correltime = correltime
-    sr%dsl => distances
-    sr%il => indexes
-    sr%dsl = HUGE(sr%dsl)    ! set to huge positive values
-    sr%il = -1               ! set to invalid indexes
-    psr => sr                ! in C this would be psr = &sr 
+    real(kind=realType), intent(in) , pointer, dimension(:) :: Ai
 
-    Call n_search(tp, psr, tp%root)
-    Deallocate (qv)
-    Return
-  End Subroutine n_nearest_to_around_point
+    ! Set the internal pointer to Ai. This shouldnt' change
+    tp%Ai => Ai
+    call setAi_node(tp, tp%root)
+  contains 
+    recursive subroutine setAi_node(tp, np)
+      implicit none
+      Type (tree_master_record), Pointer :: tp
+      Type (tree_node), Pointer :: np
+      integer(kind=intType) :: i
+      if (np%dnum == 0) then 
+         ! On the leaf node...determine the summed Ai
+         np%Ai = zero
+         do i=np%l, np%u
+            np%Ai = np%Ai + tp%Ai(i)
+         end do
+      else
+         ! Call each of the children
+         call setAi_node(tp, np%left)
+         call setAi_node(tp, np%right)
 
-  function pt_in_tree(tp, qv)
- ! .. Structure Arguments ..
+         ! Now add the sums from the two children 
+         np%Ai = (np%left%Ai + np%right%Ai)
+      end if
+    end subroutine setAi_node
+  end subroutine setAi
+
+  subroutine setCenters(tp)
+    ! Compute the center of each node. This is just the average X
+    ! value. We also compute the minimum radius of the
+    ! centroid-centered sphere that will contain all nodes. This
+    ! routine computes np%X and np%radius
+
+    implicit none
     Type (tree_master_record), Pointer :: tp
-    ! ..
-    real(kind=realType), Target, Intent (In) :: qv(:)
-    real(kind=realType), parameter :: tol=1e-6
-  
-    ! .. Scalar Arguments ..
-    Integer(kind=IntType) :: n
-    real(kind=realType), target :: distances(1)
-    Integer(kind=IntType), target :: indexes(1)
-    integer(kind=intType) :: pt_in_tree
-    ! ..
-    ! .. Local Structures ..
-    Type (tree_search_record), Pointer :: psr
-    Type (tree_search_record), Target :: sr
-    ! ..
-    ! .. Intrinsic Functions ..
-    Intrinsic HUGE
-    n = 1
-    ! ..
-    ! the largest real number
-    sr%bsd = HUGE(1.0)
-    sr%qv => qv
-    sr%nbst = n
-    sr%nfound = 0
-    sr%centeridx = -1
-    sr%correltime = 0
-    sr%dsl => distances
-    sr%il => indexes
-    sr%dsl = HUGE(sr%dsl)    ! set to huge positive values
-    sr%il = -1               ! set to invalid indexes
-    psr => sr                ! in C this would be psr = &sr
+    call setCenters_node(tp, tp%root)
 
-    Call n_search(tp, psr, tp%root)
-    
-    if (sqrt(distances(1)) < tol) then
-       pt_in_tree = indexes(1)
-    else
-       pt_in_tree = 0_intType
-    end if
+  contains 
+    recursive subroutine setCenters_node(tp, np)
+      implicit none
+      Type (tree_master_record), Pointer :: tp
+      Type (tree_node), Pointer :: np
+      integer(kind=intType) :: i
+      real(kind=realType) :: Xcen(3), Xmax, dist, dx(3)
 
-  end function pt_in_tree
+      ! Sum up all the children
+      np%X = zero
+      do i=np%l, np%u
+         np%X = np%X + tp%the_data(:, tp%indexes(i))
+      end do
+      np%X = np%X / np%n
 
-  Function square_distance(n, iv, qv) Result (res)
-    ! distance between v[i, *] and qv[*] 
-    ! .. Function Return Value ..
-    ! re-implemented to improve vectorization.
-    real(kind=realType) :: res
-    ! ..
-    ! ..
-    ! .. Scalar Arguments ..
-    Integer(kind=IntType) :: n
-    ! ..
-    ! .. Array Arguments ..
-    real(kind=realType) :: iv(:), qv(:)
-    ! ..
-    ! ..
-    res = sum( (iv(1:n)-qv(1:n))**2 )
-  End Function square_distance
+      ! Now do the radius
+      np%radius = zero
+      do i=np%l, np%u
+         dx = tp%the_data(:, tp%indexes(i)) - np%X
+         dist = sqrt(dx(1)**2 + dx(2)**2 + dx(3)**2)
+         if (dist > np%radius) then 
+            np%radius = dist
+         end if
+      end do
 
-  Recursive Subroutine n_search(tp, sr, node)
-    ! This is the innermost core routine of the kd-tree search.
-    ! it is thus not programmed in quite the clearest style, but is
-    ! designed for speed.  -mbk
-    ! .. Structure Arguments ..
-    Type (tree_node), Pointer :: node
-    Type (tree_search_record), Pointer :: sr
+      ! Now call the children
+      if (np%dnum /= 0) then 
+         call setCenters_node(tp, np%left)
+         call setCenters_node(tp, np%right)
+      end if
+    end subroutine setCenters_node
+  end subroutine setCenters
+
+  subroutine setData(tp, Bi, Mi)
+    ! Update the nodal displacements and rotation matrices based on a
+    ! new set of displcements. 
+    implicit none
     Type (tree_master_record), Pointer :: tp
-    ! ..
-    ! .. Local Scalars ..
-    real(kind=realType) :: dp, sd, sdp, tmp
-    Integer(kind=IntType) :: centeridx, i, ii, j, jmax, k, d, correltime, nbst
-    Logical :: not_fully_sized
-    ! ..
-    ! .. Local Arrays ..
-    real(kind=realType), Pointer :: qv(:)
-    Integer(kind=IntType), Pointer :: ind(:)
-    real(kind=realType), dimension(:, :), pointer :: data
-    ! ..
-    ! .. Intrinsic Functions ..
-    Intrinsic ABS, ASSOCIATED
-    ! ..
-    If ( .Not. (ASSOCIATED(node%left)) .And. ( .Not. ASSOCIATED( &
-     node%right))) Then
-       ! we are on a terminal node
-       ind => tp%indexes     ! save for easy access
-       qv => sr%qv
-       data => tp%the_data
-       centeridx = sr%centeridx
-       d = tp%dim
-       correltime = sr%correltime
-       ! search through terminal bucket.
-       nbst = sr%nbst
-       mainloop: Do i = node%l, node%u
-          ii = ind(i)
-          If ( (centeridx<0) .OR. (ABS(ii-centeridx)>=correltime)) Then
-             ! 
-             ! replace with call to square distance with inline
-             ! code, an
-             ! a goto.  Tested to be significantly faster.   SPECIFIC
-             ! FOR
-             ! the EUCLIDEAN METRIC ONLY! BEWARE!
+    real(kind=realType), intent(in), pointer, dimension(:, :) :: Bi
+    real(kind=realType), intent(in), pointer, dimension(:, :, :) :: Mi
 
-             sd = 0.0
-             if (.not. vectorizing)  then
-                Do k = 1, d
-                   ! comment out??
-                   !                      Write(*, *) k
-                   !                      Write(*, *) qv(k), ' ii = ', ii
-                   !                      Write(*, *) tp%the_data(ii, k), qv(k)
-                   ! comment out
-                   tmp = data(k, ii) - qv(k)
-                   sd = sd + tmp*tmp
-                   If (sd>sr%bsd) Then
-                      cycle mainloop
-                   End If
-                End Do
-             else
-2               sd = square_distance(tp%dim, data(:, ii), qv)
-                If (sd > sr%bsd) Then
-                   cycle mainloop
-                End If
-             endif
-             ! Note test moved out of loop to improve vectorization
-             ! should be semantically identical eitehr way as sr%bsd is
-             ! a bound afterwhich it doesn't matter. 
+    ! Set pointers to the nominal data
+    tp%Bi => Bi
+    tp%Mi => Mi
+    Call setData_node(tp, tp%root)
 
-             ! we only consider it if it is better than the 'best' on
-             ! the list so far.
-             ! if we get here
-             ! we know sd is < bsd, and bsd is on the end of the list
+  contains 
+    Recursive Subroutine setData_node(tp, np)
+      implicit none
+      Type (tree_master_record), Pointer :: tp
+      Type (tree_node), Pointer :: np 
+      integer(kind=intType) :: i
+      if (np%dnum /= 0) then 
+         np%Bi = zero
+         np%Mi = zero
+         do i=np%l, np%u
+            np%Bi = np%Bi + tp%Bi(:, i)
+            np%Mi = np%Mi + tp%Mi(:, :, i)
+         end do
+         np%Bi = np%Bi / np%n
+         np%Mi = np%Mi / np%n
 
-             ! special case for nbst = 1 (single nearest neighbor)
-             if (nbst .eq. 1) then
-                sr%il(1) = ii
-                sr%dsl(1) = sd
-                sr%bsd = sd
-             else
-                not_fully_sized = (sr%nfound<nbst)
-                If (not_fully_sized) Then
-                   jmax = sr%nfound
-                   sr%nfound = sr%nfound + 1
-                Else
-                   jmax = nbst - 1
-                End If
-                ! add it to the list
-                
-                ! find the location j where sd >= sr%dsl(j) and sd <
-                ! sr%dsl(j+1...jmax+1)
-                if (vectorizing) then
-                   do j=jmax, 1, -1
-                      if (sd>=sr%dsl(j)) Exit
-                   end do
-                   sr%il(j+2:jmax+1) = sr%il(j+1:jmax)
-                   sr%dsl(j+2:jmax+1) = sr%dsl(j+1:jmax)
-                   sr%il(j+1) = ii
-                   sr%dsl(j+1) = sd
-                else
-                   Do j = jmax, 1, -1
-                      If (sd>=sr%dsl(j)) Exit ! we hit insertion location
-                      sr%il(j+1) = sr%il(j)
-                      sr%dsl(j+1) = sr%dsl(j)
-                   End Do
-                   ! if loop falls through j=0 here.
-                   sr%il(j+1) = ii
-                   sr%dsl(j+1) = sd
-                endif
-                If ( .Not. not_fully_sized) Then
-                   sr%bsd = sr%dsl(nbst)
-                End If
-             end if
-          End If
-       End Do mainloop
-    Else
-       ! we are not on a terminal node
+         ! Call each of the children
+         call setData_node(tp, np%left)
+         call setData_node(tp, np%right)
+      end if
+    end Subroutine setData_node
+  end subroutine setData
 
-       ! Alrighty, this section is essentially the content of the
-       ! the Sproul method for searching a Kd-tree, in other words
-       ! the second nested "if" statements in the two halves below
-       ! and when they get activated.
-       dp = sr%qv(node%dnum) - node%val
-       sdp = dp*dp        ! Euclidean
-       If (dp<0.0) Then
-          Call n_search(tp, sr, node%left)
-          If (sdp<sr%bsd) Call n_search(tp, sr, node%right)
-          ! if the distance projected to the 'wall boundary' is less
-          ! than the radius of the ball we must consider, then perform
-          ! search on the 'other side' as well.
-       Else
-          Call n_search(tp, sr, node%right)
-          If (sdp<sr%bsd) Call n_search(tp, sr, node%left)
-       End If
-    End If
-  End Subroutine n_search
-
-  Subroutine n_nearest_to_brute_force(tp, qv, n, indexes, distances)
-    ! find the 'n' nearest neighbors to 'qv' by exhaustive search.
-    ! only use this subroutine for testing, as it is SLOW!  The
-    ! whole point of a k-d tree is to avoid doing what this subroutine
-    ! does.
-    ! .. Structure Arguments ..
+  subroutine evalDisp(tp, r, num, den, ii, approxDen)
+    implicit none
     Type (tree_master_record), Pointer :: tp
-    ! ..
-    ! .. Scalar Arguments ..
-    Integer(kind=IntType), Intent (In) :: n
-    ! ..
-    ! .. Array Arguments ..
-    real(kind=realType), intent(out) :: distances(n)
-    real(kind=realType), Intent (In) :: qv(:)
-    Integer(kind=IntType), intent(out) :: indexes(n)
-    ! ..
-    ! .. Local Scalars ..
-    Integer(kind=IntType) :: i, j, k
-    ! ..
-    ! .. Local Arrays ..
-    real(kind=realType), Allocatable :: all_distances(:)
-    ! ..
-    ! .. Intrinsic Functions ..
-    Intrinsic HUGE
-    ! ..
-    Allocate (all_distances(tp%n))
-    Do i = 1, tp%n
-       all_distances(i) = square_distance(tp%dim, tp%the_data(:, i), qv)
-    End Do
-    ! now find 'n' smallest distances
-    distances(1:n) = HUGE(1.0)
-    indexes(1:n) = -1 
-!    Do i = 1, n
-!       distances(i) = HUGE(1.0)
-!       indexes(i) = -1
-!    End Do
-    Do i = 1, tp%n
-       If (all_distances(i)<distances(n)) Then
-          ! insert it somewhere on the list
-          Do j = 1, n
-             If (all_distances(i)<distances(j)) Exit
-          End Do
-          ! now we know 'j'
-          if (.not. vectorizing) then
-             Do k = n - 1, j, -1
-                distances(k+1) = distances(k)
-                indexes(k+1) = indexes(k)
-             End Do
-          else
-             distances(j+1:n) = distances(j:n-1)
-             indexes(j+1:n) = indexes(j:n)
-          end if
-          distances(j) = all_distances(i)
-          indexes(j) = i
-       End If
-    End Do
-    Deallocate (all_distances)
-  End Subroutine n_nearest_to_brute_force
+    real(kind=realType), intent(in), dimension(3) :: r
+    real(kind=realType), intent(out), dimension(3) :: num
+    real(kind=realType), intent(in) :: approxDen
+    real(kind=realType), intent(out) :: den
+    integer(kind=intType) :: ii
 
+    call evalDisp_node(tp, tp%root, r, num, den, ii, approxDen)
+  contains
+    recursive subroutine evalDisp_node(tp, np, r, num, den, ii, approxDen)
+      implicit none
+      ! Subroutine arguments
+      Type (tree_master_record), Pointer :: tp
+      Type (tree_node), Pointer :: np 
+      real(kind=realType), intent(in), dimension(3) :: r
+      real(kind=realType), intent(inout), dimension(3) :: num
+      real(kind=realType), intent(inout) :: den
+      real(kind=realType), intent(in) :: approxDen
+      integer(kind=intType) :: ii
+      ! Working variables
+      real(kind=realType), dimension(3) :: rr
+      real(kind=realType) :: dist, err
+
+      if (np%dnum == 0) then 
+         ! Leaf node -> Must do exact calc:
+         call evalNodeExact(tp, np, r, num, den)
+         ii = ii + np%n
+      else
+         ! Tree Node: Compute the distance from 'r' to the
+         ! center of the node, np%X
+         rr = r - np%X
+         dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2)
+
+         if (dist/np%radius < two) then ! Too close...call children
+            call evalDisp_node(tp, np%left, r, num, den, ii, approxDen)
+            call evalDisp_node(tp, np%right, r, num, den, ii, approxDen)
+         else 
+            ! Use the first error check:
+            call getError(tp, np, dist, err)
+            if (err < tp%errTol * approxDen) then
+               call evalNodeApprox(tp, np, num, den, dist)
+               ii = ii + 1
+            else
+               ! Not good enough error so call children
+               call evalDisp_node(tp, np%left, r, num, den, ii, approxDen)
+               call evalDisp_node(tp, np%right, r, num, den, ii, approxDen)
+            end if
+         end if
+      end if
+    end subroutine evalDisp_node
+  end subroutine evalDisp
+
+  subroutine evalNodeExact(tp, np, r, num, den)
+    ! Loop over the owned nodes and evaluate the exact numerator and
+    ! denomenator at the requesed r. Note that this rouine *may* be
+    ! called on *any* node including the root node. When called on the
+    ! root node this replicates *precisely* the brute force algorithm
+    ! (although not as efficently)
+    implicit none
+    Type (tree_master_record), Pointer :: tp
+    Type (tree_node), Pointer :: np
+    real(kind=realType), intent(in), dimension(3) :: r
+    real(kind=realType), intent(out), dimension(3) :: num
+    real(kind=realType), intent(out) :: den
+    real(kind=realType), dimension(3) :: rr
+    real(kind=realType) :: dist, LdefoDist, LdefoDist3
+    real(kind=realType) :: Wi
+    integer(kind=intType) :: i
+
+    do i=np%l, np%u
+       rr = r - tp%Xu0(:, i)
+       dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2+1e-16)
+       LdefoDist = tp%Ldef/dist
+       Ldefodist3 = LdefoDist**3
+       Wi = tp%Ai(i)*(Ldefodist3 + tp%alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
+       num = num + Wi*tp%Bi(:, i)
+       den = den + Wi
+    end do
+  end subroutine evalNodeExact
+
+  subroutine evalNodeApprox(tp, np, num, den, dist)
+    ! We are far enough away! Whoo! Just use the data on this node
+    ! (np). Note that dist must be passed in. It is assumed that the
+    ! dist is already available from a calculation to determine
+    ! whether to use this approximation or not.
+    implicit none
+    Type (tree_master_record), Pointer :: tp
+    Type (tree_node), Pointer :: np
+    real(kind=realType), intent(in) :: dist
+    real(kind=realType), intent(out), dimension(3) :: num
+    real(kind=realType), intent(out) :: den
+    real(kind=realType) :: LdefoDist, LdefoDist3
+    real(kind=realType) :: Wi
+
+    LdefoDist = tp%Ldef/dist
+    Ldefodist3 = LdefoDist**3
+    Wi = np%Ai*(Ldefodist3 + tp%alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
+    num = num + Wi*np%Bi
+    den = den + Wi
+  end subroutine evalNodeApprox
+
+  subroutine labelNodes(tp)
+    ! Recurse through the tree and give a unique identifier to each
+    ! node and identify which level each node is. Additionally, we
+    ! store tp%maxDepth which is the maximum number of layers in the
+    ! tree.
+    implicit none
+    ! Subroutine arguments
+    Type (tree_master_record), Pointer :: tp
+    integer(kind=intType) :: level
+    integer(kind=intType) :: id
+    level = 1
+    tp%maxDepth = 1
+    id = 1
+    call labelNodes_node(tp, tp%root, level, id)
+  contains
+    recursive subroutine labelNodes_node(tp, np, level, id)
+      ! Give each node a unique identifier as well as what level in
+      ! the tree it is.
+      use constants
+      implicit none
+      Type (tree_master_record), Pointer :: tp
+      Type (tree_node), Pointer :: np 
+      integer(kind=intType) :: level
+      integer(kind=intType) :: id
+      np%lvl = level
+      np%id = id
+      id = id + 1
+      tp%maxDepth = max(tp%maxDepth, level)
+      if (np%dnum /= 0) then 
+         call labelNodes_node(tp, np%left, level+1, id)
+         call labelNodes_node(tp, np%right, level+1, id)
+      end if
+    end subroutine labelNodes_node
+  end subroutine labelNodes
+
+  subroutine writeTreeTecplot(tp, fileName)
+    ! This is a debuging routine that writes the centers of all of the
+    ! tree nodes to a tecplot file. **IT DOES NOT WRITE THE NODES IN
+    ! THE LEAVES**.
+    implicit none
+    Type (tree_master_record), Pointer :: tp    
+    character*(*), intent(in) :: fileName
+    integer(kind=intType) :: lvl
+
+    open(unit=7, file=fileName, status='replace')
+101 format('ZONE T="Level ',I2, '"')
+    do lvl=1, tp%maxDepth-1
+       write(7, 101), lvl
+       call writeLevel(tp, tp%root, lvl)
+    end do
+    close(7)
+  contains
+    recursive subroutine writeLevel(tp, np, lvlToWrite)
+      use constants
+      implicit none
+      Type (tree_master_record), Pointer :: tp    
+      Type (tree_node), Pointer :: np
+      integer(kind=intType) :: lvlToWrite
+102   format(g20.12, g20.12, g20.12, g20.12)
+
+      if (np%lvl == lvlToWrite) then
+         write(7, 102) np%X(1), np%X(2), np%X(3)
+      end if
+
+      if (np%dnum /= 0) then
+         call writeLevel(tp, np%left, lvlToWrite)
+         call writeLevel(tp, np%right, lvlToWrite)
+      end if
+    end subroutine writeLevel
+  end subroutine writeTreeTecplot
+
+  subroutine getWiEstimate(tp, r, den)
+    ! This routine needs to be only called once. Essentialy what we
+    ! are dong is computing just the denomenator (Wi) computation with
+    ! a (VERY!) low tolerance. . This is used as a reference value for
+    ! the 'real' mesh warp, to be used for checking against the
+    ! errors. A hard coded R-limit of 20 is used here. This should be
+    ! sufficient to get an good estimate of Wi.
+    implicit none
+
+    Type (tree_master_record), Pointer :: tp
+    real(kind=realType), intent(in), dimension(3) :: r
+    real(kind=realType), intent(inout) :: den
+    den = zero
+    call getWiEstimate_node(tp, tp%root, r, den)
+
+  contains
+    recursive subroutine getWiEstimate_node(tp, np, r, den)
+      implicit none
+      ! Subroutine arguments
+      Type (tree_master_record), Pointer :: tp
+      Type (tree_node), Pointer :: np 
+      real(kind=realType), intent(in), dimension(3) :: r
+      real(kind=realType), intent(inout) :: den
+      real(kind=realType), dimension(3) :: rr
+      real(kind=realType) :: dist, LdefoDist, LdefoDist3, err
+      integer(kind=intType) :: ii, evals, i
+
+      if (np%dnum == 0) then 
+         ! Leaf node. Do regular calc:
+         do i=np%l, np%u
+            rr = r - tp%Xu0(:, i)
+            dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2+1e-16)
+            LdefoDist = tp%Ldef/dist
+            Ldefodist3 = LdefoDist**3
+            den = den + tp%Ai(i)*(Ldefodist3 + tp%alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
+         end do
+      else
+         rr = r - np%X
+         dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2)
+         call getError(tp, np, dist, err)
+         if (dist/np%radius > 5.0) then
+            ! Far field calc is ok:
+            LdefoDist = tp%Ldef/dist
+            Ldefodist3 = LdefoDist**3
+            den = den + np%Ai*(Ldefodist3 + tp%alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
+         else
+            ! To far away, recursively call the children
+            call getWiEstimate_node(tp, np%left, r, den)
+            call getWiEstimate_node(tp, np%right, r, den)
+         end if
+      end if
+    end subroutine getWiEstimate_node
+  end subroutine getWiEstimate
+
+  subroutine computeErrors(tp)
+    ! This routine computes an estimate of the error to be induced in
+    ! the numerator and denomenator at each tree node. Then, when we
+    ! are evaluating the displacment we can determine if the errors
+    ! induced by the approximation are acceptable or not. 
+
+    implicit none
+    Type (tree_master_record), Pointer :: tp
+    call computeErrors_node(tp, tp%root)
+  contains
+
+    recursive subroutine computeErrors_node(tp, np)
+
+      Type (tree_master_record), Pointer :: tp
+      Type (tree_node), Pointer :: np 
+      real(kind=realType) , dimension(3, 20) :: vpts
+      real(kind=realType) , dimension(3, 12) :: fpts
+      real(kind=realType) :: dExact(20), dApprox(20), rr(3)
+      real(kind=realType) :: LdefoDist, LdefODist3, dist
+      integer(kind=intType) :: ii, i, j
+
+      if (np%dnum /= 0) then 
+      do j=1, NERR
+         dExact= zero
+         dApprox = zero
+         call getSpherePts(np%X, np%radius*tp%rstar(j), vpts, fpts)
+
+         np%err(j) = 0
+         do ii=1,20
+            ! Compute exact value:
+            do i=np%l, np%u
+               rr = vpts(:, ii) - tp%Xu0(:, i)
+               dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2)
+               LdefoDist = tp%Ldef/dist
+               Ldefodist3 = LdefoDist**3
+               dExact(ii) = dExact(ii) + tp%Ai(i)*(Ldefodist3 + tp%alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
+            end do
+
+            ! And the approx value:
+            rr = vpts(:, ii) - np%X
+            dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2)
+            LdefoDist = tp%Ldef/dist
+            Ldefodist3 = LdefoDist**3
+            dApprox(ii) = dApprox(ii) + np%Ai*(Ldefodist3 + tp%alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
+
+            ! Now set the nodal error:
+            np%err(j) = np%err(j) + (dExact(ii) - dApprox(ii))**2 
+         end do
+
+         ! This the RMS Error:
+         np%err(j) = sqrt(np%err(j)/20)
+      end do
+
+      ! Now call the children:
+      call computeErrors_node(tp, np%left)
+      call computeErrors_node(tp, np%right)
+   end if
+ end subroutine computeErrors_node
+ end subroutine computeErrors
+
+ subroutine getError(tp, np, dist, err)
+   ! Simple routine to use the stored errors to estimate what the
+   ! error will be for dist 'dist'.
+   implicit none
+   Type (tree_master_record), Pointer :: tp
+   Type (tree_node), Pointer :: np 
+   real(kind=realType), intent(in) :: dist
+   real(Kind=realType), intent(out) :: err
+   real(kind=realType) :: logDist
+   real(kind=realType) :: fact
+   integer(kind=intType) :: bin, i
+   
+   logDist = dist / np%radius
+   bin = 11
+   do i=2,11
+      if (logDist < tp%rstar(i)) then
+         bin = i-1
+         exit
+      end if
+   end do
+   fact = (logDist - tp%rstar(bin))/(tp%rstar(bin+1)-tp%rstar(bin))
+   err = (one-fact)*np%err(bin) + fact*np%err(bin+1)
+ end subroutine getError
 End Module kd_tree
+
+
+
+
+! subroutine evalDisp(tp, r, num, den, ii)
+!    use constants
+!    implicit none
+!    Type (tree_master_record), Pointer :: tp
+!    real(kind=realType), intent(in), dimension(3) :: r
+!    real(kind=realType), intent(out), dimension(3) :: num
+!    real(kind=realType), intent(out) :: den
+!    integer(kind=intType) :: ii
+!    call evalDisp_node(tp, tp%root, r, num, den, ii)
+
+!  contains
+!    recursive subroutine evalDisp_node(tp, np, r, num, den, ii)
+!      use constants
+!      implicit none
+!      ! Subroutine arguments
+!      Type (tree_master_record), Pointer :: tp
+!      Type (tree_node), Pointer :: np 
+!      real(kind=realType), intent(in), dimension(3) :: r
+!      real(kind=realType), intent(inout), dimension(3) :: num
+!      real(kind=realType), intent(inout) :: den
+!      integer(kind=intType) :: ii
+!      ! Working variables
+!      real(kind=realType), dimension(3) :: rr, Si
+!      real(kind=realType) :: dist, LdefoDist, LdefoDist3
+!      real(kind=realType) :: Wi
+!      integer(kind=intType) :: i
+!      ! Compute the distance from 'r' to the center of the node, np%X
+!      rr = r - np%X
+!      dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2)
+
+!      if (np%dnum == 0) then 
+!         ! Leaf node. Do regular calc:
+!         call evalNodeExact(tp, np, r, num, den)
+!         ii = ii + np%u - np%l + 1
+!      else
+!         if (np%left%dnum == 0) then 
+!            ! Second layer up:
+
+!            ! Tree Node:
+!            if (dist / np%radius > tp%farField) then 
+!               call evalNodeApprox(tp, np, r, num, den, dist)
+!               ii = ii + 1
+!            else
+!               ! We are too far away...call on the two children
+!               call evalDisp_node(tp, np%left, r, num, den, ii)
+!               call evalDisp_node(tp, np%right, r, num, den, ii)
+!            end if
+!        else
+!           ! Not close enough
+!           call evalDisp_node(tp, np%left, r, num, den, ii)
+!           call evalDisp_node(tp, np%right, r, num, den, ii)
+!        end if
+!      end if
+!    end subroutine evalDisp_node
+!  end subroutine evalDisp
+
+
+! subroutine checkErrors(tp)
+!     implicit none
+!     ! Subroutine arguments
+!     Type (tree_master_record), Pointer :: tp
+!     real(kind=realType) :: fact
+!     integer(kind=intType) :: ii
+!     fact = sqrt(10.0)
+!     do ii=1,10
+!        call checkErrors_node(tp, tp%root, fact)
+!        fact = fact * sqrt(10.0)
+!     end do
+
+!   contains
+!     recursive subroutine checkErrors_node(tp, np, fact)
+!       use constants
+!       implicit none
+!       Type (tree_master_record), Pointer :: tp
+!       Type (tree_node), Pointer :: np
+
+!       real(kind=realType) :: vpts(3, 20)
+!       real(kind=realType) :: fpts(3, 12)
+!       real(kind=realType) :: num(3), den
+!       real(kind=realType) :: dx(3, 20), dxapprox(3, 20)
+!       real(kind=realType) :: err(3, 20), tmp(3), rr(3), dist, ee
+!       integer(kind=intType) :: i, ii
+!       real(kind=realType) :: fact
+
+
+!       call getSpherePts(np%X, np%radius*fact, vpts, fpts) 
+
+!       err = zero
+!       ! Compute exact values at the vpts
+!       do i=1, 20
+!          num = zero
+!          den = zero
+!          call evalNodeExact(tp, np, vpts(:, i), num, den)
+!          dx(:, i) = num/den
+
+!          num = zero
+!          den = zero
+
+!          rr = vpts(:, i) - np%X
+!          dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2)
+
+!          call evalNodeApprox(tp, np, vpts(:, i), num, den, dist)
+!          dxapprox(:, i) = num/den
+!       end do
+
+!       err = dx - dxapprox
+!       ee = sqrt(sum(err**2))
+
+!       !if (np%dnum /= 0) then 
+!       if (np%lvl == 10) then
+!          if (np%id == 114) then
+!             print *, fact, ee
+!             print *, 'Bi:,' ,np%BI
+!             print *, 'X:', np%X
+!             print *,' r:', np%radius
+!             if (fact < 9) then 
+!                do i=np%l, np%u
+!                   print *, tp%xu0(:, i)
+!                end do
+!                do i=np%l, np%u
+!                   print *, tp%Bi(:, i)
+!                end do
+
+!                do i=np%l, np%u
+!                   print *, tp%Ai(i)
+!                end do
+!             end if
+
+!          end if
+!       end if
+!          ! if (abs(ee) > 8) then!  .and. ee < 8.1)  then!.and. abs(ee) < 6.0) then !339 .and. abs(err) < 339.2) then 
+!          !    print *, 'id:', np%id, ee
+
+! !             print *, 'Level, err:', np%lvl, ee
+! !             do i=1,20
+! !                print *, '-------------------'
+! !                print *, dx(:, i)
+! !                print *, dxapprox(:, i)
+! !             end do
+! !             print *, 'l,u:', np%l, np%u
+! !             print *, 'radius:', np%radius
+! !             open(unit=7, file="test.dat", status='replace')
+! ! 102         format(g20.12, g20.12, g20.12, g20.12)
+! !             write(7, *) "ZONE"
+! !             do i=np%l, np%u
+! !                write(7, 102), tp%xu0(1, i), tp%xu0(2, i), tp%xu0(3, i)
+! !             end do
+! !             close(7)
+
+
+! !             do i=np%l, np%u
+! !                print *, tp%xu0(:, i)
+! !             end do
+! !             print *, '0--------------------'
+! !             do i=np%l, np%u
+! !                print *, tp%Bi(:, i)
+! !             end do
+! !             print *, '  Ai -'
+! !             do i=np%l, np%u
+! !                print *, tp%Ai(i)
+! !             end do
+! !           print *, 'X:', np%X
+! !          print *,'node Bi:', np%Bi
+! !          print *,'area:', np%Ai
+! !         end if
+
+! !      end if
+
+!       if (np%dnum /= 0) then
+!          call checkErrors_node(tp, np%left, fact)
+!          call checkErrors_node(tp, np%right, fact)
+!       end if
+
+!     end subroutine checkErrors_node
+!   end subroutine checkErrosr
+
+
+! subroutine computeErrors(tp)
+
+!   ! This routine computes an estimate of the error to be induced in
+!   ! the numerator and denomenator at each tree node. Then, when we
+!   ! are evaluating the displacment we can determine if the errors
+!   ! induced by the approximation are acceptable or not. 
+
+
+!   implicit none
+!   Type (tree_master_record), Pointer :: tp
+!   real(kind=realType) :: fact
+!   integer(kind=intType) :: ii
+
+!   call computeErrors_node(tp, tp%root)
+! contains
+
+!   recursive subroutine computeErrors_node(tp, np)
+
+!     Type (tree_master_record), Pointer :: tp
+!     Type (tree_node), Pointer :: np 
+!     real(kind=realType) , dimension(3, 20) :: vpts
+!     real(kind=realType) , dimension(3, 12) :: fpts
+!     real(kind=realType), dimension (8):: rstar
+!     real(kind=realType) :: dExact(20), dApprox(20), rr(3)
+!     real(kind=realType) :: LdefoDist, LdefODist3, dist
+!     integer(kind=intType) :: ii, i
+
+!     ! Only on non-leaf node:
+!     if (np%dnum /= 0) then
+!        rstar(1) = one
+!        rstar(2) = sqrt(ten)
+!        rstar(3) = rstar(1)*ten !    10
+!        rstar(4) = rstar(2)*ten !   ~30
+!        rstar(5) = rstar(3)*ten !   100
+!        rstar(6) = rstar(4)*ten !  ~300
+!        rstar(7) = rstar(5)*ten !  1000
+!        rstar(8) = rstar(6)*ten ! ~3000
+!        if (np%id == 1) then 
+!           print *,' rstar:', rstar
+!        end if
+!        do ii=1,size(rstar)
+!           dExact= zero
+!           dApprox = zero
+!           call getSpherePts(np%X, np%radius*rstar(ii), vpts, fpts)
+
+!           ! Compute exact value:
+!           do i=np%l, np%u
+!              rr = vpts(:, ii) - tp%Xu0(:, i)
+!              dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2)
+!              LdefoDist = tp%Ldef/dist
+!              Ldefodist3 = LdefoDist**3
+!              dExact(ii) = dExact(ii) + tp%Ai(i)*(Ldefodist3 + tp%alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
+!           end do
+
+!           ! And the approx value:
+!           rr = vpts(:, ii) - np%X
+!           dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2)
+!           LdefoDist = tp%Ldef/dist
+!           Ldefodist3 = LdefoDist**3
+!           dApprox(ii) = dApprox(ii) + np%Ai*(Ldefodist3 + tp%alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
+
+!           ! Now set the nodal error:
+!           np%err(ii) = 0
+!           do i=1,20
+!              np%err(ii) = (dExact(ii) - dApprox(ii))**2
+!           end do
+!           np%err(ii) = log10(sqrt(np%err(ii)))
+!        end do
+!        ! Now call the children:
+!        call computeErrors_node(tp, np%left)
+!        call computeErrors_node(tp, np%right)
+!     end if
+!   end subroutine computeErrors_node
+! end subroutine computeErrors
+
+
+
+! subroutine dryRun(tp, r, den, errTol, ii)
+!    ! This routine needs to be only called once. Essentialy what we
+!    ! are dong is computing just the denomenator (Wi)
+!    ! computation. This is used as a reference value for the 'real'
+!    ! mesh warp, to be used for checking against the errors. A hard
+!    ! coded R-limit of 20 is used here. This should be sufficient to
+!    ! get an good estimate of Wi. 
+!    implicit none
+
+!    Type (tree_master_record), Pointer :: tp
+!    Type (tree_node), Pointer :: np 
+!    real(kind=realType), intent(in), dimension(3) :: r
+!    real(kind=realType), intent(inout) :: den
+!    real(kind=realType), intent(in) :: errTol
+!    integer(kind=intType) :: ii
+!    den = zero
+!    ii = 0
+!    call dryRun_node(tp, tp%root, r, den, errTol, ii)
+
+!  contains
+!    recursive subroutine dryRun_node(tp, np, r, den, errTol, ii)
+!      implicit none
+!      ! Subroutine arguments
+!      Type (tree_master_record), Pointer :: tp
+!      Type (tree_node), Pointer :: np 
+!      real(kind=realType), intent(in), dimension(3) :: r
+!      real(kind=realType), intent(inout) :: den
+!      real(kind=realType), intent(in) :: errTol
+
+!      real(kind=realType), dimension(3) :: rr
+!      real(kind=realType) :: dist, LdefoDist, LdefoDist3, err
+!      integer(kind=intType) :: ii, evals, i
+
+!      if (np%dnum == 0) then 
+!         ! Leaf node. Do regular calc:
+!         do i=np%l, np%u
+!            rr = r - tp%Xu0(:, i)
+!            dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2+1e-16)
+!            LdefoDist = tp%Ldef/dist
+!            Ldefodist3 = LdefoDist**3
+!            den = den + tp%Ai(i)*(Ldefodist3 + tp%alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
+!         end do
+!         ii = ii + np%n
+!      else
+!         rr = r - np%X
+!         dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2)
+
+!         ! Now we get the error:
+!         call getError(np, dist, err)
+!         !print *,'lvl:',np%lvl, den, err
+!         ! Would the addition of 'err' to 'den' cause more than a 'errTol' change:
+!         if (err < errTol * den) then 
+!            !print *, 'acc:',err, den
+!            ! Far field calc is ok:
+!            LdefoDist = tp%Ldef/dist
+!            Ldefodist3 = LdefoDist**3
+!            den = den + np%Ai*(Ldefodist3 + tp%alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
+!            ii = ii + 1
+!         else
+!            ! To far away, recursively call the children
+!            call dryRun_node(tp, np%left, r, den, errTol, ii)
+!            call dryRun_node(tp, np%right, r, den, errTol, ii)
+!         end if
+!      end if
+!    end subroutine dryRun_node
+!  end subroutine dryRun
+
+  ! subroutine createFlatList(tp, level)
+  !   implicit none
+  !   ! Create a flat list of tree nodes at a given level. This allows
+  !   ! us to loop over these nodes instead of traversing the tree
+  !   ! from the top all the time which is kinda useless most of the
+  !   ! time.
+  !   Type (tree_master_record), Pointer :: tp    
+  !   integer(kind=intType) :: level, ii
+
+  !   allocate(tp%flatNodes(2**(level-1)))
+  !   ii = 0
+  !   call createFlatList_node(tp, tp%root, level, ii)
+
+  ! contains 
+
+  !   recursive subroutine createFlatList_node(tp, np, level, ii)
+  !     implicit none
+  !     Type (tree_master_record), Pointer :: tp
+  !     Type (tree_node), Pointer :: np 
+  !     integer(kind=intType) :: ii, level
+  !     if (np%lvl == level) then 
+  !        ii = ii + 1
+  !        tp%flatNodes(ii)%tn => np
+  !        ! This is the base case, no need to go any further
+  !     else
+  !        if (np%dnum > 0) then 
+  !           call createFlatList_node(tp, np%left, level, ii)
+  !           call createFlatList_node(tp, np%right, level, ii)
+  !        end if
+  !     end if
+  !   end subroutine createFlatList_node
+  ! end subroutine createFlatList
+
+
+
+ ! logDist = log10(dist / np%radius)
+ ! rstar = (/zero, half, one, 1.5, 2, 2.5, 3, 3.5, 4.0, 4.5, 5.0, 5.5/)
+ ! bin = int((logDist / 0.5_realType)) + 1 ! Left side of bin:
+ ! fact = (logDist - rstar(bin))/(rstar(bin+1)-rstar(bin))
+ ! lerr = (one-fact)*np%err(bin) + fact*np%err(bin+1)
+ ! err = 10**(lerr)
+
+

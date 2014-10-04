@@ -5,12 +5,11 @@
 ! Date Modified:
 
 subroutine cross_product_3d(v1, v2, cross)
-  use precision
+  use constants
   implicit none
 
   real(kind=realType), dimension(3), intent(in) :: v1, v2
   real(kind=realType), dimension(3), intent(out) :: cross
-  
   cross(1) = (v1(2)*v2(3) - v1(3)*v2(2))
   cross(2) = (v1(3)*v2(1) - v1(1)*v2(3))
   cross(3) = (v1(1)*v2(2) - v1(2)*v2(1))
@@ -25,7 +24,6 @@ subroutine getMag(V, mag)
   ! Subroutine Variables
   real(kind=realType), dimension(3), intent(in) :: V
   real(kind=realType), intent(out) :: mag
-
   mag = sqrt(v(1)**2 + v(2)**2 + v(3)**2 + 1e-30)
   
 end subroutine getMag
@@ -40,10 +38,10 @@ subroutine getRotationMatrix3d(v1, v2, Mi)
   real(kind=realType), dimension(3, 3), intent(out) :: Mi
 
   ! Local Variables
-  real(kind=realType), dimension(3) :: axis
+  real(kind=realType), dimension(3) :: axis, vv1, vv2
   real(kind=realType):: magV1, magV2, axisMag, angle
-  real(kind=realType), dimension(3, 3):: axis_skewed
-  logical :: flag
+  real(kind=realType), dimension(3, 3):: A, C
+
   call getMag(v1, magV1)
   call getMag(v2, magV2)
   
@@ -53,39 +51,50 @@ subroutine getRotationMatrix3d(v1, v2, Mi)
   call cross_product_3d(v1,v2,axis)
   ! Now Normalize
   call getMag(axis,axisMag)
-  flag = .False.
+
   if (axisMag <1.0e-8) then
      ! no rotation at this point, angle is 0
      angle = zero
      ! the axis doesn't matter so set to x
      axis = zero
      axis(1) = one
-     flag = .True.
   else
      axis = axis/axisMag
      ! Now compute the rotation angle about that axis
-     angle = acos(dot_product(v1/magv1,v2/magv2))
+     vv1 = v1/magv1
+     vv2 = v2/magv2
+     angle = acos(vv1(1)*vv2(1) + vv1(2)*vv2(2) + vv1(3)*vv2(3))
   end if
   ! Now that we have an axis and an angle,build the rotation Matrix
 
 ! A skew symmetric representation of the normalized axis 
-  axis_skewed(1,1) = zero
-  axis_skewed(1,2) = -axis(3)
-  axis_skewed(1,3) = axis(2)
-  axis_skewed(2,1) = axis(3)
-  axis_skewed(2,2) = zero
-  axis_skewed(2,3) = -axis(1)
-  axis_skewed(3,1) = -axis(2)
-  axis_skewed(3,2) = axis(1)
-  axis_skewed(3,3) = zero
+  A(1,1) = zero
+  A(1,2) = -axis(3)
+  A(1,3) = axis(2)
+  A(2,1) = axis(3)
+  A(2,2) = zero
+  A(2,3) = -axis(1)
+  A(3,1) = -axis(2)
+  A(3,2) = axis(1)
+  A(3,3) = zero
 
-  ! identity matrix
+  !C = A*A
+  C(1,1)= A(1,1)*A(1,1)+A(1,2)*A(2,1)+A(1,3)*A(3,1)
+  C(1,2)= A(1,1)*A(1,2)+A(1,2)*A(2,2)+A(1,3)*A(3,2)
+  C(1,3)= A(1,1)*A(1,3)+A(1,2)*A(2,3)+A(1,3)*A(3,3)
+  C(2,1)= A(2,1)*A(1,1)+A(2,2)*A(2,1)+A(2,3)*A(3,1)
+  C(2,2)= A(2,1)*A(1,2)+A(2,2)*A(2,2)+A(2,3)*A(3,2)
+  C(2,3)= A(2,1)*A(1,3)+A(2,2)*A(2,3)+A(2,3)*A(3,3)
+  C(3,1)= A(3,1)*A(1,1)+A(3,2)*A(2,1)+A(3,3)*A(3,1)
+  C(3,2)= A(3,1)*A(1,2)+A(3,2)*A(2,2)+A(3,3)*A(3,2)
+  C(3,3)= A(3,1)*A(1,3)+A(3,2)*A(2,3)+A(3,3)*A(3,3)
+  
+  ! Rodrigues formula for the rotation matrix 
   Mi = zero
   Mi(1, 1) = one
   Mi(2, 2) = one
   Mi(3, 3) = one
   
-  ! Rodrigues formula for the rotation matrix 
-  Mi = Mi + sin(angle)*axis_skewed + (one-cos(angle))*matmul(axis_skewed,axis_skewed)
+  Mi = Mi + sin(angle)*A + (one-cos(angle))*C
 
 end subroutine getRotationMatrix3d

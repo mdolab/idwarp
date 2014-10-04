@@ -18,10 +18,14 @@ FILES_TO_COMPLEXIFY = \
 	getVolumeCoordinates.F90\
 	gridTransform.F90\
 	initializeWarping.F90\
+	initNodalProperties.F90\
 	setdXs.F90\
 	setExternalMeshIndices.F90\
 	setSurfaceCoordinates.F90\
 	warpMesh.F90\
+	warpMeshExact.F90\
+	warpMeshFast.F90\
+	warpDeriv.F90\
 
 FILES_TO_COPY = 
 

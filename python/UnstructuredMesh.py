@@ -116,13 +116,14 @@ class USMesh(object):
         # Defalut options for mesh warping
         self.solverOptionsDefault = {
             'gridFile':None,
-            'aExp': 3,
-            'bExp': 5,
+            'aExp': 3.0,
+            'bExp': 5.0,
             'LdefFact':1.0,
             'alpha':0.25,
-            'farFieldTol':5.0,
+            'errTol':0.001,
             'evalMode':'exact',
             'symmTol':1e-6,
+            'useRotations':True,
         }
         
         # Set remaining default values
@@ -254,7 +255,7 @@ class USMesh(object):
 
         # Run the compute nodal properties to initialize the normal
         # vectors.
-        self.warp.computenodalproperties(True)
+        self.warp.initnodalproperties()
         self.warpInitialized = True
 
         # Now communicate all the family stuff
@@ -599,13 +600,9 @@ class USMesh(object):
         
         # Call the fortran initialze warping command with  the
         # coordinates and the patch connectivity given to us. 
-
         self.warp.initializewarping(np.ravel(pts.real.astype('d')),
                                     self.faceSizes, self.conn)
 
-        # Run the compute nodal properties to initialize the normal
-        # vectors.
-        self.warp.computenodalproperties(True)
         self.warpInitialized = True
 
         # We can now back out the indices that should go along with
@@ -751,38 +748,39 @@ class USMesh(object):
         coordinates set with setSurfaceCoordinates()
         """
         self._setMeshOptions()
-        self.warp.computenodalproperties(False)
         self.warp.warpmesh()
 
     def warpDeriv(self, dXv, solverVec=True, surfOnly=False):
-        """
-        Compute the warping derivative (dXvdXs^T)*Vec
+        """Compute the warping derivative (dXvdXs^T)*Vec
 
         This is the main routine to compute the mesh warping
         derivative. 
 
-        Input Arguments:
-
-            solverdXv, numpy array: Vector of size external
-                solver_grid. This is typically obtained from the
-                external solver's dRdx^T * psi calculation. 
+        Parameters
+        ----------
+        solverdXv :  numpy array
+            Vector of size external solver_grid. This is typically
+            obtained from the external solver's dRdx^T * psi
+            calculation.
         
-            solverVec, logical: Flag to indicate that the dXv vector
-                 is in the solver ordering and must be converted
-                 to the warp ordering first. This is the usual approach
-                 and thus defaults to True.
+        solverVec : logical 
+            Flag to indicate that the dXv vector is in the solver
+            ordering and must be converted to the warp ordering
+            first. This is the usual approach and thus defaults to
+            True.
 
-            surfOnly, logical: Flag to indicate that a "fake" mesh
-                 warp is to be done. In this case, only dXv values that
-                 are ALREADY on the surface are taken. This is only used
-                 in a few select cases and thus defaults to False.
+        surfOnly : logical
+            Flag to indicate that a "fake" mesh warp is to be done. In
+            this case, only dXv values that are ALREADY on the surface
+            are taken. This is only used in a few select cases and
+            thus defaults to False.
 
-        Output Arguments:
-
-            None. However, the resulting calculation is available from
-            the getdXs() function. 
-
+        Returns
+        -------
+        None. However, the resulting calculation is available from
+        the getdXs() function.
         """
+
         if solverVec:
             dXvWarp = np.zeros(self.warp.griddata.warpmeshdof, self.dtype)
             self.warp.solver_to_warp_grid(dXv, dXvWarp)
@@ -798,7 +796,6 @@ class USMesh(object):
                         dofEnd=25):
         """Run an internal verification of the solid warping
         derivatives"""
-
         
         if dXv is None:
             np.random.seed(314) # 'Random' seed to ensure runs are same
@@ -809,7 +806,6 @@ class USMesh(object):
                 self.warp.solver_to_warp_grid(dXv, dXvWarp)
             else:
                 dXvWarp = dXv
-        # end if
 
         self.warp.verifywarpderiv(dXvWarp, dofStart, dofEnd)
 
@@ -963,9 +959,12 @@ class USMesh(object):
         self.warp.gridinput.aexp = o['aExp']
         self.warp.gridinput.bexp = o['bExp']
         self.warp.gridinput.symmtol = o['symmTol']
-
-        #self.warp.gridinput.aaexp = o['aaExp']
-        #self.warp.gridinput.bbexp = o['bbExp']
+        self.warp.gridinput.userotations = o['useRotations']
+        self.warp.gridinput.errtol = o['errTol']
+        if o['evalMode'].lower() == 'fast':
+            self.warp.gridinput.evalmode = self.warp.gridinput.eval_fast
+        elif o['evalMode'].lower() == 'exact':
+            self.warp.gridinput.evalmode = self.warp.gridinput.eval_exact
 
     def releaseMemory(self):
         """Release all the mesh warping memory"""
@@ -1001,7 +1000,7 @@ class USMesh(object):
         
         Parameters
         ----------
-        lines : list of string
+        lines : list of strings
             Lines of file obtained from f.readlines()
         i : int
             The starting index to look
