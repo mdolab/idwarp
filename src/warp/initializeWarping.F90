@@ -386,14 +386,11 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
      costs(j) = costs(j) + costs(j-1)
   end do
 
-  print *, 'end dry run.'
-  print *,' costs:'
-  do j=1,1000
-     print *,j,costs(J)
-  end do
+print *, 'myid cost:', myid, costs(Nvol)
   call VecRestoreArrayF90(Xv0, Xv0Ptr, ierr)
   call EChk(ierr,__FILE__,__LINE__)
-  
+  call mpi_barrier(warp_comm_world, ierr)
+  call EChk(ierr,__FILE__,__LINE__)
   ! Deallocate the memory from this processor:
   deallocate(nNodesProc, cumNodesProc)
   deallocate(faceSizesMirror, faceConnMirror, allMirrorPts, uniquePts)
