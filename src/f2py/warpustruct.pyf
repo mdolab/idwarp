@@ -93,7 +93,6 @@ python module warpustruct ! in
          real(kind=realtype) :: symmtol
          real(kind=realtype) :: errtol
          logical :: userotations
-         logical :: loadbalance
          integer(kind=inttype) :: evalmode
          integer(kind=inttype) :: eval_exact = 0
          integer(kind=inttype) :: eval_fast = 1

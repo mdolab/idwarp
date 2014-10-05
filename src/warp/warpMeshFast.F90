@@ -29,10 +29,6 @@ subroutine warpMeshFast
   timeA = mpi_wtime()
   iif = zero
   volLoop: do j=1, nVol
-     
-     if (mod(j, 50000) == 0) then 
-        print *, myid, j
-     end if
      r(1) = Xv0Ptr(3*j-2)
      r(2) = Xv0Ptr(3*j-1)
      r(3) = Xv0Ptr(3*j)
