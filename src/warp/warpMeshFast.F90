@@ -15,8 +15,7 @@ subroutine warpMeshFast
   ! Working parameters
   real(kind=realType) :: den
   real(kind=realType), dimension(3) :: r, num
-  integer(kind=intType) :: nVol, ierr, j, ii
-  real(kind=realType) :: timeA, timeB, iif, err
+  integer(kind=intType) :: nVol, ierr, j
 
   ! Update the nodal properties
   call computeNodalProperties(.False.)
@@ -26,17 +25,13 @@ subroutine warpMeshFast
   nVol = size(XvPtr)/3
   call setData(mytree, Bi, Mi)
    
-  timeA = mpi_wtime()
-  iif = zero
   volLoop: do j=1, nVol
      r(1) = Xv0Ptr(3*j-2)
      r(2) = Xv0Ptr(3*j-1)
      r(3) = Xv0Ptr(3*j)
      num = zero
      den = zero
-     ii = 0
-     call evalDisp(mytree, r, num, den, ii, denomenator0(j))
-     iif = iif + dble(ii)
+     call evalDisp(mytree, r, num, den, denomenator0(j))
  
      XvPtr(3*j-2) = Xv0Ptr(3*j-2) + num(1) / den
      XvPtr(3*j-1) = Xv0Ptr(3*j-1) + num(2) / den
@@ -45,9 +40,5 @@ subroutine warpMeshFast
      ! Store these for a future sensitivity calc.
      numerator(:, j) = num
      denomenator(j) = den
-
   end do volLoop
-  timeB = mpi_wtime()
-  print *,'myid:', myid, timeB-timeA, iif/nVol, nUNIQUE
-
 end subroutine warpMeshFast

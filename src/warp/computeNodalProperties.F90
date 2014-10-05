@@ -25,7 +25,7 @@ subroutine computeNodalProperties(initialPoint)
   normals = zero
   mi = zero
   bi = zero
-
+ !$AD II-LOOP
   do i=1, nUnique
      sumArea = zero
      sumNormal = zero
@@ -50,8 +50,10 @@ subroutine computeNodalProperties(initialPoint)
      normals(:, i) = sumNormal / sumArea
 
      if (initialPoint) then
+#ifndef USE_TAPENADE
         normals0(:, i) = normals(:, i)
         Ai(i) = sumArea
+#endif
      else
         ! Now get the rotation Matrix
         call getRotationMatrix3d(normals0(:, i), normals(:, i), Mi(:, :, i))

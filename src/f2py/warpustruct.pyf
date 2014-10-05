@@ -90,6 +90,13 @@ python module warpustruct ! in
          integer(kind=inttype) optional,check(len(dxv_f)>=ndof_warp),depend(dxv_f) :: ndof_warp=len(dxv_f)
        end subroutine warpderiv
 
+       subroutine verifywarpderiv(dxv_f,ndof_warp,dof_start,dof_end) ! in :test:warpDeriv.F90
+         real(kind=realtype) dimension(ndof_warp) :: dxv_f
+         integer(kind=inttype) optional,check(len(dxv_f)>=ndof_warp),depend(dxv_f) :: ndof_warp=len(dxv_f)
+         integer(kind=inttype), intent(in) :: dof_start
+         integer(kind=inttype), intent(in) :: dof_end
+       end subroutine verifywarpderiv
+
        subroutine writestructuredcgns(cgns_file)
          character*(*) :: cgns_file
        end subroutine writestructuredcgns
