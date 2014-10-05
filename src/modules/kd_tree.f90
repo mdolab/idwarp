@@ -669,7 +669,7 @@ Contains
     end subroutine getWiEstimate_node
   end subroutine getWiEstimate
 
-  subroutine dryRun(tp, r, approxDen, ii)
+  subroutine dryRun(tp, r, approxDen, c)
     ! This routine estimates the number of operations that *would* be
     ! needed to compute the displacement for a given node. No
     ! computations are actually done. It is used to determine the
@@ -679,40 +679,43 @@ Contains
     Type (tree_master_record), Pointer :: tp
     real(kind=realType), intent(in), dimension(3) :: r
     real(kind=realType), intent(in) :: approxDen
-    integer(Kind=intType), intent(out) :: ii
-    ii = 0
-    call dryRun_node(tp, tp%root, r, approxDen, ii)
+    real(kind=realType), intent(out) :: c
+    c = zero
+    call dryRun_node(tp, tp%root, r, approxDen, c)
 
   contains
-    recursive subroutine dryRun_node(tp, np, r, approxDen, ii)
+    recursive subroutine dryRun_node(tp, np, r, approxDen, c)
       implicit none
       Type (tree_master_record), Pointer :: tp
       Type (tree_node), Pointer :: np 
       real(kind=realType), intent(in), dimension(3) :: r
       real(kind=realType), intent(in) :: approxDen
-      integer(kind=intType), intent(inout) :: ii
+      real(kind=realType), intent(out) :: c
       real(kind=realType), dimension(3) :: rr
       real(kind=realType) :: dist, err
 
       if (np%dnum == 0) then 
-         ii = ii + np%n
+         ! The regular loop gets assigned a cost of 1.0.
+         c = c + dble(np%n)
       else
          rr = r - np%X
          dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2)
-
+         ! This three cost accounts for the subroutine calling
+         ! overhead and the above dist calc.
+         c = c + three
          if (dist/np%radius < two) then ! Too close...call children
-            call dryRun_node(tp, np%left, r, approxDen, ii)
-            call dryRun_node(tp, np%right, r, approxDen, ii)
+            call dryRun_node(tp, np%left, r, approxDen, c)
+            call dryRun_node(tp, np%right, r, approxDen, c)
          else 
             ! Use the first error check:
             call getError(tp, np, dist, err)
             if (err < tp%errTol * approxDen) then
-               ! This is the approx calc:
-               ii = ii + 1
+               ! This is includes the getError calc
+               c = c + 1.5
             else
                ! Not good enough error so call children
-               call dryRun_node(tp, np%left, r, approxDen, ii)
-               call dryRun_node(tp, np%right, r, approxDen, ii)
+               call dryRun_node(tp, np%left, r, approxDen, c)
+               call dryRun_node(tp, np%right, r, approxDen, c)
             end if
          end if
       end if

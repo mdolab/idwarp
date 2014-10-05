@@ -30,7 +30,7 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
   real(kind=realType), dimension(:), allocatable :: denomenator0Copy
   integer(kind=intType), Pointer :: indices(:)
   real(kind=realtype) :: fact(3), xcen(3), dx(3), r(3), costOffset
-  real(Kind=realType) :: totalCost, averageCost
+  real(Kind=realType) :: totalCost, averageCost, c
   integer(kind=intType) :: nFaceConnMirror, nFaceSizesMirror, nMirrorNodes, nVol
   integer(kind=intType) :: curBin, newBin, newDOFProc, totalDOF
 
@@ -384,8 +384,8 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
   end if
   allocate(costs(nVol))
   dryRunLoop: do j=1, nVol
-     call dryRun(mytree, Xv0Ptr(3*j-2:3*j), denomenator0(j), ii)
-     costs(j) = dble(ii)/nUnique
+     call dryRun(mytree, Xv0Ptr(3*j-2:3*j), denomenator0(j), c)
+     costs(j) = c / nUnique
   end do dryRunLoop
   
   ! Don't forget to restore arrays!
@@ -443,12 +443,18 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
         curBin = newBin
      end if
   end do
+  ! Make sure the last proc has the right end...
+  if (myid == nProc-1) then 
+     procSplitsLocal(nProc) = iStart/3 + nVol
+  end if
   ! Communicate to all procs 
   call mpi_AllReduce(procSplitsLocal, procSplits, nProc+1, MPI_INTEGER, MPI_MAX, &
        warp_comm_world, ierr)
   call EChk(ierr,__FILE__,__LINE__)
   ! Convert Proc Splits to DOF Format
   procSplits = procSplits * 3
+
+  call MPI_barrier(warp_comm_world,ierr)
   newDOFProc = procSplits(myid+1) - procSplits(myid)
   
   ! Now create the final vectors we need:
@@ -462,7 +468,7 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
   ! Type and size
   call VecSetType(Xv, "mpi", ierr)
   call EChk(ierr,__FILE__,__LINE__)
-     
+  
   call VecSetSizes(Xv, newDOFProc, PETSC_DECIDE, ierr)
   call EChk(ierr,__FILE__,__LINE__)
   call VecGetSize(Xv, i, ierr)
