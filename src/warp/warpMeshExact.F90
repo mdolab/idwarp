@@ -37,14 +37,9 @@ subroutine warpMeshExact
 #ifndef USE_TAPENADE
    timeA = mpi_wtime()
 #endif
-  print *,' nVol:', nVol
+
   !$AD II-LOOP
   volLoop: do j=1, nVol
-#ifndef USE_TAPENADE
-     if (mod(j, 10000) == 0) then 
-        print *, myid, j
-     end if
-#endif
      r(1) = Xv0Ptr(3*j-2)
      r(2) = Xv0Ptr(3*j-1)
      r(3) = Xv0Ptr(3*j)
@@ -87,10 +82,6 @@ subroutine warpMeshExact
      XvPtr(3*j  ) = Xv0Ptr(3*j  ) + numerator(3, j) * oDen
   end do
 
-#ifndef USE_TAPENADE
-  timeB = mpi_wtime()
-  print *,'myid:', myid, timeB-timeA
-#endif
 end subroutine warpMeshExact
 
 

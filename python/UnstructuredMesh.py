@@ -123,7 +123,7 @@ class USMesh(object):
             'errTol':0.0005,
             'evalMode':'fast',
             'symmTol':1e-6,
-            'useRotations':True,
+            'useRotations':False,
         }
         
         # Set remaining default values
@@ -636,7 +636,16 @@ class USMesh(object):
         """
         return self.warp.getvolumecoordinates(self.warp.griddata.warpmeshdof)
         
+    def getCommonGrid(self):
+        """Return the grid int he original ordering. This is required for the
+        openFOAM tecplot writer since the connectivity is only known
+        in this ordering. 
+        """
+        return self.warp.getcommonvolumecoordinates(
+            self.warp.griddata.commonmeshdof)
+
     def getdXs(self, groupName):
+
         """
         Return the current values in dXs. This is typically the result
         of a mesh warp-derivative computation.
@@ -832,7 +841,7 @@ class USMesh(object):
 
         # Extract the data we need from the OFDict to make the code a
         # little easier to read:
-        nodes = self.getWarpGrid()
+        nodes = self.getCommonGrid()
         nodes = nodes.reshape((len(nodes)/3, 3))
         nPoints = len(nodes)
 

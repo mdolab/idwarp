@@ -16,6 +16,7 @@ FILES_TO_COMPLEXIFY = \
 	getElementProps.F90\
 	getSurfaceCoordinates.F90\
 	getVolumeCoordinates.F90\
+	getCommonVolumeCoordinates.F90\
 	gridTransform.F90\
 	initializeWarping.F90\
 	initNodalProperties.F90\
