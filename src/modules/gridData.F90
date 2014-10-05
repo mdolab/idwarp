@@ -38,6 +38,7 @@ module gridData
   real(kind=realType), pointer, dimension(:) :: dXsPtr
   real(kind=realType), pointer, dimension(:) :: Xv0Ptr, Xvptr
   integer(kind=intType) :: warpMeshDOF
+  integer(kind=intType) :: commonMeshDOF
 
 #ifndef USE_TAPENADE
   real(kind=realType), pointer, dimension(:) :: XsPtrb

@@ -24,7 +24,7 @@ subroutine warp_to_solver_grid(warp_grid, wdof, solver_grid, sdof)
   call VecZeroEntries(commonGridVec, ierr)
   call EChk(ierr, __FILE__, __LINE__)
 
-  ! Now do the vecScatter: warp_to_common in REVERSE
+  ! Now do the vecScatter: common_to_warp in REVERSE
   call VecScatterBegin(common_to_warp, dXv, commonGridVec, &
        INSERT_VALUES, SCATTER_REVERSE, ierr)
   call EChk(ierr, __FILE__, __LINE__)
@@ -73,7 +73,7 @@ subroutine solver_to_warp_grid(solver_grid, sdof, warp_grid, wdof)
   call VecZeroEntries(commonGridVec, ierr)
   call EChk(ierr, __FILE__, __LINE__)
 
-  ! Now do the vecScatter: cngs_to_solver in REVERSE
+  ! Now do the vecScatter: common_to_solver in REVERSE
   call VecScatterBegin(common_to_solver, solverGridVec, commonGridVec, &
        ADD_VALUES, SCATTER_REVERSE, ierr)
   call EChk(ierr, __FILE__, __LINE__)

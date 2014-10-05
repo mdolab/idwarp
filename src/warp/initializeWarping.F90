@@ -557,6 +557,7 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
      denomenator0(i) = numerator(1, i)
   end do
   warpMeshDOF = newDOFProc
+  commonMeshDOF = nVol*3
 
   ! Deallocate the memory from this subroutine
   deallocate(nNodesProc, cumNodesProc)
