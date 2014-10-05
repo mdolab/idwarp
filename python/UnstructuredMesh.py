@@ -120,10 +120,11 @@ class USMesh(object):
             'bExp': 5.0,
             'LdefFact':1.0,
             'alpha':0.25,
-            'errTol':0.001,
-            'evalMode':'exact',
+            'errTol':0.0005,
+            'evalMode':'fast',
             'symmTol':1e-6,
             'useRotations':True,
+            'loadBalance':True,
         }
         
         # Set remaining default values
@@ -247,15 +248,11 @@ class USMesh(object):
             self.warp.gridinput.isymm = iSymm
 
         # Create the internal structures for volume mesh
-        self.warp.createvolumegrid(x0.T)
+        self.warp.createcommongrid(x0.T)
         pts = np.array(pts)
         # And run the common routine for setting up the surface
         self.warp.initializewarping(np.ravel(pts.real.astype('d')),
                                     faceSizes, faceConn)
-
-        # Run the compute nodal properties to initialize the normal
-        # vectors.
-        self.warp.initnodalproperties()
         self.warpInitialized = True
 
         # Now communicate all the family stuff
@@ -602,9 +599,8 @@ class USMesh(object):
         # coordinates and the patch connectivity given to us. 
         self.warp.initializewarping(np.ravel(pts.real.astype('d')),
                                     self.faceSizes, self.conn)
-
         self.warpInitialized = True
-
+        
         # We can now back out the indices that should go along with
         # the groupNames that may have already been added. 
         for key in self.familyGroup.keys():
@@ -639,7 +635,6 @@ class USMesh(object):
             The output is returned in flatted 1D coordinate
             format. 
         """
-
         return self.warp.getvolumecoordinates(self.warp.griddata.warpmeshdof)
         
     def getdXs(self, groupName):
@@ -961,6 +956,7 @@ class USMesh(object):
         self.warp.gridinput.symmtol = o['symmTol']
         self.warp.gridinput.userotations = o['useRotations']
         self.warp.gridinput.errtol = o['errTol']
+        self.warp.gridinput.loadbalance = o['loadBalance']
         if o['evalMode'].lower() == 'fast':
             self.warp.gridinput.evalmode = self.warp.gridinput.eval_fast
         elif o['evalMode'].lower() == 'exact':

@@ -13,6 +13,7 @@ module gridInput
   real(kind=realType) :: symmTol
   real(Kind=realType) :: errTol
   logical :: useRotations
+  logical :: loadBalance
   integer(kind=intType) :: evalMode
   integer(kind=intTYpe), parameter :: EVAL_EXACT = 0
   integer(kind=intTYpe), parameter :: EVAL_FAST = 1

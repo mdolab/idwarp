@@ -22,24 +22,28 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
   real(kind=realType),dimension(:,:), allocatable :: allNodes
   integer(kind=intType), dimension(:), allocatable :: faceSizesMirror, faceConnMirror
   real(kind=realType), dimension(:, :), allocatable :: allMirrorPts, uniquePts
-  real(kind=realType), dimension(:), allocatable :: costs
+  real(kind=realType), dimension(:), allocatable :: costs, procEndCosts
   integer(kind=intType), dimension(:), allocatable :: surfSizesProc, surfSizesDisp
   integer(kind=intType), dimension(:), allocatable :: surfConnProc, surfConnDisp
   integer(kind=intType), dimension(:), allocatable :: link, tempInt, invIndices
+  integer(kind=intType), dimension(:), allocatable :: procSplits, procSplitsLocal
+  real(kind=realType), dimension(:), allocatable :: denomenator0Copy
   integer(kind=intType), Pointer :: indices(:)
-  real(kind=realtype) :: fact(3), xcen(3), dx(3), r(3)
+  real(kind=realtype) :: fact(3), xcen(3), dx(3), r(3), costOffset
+  real(Kind=realType) :: totalCost, averageCost
   integer(kind=intType) :: nFaceConnMirror, nFaceSizesMirror, nMirrorNodes, nVol
+  integer(kind=intType) :: curBin, newBin, newDOFProc, totalDOF
 
    interface 
      subroutine pointReduce(pts, N, tol, uniquePts, link, nUnique)
        use precision
        implicit none
-       real(kind=realType), dimension(:, :) :: pts
+       real(kind=realType), intent(in), dimension(:, :) :: pts
        integer(kind=intType), intent(in) :: N
        real(kind=realType), intent(in) :: tol
-       real(kind=realType), dimension(:, :) :: uniquePts
-       integer(kind=intType), dimension(:) :: link
-       integer(kind=intType) :: nUnique
+       real(kind=realType), intent(out), dimension(:, :) :: uniquePts
+       integer(kind=intType), intent(out), dimension(:) :: link
+       integer(kind=intType), intent(out) :: nUnique
      end subroutine pointReduce
   end interface
 
@@ -48,13 +52,12 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
   ! ----------------------------------------------------------------------
   allocate(nNodesProc(nProc), cumNodesProc(0:nProc))
   nNodesProc(:) = 0_intType
-
+  
   call mpi_allgather(ndof/3, 1, MPI_INTEGER, nNodesProc, 1, mpi_integer4, &
        warp_comm_world, ierr)
   call EChk(ierr, __FILE__, __LINE__)
 
   ! Sum and Allocate receive displ offsets
-
   cumNodesProc(0) = 0_intType
   nNodesTotal = 0
   do i=1, nProc
@@ -234,7 +237,6 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
      print "(1x)"   
   end if
 
-
   ! Before we create the final Xu and friends we will do one final
   ! aditional mapping: We will create the KD to get the indices that
   ! *would* sort the tree. By doing this first, this removes the
@@ -345,58 +347,222 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
   ! Run the compute nodal properties to initialize the normal vectors.
   call initNodalProperties()
 
+  ! Set the input parameters to the module
   mytree%Ldef = Ldef0 * LdefFact
   mytree%alphaToBexp = alpha**bExp
   mytree%errTol = errTol
 
-  ! Set some initialization on the tree
+  ! Perform some initialization on the tree
    call setAi(mytree, Ai)
    call setXu0(mytree, Xu0)
    call labelNodes(mytree)
    call computeErrors(mytree)
 
   ! Compute the approximate denomenator:
-  call VecGetArrayF90(Xv0, Xv0Ptr, ierr)
+  call VecGetArrayF90(commonGridVec, Xv0Ptr, ierr)
   call EChk(ierr,__FILE__,__LINE__)
 
   if (myid == 0) then 
      print *, 'Computing Denomenator Estimate...'
   end if
+
   nVol = size(Xv0Ptr)/3
-  ! Compute the denomenator. This needs to be done only once.
+  allocate(denomenator0(nVol))
+
+  ! Compute the (approx) denomenator. This needs to be done only once.
   wiLoop: do j=1, nVol
      call getWiEstimate(mytree, Xv0Ptr(3*j-2:3*j), denomenator0(j))
   end do wiLoop
-  if (myid == 0) then 
-     print *, 'Done Denomenator Estimate.'
-  end if
-  ! Now we have to do a dry run loop that determines just the number
-  ! of ops that a mesh warp would use. This integer is scaled by the
-  ! "brute force" cost, so each individual cost will be less than 1. 
-  print *,' start dry run...'
-  allocate(costs(nVol))
 
+  ! If we want to load balance, which generally should be done, we
+  ! have to do a dry run loop that determines just the number of
+  ! ops that a mesh warp *would* use. This integer is scaled by the
+  ! "brute force" cost, so each individual cost will be less than
+  ! 1.0
+  if (myid == 0) then 
+     print *, 'Load Balancing...'
+  end if
+  allocate(costs(nVol))
   dryRunLoop: do j=1, nVol
      call dryRun(mytree, Xv0Ptr(3*j-2:3*j), denomenator0(j), ii)
      costs(j) = dble(ii)/nUnique
   end do dryRunLoop
+  
+  ! Don't forget to restore arrays!
+  call VecRestoreArrayF90(commonGridVec, Xv0Ptr, ierr)
+  call EChk(ierr,__FILE__,__LINE__)
 
   ! Now put the costs in cumulative format
   do j=2,nVol
      costs(j) = costs(j) + costs(j-1)
   end do
+  
+  ! Now, we gather up the value at the *end* of each of the costs
+  ! array and send to everyone
+  allocate(procEndCosts(nProc))
+  call mpi_allgather(costs(nVol), 1, MPI_REAL8, procEndCosts, 1, MPI_REAL8, &
+       warp_comm_world, ierr)
+  call EChk(ierr, __FILE__, __LINE__)
+  
+  ! Now each proc can "correct" for the cumulative costs by using
+  ! the intermediate sums from the other processors
+  costOffset = zero
+  do iProc=1, myid ! iProc is zero-based but we start on the second proc!
+     costOffset = costOffset + procEndCosts(iProc)
+  end do
 
-print *, 'myid cost:', myid, costs(Nvol)
-  call VecRestoreArrayF90(Xv0, Xv0Ptr, ierr)
+  ! Now just vector sum the costs array
+  costs = costs + costOffset
+  
+  ! We now have a distributed "costs" array that in cumulative
+  ! format has the costs of mesh warping. First thing we will do
+  ! make sure all procs know the *precise* total cost. Broadcast
+  ! this from the "last" proc
+  totalCost = costs(nVol)
+  call MPI_bcast(totalCost, 1, MPI_REAL8, nProc-1, warp_comm_world, ierr)
+  call EChk(ierr, __FILE__, __LINE__)
+
+  ! And the average cost:
+  averageCost = totalCost / nProc
+  
+  ! Next we loop over our own cost array to determine the indicies
+  ! in *global* ordering where the "breaks" should be. 
+  call vecGetOwnershipRange(commonGridVec, iStart, iEnd, ierr)
+  call EChk(ierr, __FILE__, __LINE__)
+  
+  call vecGetSize(commonGridVec, totalDOF, ierr)
+  call EChk(ierr, __FILE__, __LINE__)
+  allocate(procSplits(0:nProc), procSplitsLocal(0:nProc))
+  procSplitsLocal(:) = 0 ! Do this zero-based ordering!
+  curBin = int(costs(1) /  averageCost)
+  do i=2, nVol
+     newBin = int(costs(i) / averageCost)
+     if (newBin > curBin) then
+        ! We passed a boundary:
+        procSplitsLocal(newBin) = i + iStart/3
+        curBin = newBin
+     end if
+  end do
+  ! Communicate to all procs 
+  call mpi_AllReduce(procSplitsLocal, procSplits, nProc+1, MPI_INTEGER, MPI_MAX, &
+       warp_comm_world, ierr)
   call EChk(ierr,__FILE__,__LINE__)
-  call mpi_barrier(warp_comm_world, ierr)
+  ! Convert Proc Splits to DOF Format
+  procSplits = procSplits * 3
+  newDOFProc = procSplits(myid+1) - procSplits(myid)
+  
+  ! Now create the final vectors we need:
+  call VecCreate(warp_comm_world, Xv, ierr)
   call EChk(ierr,__FILE__,__LINE__)
-  ! Deallocate the memory from this processor:
+     
+  ! Set to be be blocked
+  call VecSetBlockSize(Xv, 3, ierr)
+  call EChk(ierr,__FILE__,__LINE__)
+
+  ! Type and size
+  call VecSetType(Xv, "mpi", ierr)
+  call EChk(ierr,__FILE__,__LINE__)
+     
+  call VecSetSizes(Xv, newDOFProc, PETSC_DECIDE, ierr)
+  call EChk(ierr,__FILE__,__LINE__)
+  call VecGetSize(Xv, i, ierr)
+
+  call VecDuplicate(Xv, Xv0, ierr)
+  call EChk(ierr,__FILE__,__LINE__)
+  
+  call VecDuplicate(Xv, dXv, ierr)
+  call EChk(ierr,__FILE__,__LINE__)
+  
+  ! Now we know the break-points of the splits, we can create a vec
+  ! scatter that converts between the "common" and "warping"
+  ! ordering (the repartitioned) ordering. 
+  call ISCreateStride(warp_comm_world, newDOFProc, procSplits(myid), 1, IS1, ierr)
+  call EChk(ierr, __FILE__, __LINE__)  
+  
+  call ISCreateStride (warp_comm_world, newDOFProc, procSplits(myid), 1, IS2, ierr)
+  call EChk(ierr, __FILE__, __LINE__)
+     
+  call VecScatterCreate(commonGridVec, IS1, Xv, IS2, common_to_warp, ierr)
+  call EChk(ierr, __FILE__, __LINE__)
+  
+  call ISDestroy(IS1, ierr)
+  call EChk(ierr, __FILE__, __LINE__)
+  
+  call ISDestroy(IS2, ierr)
+  call EChk(ierr, __FILE__, __LINE__)
+  
+  ! We have to now scatter our nominal grid nodes in
+  ! "commonGridVec" to our final ordering. This uses warp_to_common
+  ! in REVERSE:
+  call VecScatterBegin(common_to_warp, commonGridVec, Xv, &
+       INSERT_VALUES, SCATTER_FORWARD, ierr)
+  call EChk(ierr, __FILE__, __LINE__)
+  
+  call VecScatterEnd  (common_to_warp, commonGridVec, Xv, &
+       INSERT_VALUES, SCATTER_FORWARD, ierr)
+  call EChk(ierr, __FILE__, __LINE__)
+
+  ! And set Xv0
+  call VecCopy(Xv, Xv0, ierr)
+  call EChk(ierr, __FILE__, __LINE__)
+
+  ! We also want to scatter denomenator0 since that was kinda costly
+  ! to compute. So we vecPlace it into commonGridVec and take it out
+  ! of Xv. However, denomenator is only a third of the size of the
+  ! gridVec. So we dump it into numerator, which *is* the right size
+  ! and the copy after
+
+ ! We can now also allocate the final space for the numerator and denomenator
+  allocate(numerator(3, newDOFProc/3), denomenator(newDOFProc/3))
+
+  allocate(denomenator0Copy(nVol*3))
+  do i=1,nVol
+     denomenator0Copy(3*i-2) = denomenator0(i)
+  end do
+  
+  ! Clear the current denomenator0 and make the right size.
+  deallocate(denomenator0)
+  allocate(denomenator0(newDOFProc/3))
+
+  call VecPlaceArray(commonGridVec, denomenator0Copy, ierr)
+  call EChk(ierr, __FILE__, __LINE__)
+  
+  call VecPlaceArray(Xv, numerator, ierr)
+  call EChk(ierr, __FILE__, __LINE__)
+  
+  ! Actual scatter
+  call VecScatterBegin(common_to_warp, commonGridVec, Xv, &
+       INSERT_VALUES, SCATTER_FORWARD, ierr)
+  call EChk(ierr, __FILE__, __LINE__)
+  
+  call VecScatterEnd  (common_to_warp, commonGridVec, Xv, &
+       INSERT_VALUES, SCATTER_FORWARD, ierr)
+  call EChk(ierr, __FILE__, __LINE__)
+  
+  ! And reset the arrays
+  call VecResetArray(commonGridVec, ierr)
+  call EChk(ierr, __FILE__, __LINE__)
+  
+  call VecResetArray(Xv, ierr)
+  call EChk(ierr, __FILE__, __LINE__)
+  
+  ! Copy denomenator0 out of the numerator
+  do i=1,newDOFProc/3
+     denomenator0(i) = numerator(1, i)
+  end do
+  warpMeshDOF = newDOFProc
+
+  ! Deallocate the memory from this subroutine
   deallocate(nNodesProc, cumNodesProc)
   deallocate(faceSizesMirror, faceConnMirror, allMirrorPts, uniquePts)
   deallocate(surfSizesProc, surfSizesDisp, surfConnProc, surfConnDisp)
   deallocate(link)
   nullify(indices)
   deallocate(invIndices)
+  deallocate(procEndCosts, procSplits, procSplitsLocal, denomenator0Copy)
+  if (myid == 0) then 
+     print *, 'Finished Mesh Initialization.'
+  end if
+
 end subroutine initializeWarping
 
