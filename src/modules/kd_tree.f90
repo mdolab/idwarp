@@ -41,8 +41,8 @@ Module kd_tree
      real(kind=realType) :: alphaToBExp
      real(kind=realType) :: farField 
      real(kind=realType) , dimension(:), pointer :: Ai
-     real(kind=realType) , dimension(:, :), pointer :: Bi
-     real(kind=realType) , dimension(:, :, :), pointer :: Mi
+     real(kind=realType) , dimension(:, :), pointer :: Bi, Bib
+     real(kind=realType) , dimension(:, :, :), pointer :: Mi, Mib
      real(kind=realType) , dimension(:, :), pointer :: Xu0
      real(Kind=realType) :: errTol
      Type(tnp), dimension(:), pointer :: flatNodes
@@ -57,8 +57,8 @@ Module kd_tree
 
      ! Additional information for IDW
      real(kind=realType) :: Ai
-     real(kind=realType) :: Bi(3)
-     real(kind=realType) :: Mi(3, 3)
+     real(kind=realType) :: Bi(3), Bib(3)
+     real(kind=realType) :: Mi(3, 3), Mib(3, 3)
      real(kind=realType) :: X(3)
      real(kind=realType) :: radius
      integer(kind=intType) :: lvl
@@ -319,6 +319,41 @@ Contains
   !                 Additional routines for IDW Warping
   ! --------------------------------------------------------------------
 
+  subroutine labelNodes(tp)
+    ! Recurse through the tree and give a unique identifier to each
+    ! node and identify which level each node is. Additionally, we
+    ! store tp%maxDepth which is the maximum number of layers in the
+    ! tree.
+    implicit none
+    ! Subroutine arguments
+    Type (tree_master_record), Pointer :: tp
+    integer(kind=intType) :: level
+    integer(kind=intType) :: id
+    level = 1
+    tp%maxDepth = 1
+    id = 1
+    call labelNodes_node(tp, tp%root, level, id)
+  contains
+    recursive subroutine labelNodes_node(tp, np, level, id)
+      ! Give each node a unique identifier as well as what level in
+      ! the tree it is.
+      use constants
+      implicit none
+      Type (tree_master_record), Pointer :: tp
+      Type (tree_node), Pointer :: np 
+      integer(kind=intType) :: level
+      integer(kind=intType) :: id
+      np%lvl = level
+      np%id = id
+      id = id + 1
+      tp%maxDepth = max(tp%maxDepth, level)
+      if (np%dnum /= 0) then 
+         call labelNodes_node(tp, np%left, level+1, id)
+         call labelNodes_node(tp, np%right, level+1, id)
+      end if
+    end subroutine labelNodes_node
+  end subroutine labelNodes
+
   subroutine setXu0(tp, Xu0)
     ! Just set the pointer for Xu0
     implicit none
@@ -441,18 +476,17 @@ Contains
     end Subroutine setData_node
   end subroutine setData
 
-  subroutine evalDisp(tp, r, num, den, ii, approxDen)
+  subroutine evalDisp(tp, r, num, den, approxDen)
     implicit none
     Type (tree_master_record), Pointer :: tp
     real(kind=realType), intent(in), dimension(3) :: r
     real(kind=realType), intent(out), dimension(3) :: num
     real(kind=realType), intent(in) :: approxDen
     real(kind=realType), intent(out) :: den
-    integer(kind=intType) :: ii
 
-    call evalDisp_node(tp, tp%root, r, num, den, ii, approxDen)
+    call evalDisp_node(tp, tp%root, r, num, den, approxDen)
   contains
-    recursive subroutine evalDisp_node(tp, np, r, num, den, ii, approxDen)
+    recursive subroutine evalDisp_node(tp, np, r, num, den, approxDen)
       implicit none
       ! Subroutine arguments
       Type (tree_master_record), Pointer :: tp
@@ -461,7 +495,7 @@ Contains
       real(kind=realType), intent(inout), dimension(3) :: num
       real(kind=realType), intent(inout) :: den
       real(kind=realType), intent(in) :: approxDen
-      integer(kind=intType) :: ii
+
       ! Working variables
       real(kind=realType), dimension(3) :: rr
       real(kind=realType) :: dist, err
@@ -469,7 +503,6 @@ Contains
       if (np%dnum == 0) then 
          ! Leaf node -> Must do exact calc:
          call evalNodeExact(tp, np, r, num, den)
-         ii = ii + np%n
       else
          ! Tree Node: Compute the distance from 'r' to the
          ! center of the node, np%X
@@ -477,18 +510,17 @@ Contains
          dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2)
 
          if (dist/np%radius < two) then ! Too close...call children
-            call evalDisp_node(tp, np%left, r, num, den, ii, approxDen)
-            call evalDisp_node(tp, np%right, r, num, den, ii, approxDen)
+            call evalDisp_node(tp, np%left, r, num, den, approxDen)
+            call evalDisp_node(tp, np%right, r, num, den, approxDen)
          else 
             ! Use the first error check:
             call getError(tp, np, dist, err)
             if (err < tp%errTol * approxDen) then
                call evalNodeApprox(tp, np, num, den, dist)
-               ii = ii + 1
             else
                ! Not good enough error so call children
-               call evalDisp_node(tp, np%left, r, num, den, ii, approxDen)
-               call evalDisp_node(tp, np%right, r, num, den, ii, approxDen)
+               call evalDisp_node(tp, np%left, r, num, den, approxDen)
+               call evalDisp_node(tp, np%right, r, num, den, approxDen)
             end if
          end if
       end if
@@ -544,40 +576,6 @@ Contains
     den = den + Wi
   end subroutine evalNodeApprox
 
-  subroutine labelNodes(tp)
-    ! Recurse through the tree and give a unique identifier to each
-    ! node and identify which level each node is. Additionally, we
-    ! store tp%maxDepth which is the maximum number of layers in the
-    ! tree.
-    implicit none
-    ! Subroutine arguments
-    Type (tree_master_record), Pointer :: tp
-    integer(kind=intType) :: level
-    integer(kind=intType) :: id
-    level = 1
-    tp%maxDepth = 1
-    id = 1
-    call labelNodes_node(tp, tp%root, level, id)
-  contains
-    recursive subroutine labelNodes_node(tp, np, level, id)
-      ! Give each node a unique identifier as well as what level in
-      ! the tree it is.
-      use constants
-      implicit none
-      Type (tree_master_record), Pointer :: tp
-      Type (tree_node), Pointer :: np 
-      integer(kind=intType) :: level
-      integer(kind=intType) :: id
-      np%lvl = level
-      np%id = id
-      id = id + 1
-      tp%maxDepth = max(tp%maxDepth, level)
-      if (np%dnum /= 0) then 
-         call labelNodes_node(tp, np%left, level+1, id)
-         call labelNodes_node(tp, np%right, level+1, id)
-      end if
-    end subroutine labelNodes_node
-  end subroutine labelNodes
 
   subroutine writeTreeTecplot(tp, fileName)
     ! This is a debuging routine that writes the centers of all of the
@@ -804,5 +802,137 @@ Contains
     fact = (dOvrR - tp%rstar(bin))/(tp%rstar(bin+1)-tp%rstar(bin))
     err = (one-fact)*np%err(bin) + fact*np%err(bin+1)
   end subroutine getError
+
+!------------------------------------------------------------
+!               DERIVATIVE ROUTINES
+!------------------------------------------------------------
+
+  recursive subroutine zeroDeriv(np)
+    ! Zero the derivatives in the nodes
+    implicit none
+    Type (tree_node), Pointer :: np 
+    np%Bib = zero
+    np%Mib = zero
+    if (np%dnum /= 0) then
+       call zeroDeriv(np%left)
+       call zeroDeriv(np%right)
+    end if
+  end subroutine zeroDeriv
+
+  subroutine evalDisp_b(tp, r, numb, approxDen)
+    implicit none
+    Type (tree_master_record), Pointer :: tp
+    real(kind=realType), intent(in), dimension(3) :: r
+    real(kind=realType), dimension(3) :: numb
+    real(kind=realType), intent(in) :: approxDen
+
+    call evalDisp_node_b(tp, tp%root, r, numb, approxDen)
+  contains
+    recursive subroutine evalDisp_node_b(tp, np, r, numb, approxDen)
+      implicit none
+      ! Subroutine arguments
+      Type (tree_master_record), Pointer :: tp
+      Type (tree_node), Pointer :: np 
+      real(kind=realType), intent(in), dimension(3) :: r
+      real(kind=realType), dimension(3) :: numb
+      real(kind=realType), intent(in) :: approxDen
+
+      ! Working variables
+      real(kind=realType), dimension(3) :: rr
+      real(kind=realType) :: dist, err
+
+      if (np%dnum == 0) then 
+         ! Leaf node -> Must do exact calc:
+         call evalNodeExact_b(tp, np, r, numb)
+      else
+         ! Tree Node: Compute the distance from 'r' to the
+         ! center of the node, np%X
+         rr = r - np%X
+         dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2)
+
+         if (dist/np%radius < two) then ! Too close...call children
+            call evalDisp_node_b(tp, np%left, r, numb, approxDen)
+            call evalDisp_node_b(tp, np%right, r, numb, approxDen)
+         else 
+            ! Use the first error check:
+            call getError(tp, np, dist, err)
+            if (err < tp%errTol * approxDen) then
+               call evalNodeApprox_b(tp, np, numb, dist)
+            else
+               ! Not good enough error so call children
+               call evalDisp_node_b(tp, np%left, r, numb, approxDen)
+               call evalDisp_node_b(tp, np%right, r, numb, approxDen)
+            end if
+         end if
+      end if
+    end subroutine evalDisp_node_b
+  end subroutine evalDisp_b
+
+  subroutine evalNodeExact_b(tp, np, r, numb)
+    ! Reverse derviative of evalNodeExact
+
+    implicit none
+    Type (tree_master_record), Pointer :: tp
+    Type (tree_node), Pointer :: np
+    real(kind=realType), intent(in), dimension(3) :: r, numb
+    real(kind=realType), dimension(3) :: rr
+    real(kind=realType) :: dist, LdefoDist, LdefoDist3
+    real(kind=realType) :: Wi
+    integer(kind=intType) :: i
+
+    do i=np%l, np%u
+       rr = r - tp%Xu0(:, i)
+       dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2+1e-16)
+       LdefoDist = tp%Ldef/dist
+       Ldefodist3 = LdefoDist**3
+       Wi = tp%Ai(i)*(Ldefodist3 + tp%alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
+       tp%Bib(:, i) = tp%Bib(:, i) + wi*numb
+    end do
+  end subroutine evalNodeExact_b
+
+  subroutine evalNodeApprox_b(tp, np, numb, dist)
+    ! Reverse Sensitivity of evalNodeApprox
+    implicit none
+    Type (tree_master_record), Pointer :: tp
+    Type (tree_node), Pointer :: np
+    real(kind=realType), intent(in) :: dist
+    real(kind=realType), dimension(3) :: numb
+    real(kind=realType) :: LdefoDist, LdefoDist3
+    real(kind=realType) :: Wi
+
+    LdefoDist = tp%Ldef/dist
+    Ldefodist3 = LdefoDist**3
+    Wi = np%Ai*(Ldefodist3 + tp%alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
+    np%Bib = np%Bib + wi*numb
+  end subroutine evalNodeApprox_b
+
+  subroutine setData_b(tp)
+    ! This performs the reverse accumulation of the nodeal Bib (and
+    ! Mib) into the full Bib array.
+    implicit none
+    Type (tree_master_record), Pointer :: tp
+    
+    call setData_node_b(tp, tp%root)
+    contains
+      recursive subroutine setData_node_b(tp, np)
+        implicit none
+        Type (tree_master_record), Pointer :: tp
+        Type (tree_node), Pointer :: np
+        real(kind=realType) :: ovrN
+        integer(kind=intType) :: i
+        if (np%dnum /= 0) then 
+           ovrN = one/ np%n
+           do i=np%l, np%u
+              tp%Bib(:, i) = tp%Bib(:, i) + np%Bib*ovrN
+              !tp%Mib(:, i) = tp%Mib(:, i) + np%Mib*ovrN
+           end do
+
+           ! Call each of the children
+           call setData_node_b(tp, np%left)
+           call setData_node_b(tp, np%right)
+        end if
+      end subroutine setData_node_b
+    end subroutine setData_b
+  
 End Module kd_tree
 

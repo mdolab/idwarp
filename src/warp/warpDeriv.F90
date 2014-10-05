@@ -1,8 +1,7 @@
 subroutine warpDeriv(dXv_f, ndof_warp)
 
   use gridData
-  use communication
-  use diffSizes
+  use gridInput
   implicit none
 
   ! Input
@@ -10,8 +9,8 @@ subroutine warpDeriv(dXv_f, ndof_warp)
   real(kind=realType), intent(in) :: dXv_f(ndof_warp)
 
   ! Working Data
-  integer(kind=intType) :: i, istart, iend, ierr
-  real(kind=realType) :: timeA, timeB
+  integer(kind=intType) :: i, iend, ierr
+
   ! Scatter Xs into our local vector  
   call VecScatterBegin(XsToXsLocal, Xs, XsLocal, INSERT_VALUES, SCATTER_FORWARD, ierr)
   call EChk(ierr,__FILE__,__LINE__)
@@ -33,40 +32,31 @@ subroutine warpDeriv(dXv_f, ndof_warp)
   ! Allocate the extra data we need for the warping derivative:
   allocate(XvPtrb(size(XvPtr)), XsPtrb(SIZE(XsPtr)))
   allocate(xub(3, nUnique))
-  allocate(Mib(3, 3, nUnique), Bib(3, nUnique), Aib(nUnique))
+  allocate(Mib(3, 3, nUnique), Bib(3, nUnique))
   allocate(normalsb(3, nUnique), normals0b(3, nUnique))
-  allocate(numeratorb(3, size(XvPtr)/3), denomenatorb(size(XvPtr)))
-  isize1ofdrfnormals = 3
-  isize2ofdrfnormals = nUnique
-
-  isize1ofdrfnormals0 = 3
-  isize2ofdrfnormals0 = nUnique
-
-  isize1ofdrfxu = 3
-  isize2ofdrfxu = nUnique
-
+ 
   ! dXv_f is the actual reverse seed so copy:
   XvPtrb(:) = dXv_f
 
   ! Zero the output surface derivative vector dXs
   call vecZeroEntries(dXs, ierr)
   call EChk(ierr, __FILE__, __LINE__)
-  print *,'calling reverse mode code...'
+
   ! Now run the actual reverse mode routine
-  timeA = mpi_wtime()
-  call warpMeshExact_b()
-  timeB = mpi_wtime()
-  print *,'done calling reverse mode code', timeB - timeA
-  ! And we now need take local values of XsPtrB and dump into dXs
-  call VecGetOwnershipRange(dXs, istart, iend, ierr)
-  call EChk(ierr, __FILE__, __LINE__)
-  
-  do i=istart, iend-1
-     call VecSetValues(dXs, 1, (/i/), (/XsPtrb(i+1)/), INSERT_VALUES, ierr)
+  if (evalMode == EVAL_EXACT) then 
+     call warpMeshExact_b()
+  else
+     call warpMeshFast_b()
+  end if
+
+  ! We add ALL values from Xsptb on all procs. 
+  call VecGetSize(dXs, iend, ierr)
+  do i=0, iend-1
+     call VecSetValues(dXs, 1, (/i/), (/XsPtrb(i+1)/), ADD_VALUES, ierr)
      call EChk(ierr, __FILE__, __LINE__)
   end do
   
-  ! Must assemble even though we set local values
+  ! Must assemble 
   call VecAssemblyBegin(dXs, ierr)
   call EChk(ierr, __FILE__, __LINE__)
 
@@ -75,7 +65,7 @@ subroutine warpDeriv(dXv_f, ndof_warp)
 
   ! Deallocate the extra space
   deallocate(XvPtrb, XsPtrb)
-  deallocate(mib, Bib, Aib, normalsb, normals0b, xub)
+  deallocate(mib, Bib, normalsb, normals0b, xub)
 
   ! Restore all the arrays
   call VecRestoreArrayF90(XsLocal, XsPtr, ierr)
@@ -86,6 +76,4 @@ subroutine warpDeriv(dXv_f, ndof_warp)
 
   call VecRestoreArrayF90(Xv, XvPtr, ierr)
   call EChk(ierr,__FILE__,__LINE__)
-
-
 end subroutine warpDeriv

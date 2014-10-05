@@ -23,9 +23,11 @@ FILES_TO_COMPLEXIFY = \
 	setdXs.F90\
 	setExternalMeshIndices.F90\
 	setSurfaceCoordinates.F90\
+	verifyWarpDeriv.F90\
 	warpMesh.F90\
 	warpMeshExact.F90\
 	warpMeshFast.F90\
+	warpMeshFast_b.F90\
 	warpDeriv.F90\
 
 FILES_TO_COPY = 
