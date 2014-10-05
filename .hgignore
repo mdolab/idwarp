@@ -1,0 +1,24 @@
+# use glob syntax.
+syntax: glob
+src/warp/warpingTapenade/*
+src/warp/temp_forward/*
+src/warp/temp_reverse/*
+*.so
+*.o
+*.pyc
+*~
+.*~
+*.orig
+*.mod
+*.pyf
+*.cgns
+*.a
+doc/*
+*.dat
+*.mk
+*.xyz
+*.phy
+*.fmt
+*.lay
+*.plt
+*.html
