@@ -1,0 +1,56 @@
+# -*- makefile -*-
+TAPENADE_DIRSRC = '../'
+TAPENADE_PARSERFILESEPARATOR = "/"
+TAPENADE_OUTVARS = "Xvptr"
+TAPENADE_VARS = "XsPtr"
+TAPENADE_HEADROUTINE = "warpMeshExact"
+TAPENADE_MODE = -reverse
+TAPENADE_OUTDIR = './warpingTapenade'
+TAPENADE_PRECISION = -i4 -dr8 -r8
+
+TAPENADE_SRC =	$(TAPENADE_DIRSRC)/warp/warpMeshExact.F90\
+		$(TAPENADE_DIRSRC)/warp/computeNodalProperties.F90\
+		$(TAPENADE_DIRSRC)/warp/getElementProps.F90\
+		$(TAPENADE_DIRSRC)/utils/vectorUtils.f90\
+		$(TAPENADE_DIRSRC)/modules/gridData.F90\
+		$(TAPENADE_DIRSRC)/modules/gridInput.f90\
+		$(TAPENADE_DIRSRC)/modules/constants.F90\
+		$(TAPENADE_DIRSRC)/modules/precision.F90\
+		$(TAPENADE_DIRSRC)/modules/communication.f90\
+
+PREPROCESSED_FILES := $(TAPENADE_SRC:%=%.f90)
+
+default: ad_forward
+
+cleanpreprocess: 
+	@echo "Cleaning up preprocessed file ..."
+	@for file in $(TAPENADE_SRC); do \
+		rm $$file.f90; \
+	done
+
+preprocess: 
+	@echo "Processing input files for AD..."
+	@for file in $(TAPENADE_SRC); do \
+		echo Preprocssing $$file; \
+		cpp -DUSE_TAPENADE -traditional -P $$file $$file.f90; \
+	done
+
+ad_forward:
+# Create holding folders and run preprocessor
+	rm -fr temp_reverse
+	mkdir -p temp_reverse
+	make -f Makefile_tapenade preprocess
+
+# the following ist he actual tapenade command to run
+	$(TAPENADE_HOME)/bin/tapenade -parserfileseparator $(TAPENADE_PARSERFILESEPARATOR) \
+	-outvars $(TAPENADE_OUTVARS) \
+	-vars $(TAPENADE_VARS) \
+	-head $(TAPENADE_HEADROUTINE) \
+	$(TAPENADE_MODE) -msglevel 30 \
+	-O temp_reverse $(TAPENADE_PRECISION) $(PREPROCESSED_FILES) -html
+	python autoEdit/autoEditReverse.py temp_reverse outputReverse
+
+# Clean up files
+	make -f Makefile_tapenade cleanpreprocess
+
+

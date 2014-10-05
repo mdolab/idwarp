@@ -236,7 +236,7 @@ subroutine readStructuredCGNS(cgns_file)
 
   ! All we are doing to do here is to create the Xv vector --- which
   ! is done via a call to createVolumeGrid
-  call createVolumeGrid(localNodes, size(localNodes, 2))
+  call createCommonGrid(localNodes, size(localNodes, 2))
   deallocate(localNodes)
 end subroutine readStructuredCGNS
 

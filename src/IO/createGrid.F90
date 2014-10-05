@@ -1,4 +1,11 @@
-subroutine createVolumeGrid(volNodes, nVolLocal)
+subroutine createCommonGrid(volNodes, nVolLocal)
+
+  ! This routine create a few arrys that are the size of the "common"
+  ! grid...that is the ordering that is given in the original grid
+  ! file. Generally this will result in a dumb "nVol/nProc"
+  ! distribution, while exact, does not result in proper load
+  ! balancing since each volume node will take a different amount of
+  ! time.
 
   use gridData
   use communication
@@ -36,45 +43,36 @@ subroutine createVolumeGrid(volNodes, nVolLocal)
   end if
 
   ! Now create the master Xv array:
-  call VecCreate(warp_comm_world, Xv, ierr)
+  call VecCreate(warp_comm_world, commonGridVec, ierr)
   call EChk(ierr,__FILE__,__LINE__)
 
   ! Set to be be blocked
-  call VecSetBlockSize(Xv, 3, ierr)
+  call VecSetBlockSize(commonGridVec, 3, ierr)
   call EChk(ierr,__FILE__,__LINE__)
 
   ! Type and size
-  call VecSetType(Xv, "mpi", ierr)
+  call VecSetType(commonGridVec, "mpi", ierr)
   call EChk(ierr,__FILE__,__LINE__)
   
-  call VecSetSizes(Xv, nVolLocal*3, PETSC_DECIDE, ierr)
+  call VecSetSizes(commonGridVec, nVolLocal*3, PETSC_DECIDE, ierr)
   call EChk(ierr,__FILE__,__LINE__)
 
   ! Now each processor adds it's own nodes (It is possible only one proc does it)
   do i=1, nVolLocal 
-     call VecSetValuesBlocked(Xv, 1, volNodesProc(myid) + i - 1, volNodes(:, i), INSERT_VALUES, ierr)
+     call VecSetValuesBlocked(commonGridVec, 1, volNodesProc(myid) + i - 1, volNodes(:, i), INSERT_VALUES, ierr)
      call EChk(ierr,__FILE__,__LINE__)
   end do
 
-  call VecGetLocalSize(Xv, warpMeshDOF, ierr)
+  call VecAssemblyBegin(commonGridVec, ierr)
   call EChk(ierr,__FILE__,__LINE__)
 
-  call VecAssemblyBegin(Xv, ierr)
-  call EChk(ierr,__FILE__,__LINE__)
-
-  call VecAssemblyEnd(Xv, ierr)
-  call EChk(ierr,__FILE__,__LINE__)
-
-  call VecDuplicate(Xv, Xv0, ierr)
-  call EChk(ierr,__FILE__,__LINE__)
-
-  call VecCopy(Xv, Xv0, ierr)
+  call VecAssemblyEnd(commonGridVec, ierr)
   call EChk(ierr,__FILE__,__LINE__)
 
   deallocate(volNodesProc)
-  allocate(numerator(3, nVolLocal))
-  allocate(denomenator(nVolLocal), denomenator0(nVolLocal))
+end subroutine createCommonGrid
 
-end subroutine createVolumeGrid
+
+
 
 
