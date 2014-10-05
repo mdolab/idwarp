@@ -124,7 +124,6 @@ class USMesh(object):
             'evalMode':'fast',
             'symmTol':1e-6,
             'useRotations':True,
-            'loadBalance':True,
         }
         
         # Set remaining default values
@@ -956,7 +955,6 @@ class USMesh(object):
         self.warp.gridinput.symmtol = o['symmTol']
         self.warp.gridinput.userotations = o['useRotations']
         self.warp.gridinput.errtol = o['errTol']
-        self.warp.gridinput.loadbalance = o['loadBalance']
         if o['evalMode'].lower() == 'fast':
             self.warp.gridinput.evalmode = self.warp.gridinput.eval_fast
         elif o['evalMode'].lower() == 'exact':
