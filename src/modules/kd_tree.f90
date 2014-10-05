@@ -506,7 +506,9 @@ Contains
       else
          ! Tree Node: Compute the distance from 'r' to the
          ! center of the node, np%X
-         rr = r - np%X
+         rr(1) = r(1) - np%X(1)
+         rr(2) = r(2) - np%X(2)
+         rr(3) = r(3) - np%X(3)
          dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2)
 
          if (dist/np%radius < two) then ! Too close...call children
@@ -545,12 +547,16 @@ Contains
     integer(kind=intType) :: i
 
     do i=np%l, np%u
-       rr = r - tp%Xu0(:, i)
+       rr(1) = r(1) - tp%Xu0(1, i)
+       rr(2) = r(2) - tp%Xu0(2, i)
+       rr(3) = r(3) - tp%Xu0(3, i)
        dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2+1e-16)
        LdefoDist = tp%Ldef/dist
        Ldefodist3 = LdefoDist**3
        Wi = tp%Ai(i)*(Ldefodist3 + tp%alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
-       num = num + Wi*tp%Bi(:, i)
+       num(1) = num(1) + Wi*tp%Bi(1, i)
+       num(2) = num(2) + Wi*tp%Bi(2, i)
+       num(3) = num(3) + Wi*tp%Bi(3, i)
        den = den + Wi
     end do
   end subroutine evalNodeExact
@@ -572,10 +578,11 @@ Contains
     LdefoDist = tp%Ldef/dist
     Ldefodist3 = LdefoDist**3
     Wi = np%Ai*(Ldefodist3 + tp%alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
-    num = num + Wi*np%Bi
+    num(1) = num(1) + Wi*np%Bi(1)
+    num(2) = num(2) + Wi*np%Bi(2)
+    num(3) = num(3) + Wi*np%Bi(3)
     den = den + Wi
   end subroutine evalNodeApprox
-
 
   subroutine writeTreeTecplot(tp, fileName)
     ! This is a debuging routine that writes the centers of all of the
@@ -847,7 +854,9 @@ Contains
       else
          ! Tree Node: Compute the distance from 'r' to the
          ! center of the node, np%X
-         rr = r - np%X
+         rr(1) = r(1) - np%X(1)
+         rr(2) = r(2) - np%X(2)
+         rr(3) = r(3) - np%X(3)
          dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2)
 
          if (dist/np%radius < two) then ! Too close...call children
@@ -881,12 +890,17 @@ Contains
     integer(kind=intType) :: i
 
     do i=np%l, np%u
-       rr = r - tp%Xu0(:, i)
+       rr(1) = r(1) - tp%Xu0(1, i)
+       rr(2) = r(2) - tp%Xu0(2, i)
+       rr(3) = r(3) - tp%Xu0(3, i)
+
        dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2+1e-16)
        LdefoDist = tp%Ldef/dist
        Ldefodist3 = LdefoDist**3
        Wi = tp%Ai(i)*(Ldefodist3 + tp%alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
-       tp%Bib(:, i) = tp%Bib(:, i) + wi*numb
+       tp%Bib(1, i) = tp%Bib(1, i) + wi*numb(1)
+       tp%Bib(2, i) = tp%Bib(2, i) + wi*numb(2)
+       tp%Bib(3, i) = tp%Bib(3, i) + wi*numb(3)
     end do
   end subroutine evalNodeExact_b
 
@@ -903,7 +917,9 @@ Contains
     LdefoDist = tp%Ldef/dist
     Ldefodist3 = LdefoDist**3
     Wi = np%Ai*(Ldefodist3 + tp%alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
-    np%Bib = np%Bib + wi*numb
+    np%Bib(1) = np%Bib(1) + wi*numb(1)
+    np%Bib(2) = np%Bib(2) + wi*numb(2)
+    np%Bib(3) = np%Bib(3) + wi*numb(3)
   end subroutine evalNodeApprox_b
 
   subroutine setData_b(tp)
@@ -923,7 +939,9 @@ Contains
         if (np%dnum /= 0) then 
            ovrN = one/ np%n
            do i=np%l, np%u
-              tp%Bib(:, i) = tp%Bib(:, i) + np%Bib*ovrN
+              tp%Bib(1, i) = tp%Bib(1, i) + np%Bib(1)*ovrN
+              tp%Bib(2, i) = tp%Bib(2, i) + np%Bib(2)*ovrN
+              tp%Bib(3, i) = tp%Bib(3, i) + np%Bib(3)*ovrN
               !tp%Mib(:, i) = tp%Mib(:, i) + np%Mib*ovrN
            end do
 
@@ -933,6 +951,5 @@ Contains
         end if
       end subroutine setData_node_b
     end subroutine setData_b
-  
-End Module kd_tree
+  End Module kd_tree
 
