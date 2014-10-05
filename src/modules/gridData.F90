@@ -69,13 +69,13 @@ module gridData
 #ifndef USE_TAPENADE
   real(kind=realType), dimension(:, :), allocatable :: Xub
   real(kind=realType), dimension(:, :, :), allocatable :: Mib
-  real(kind=realType), dimension(:, :), allocatable :: Bib
+  real(kind=realType), dimension(:, :), pointer :: Bib
   real(kind=realType), dimension(:, :), allocatable :: normals0b, normalsb
-  real(kind=realType), dimension(:), allocatable :: Aib
-  real(kind=realType), dimension(:), allocatable :: denomenatorb
-  real(kind=realType), dimension(:, :), allocatable :: numeratorb
-
 #endif  
+
+#ifndef USE_TAPENADE
   type(tree_master_record), pointer :: mytree
+#endif
+
   integer(kind=intType), dimension(:, :), allocatable :: nodeToElem
 end module gridData
