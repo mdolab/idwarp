@@ -826,16 +826,16 @@ Contains
     end if
   end subroutine zeroDeriv
 
-  subroutine evalDisp_b(tp, r, numb, approxDen)
+  subroutine evalDisp_b(tp, r, numb, approxDen, Bib)
     implicit none
     Type (tree_master_record), Pointer :: tp
     real(kind=realType), intent(in), dimension(3) :: r
     real(kind=realType), dimension(3) :: numb
     real(kind=realType), intent(in) :: approxDen
-
-    call evalDisp_node_b(tp, tp%root, r, numb, approxDen)
+    real(kind=realType), dimension(:, :) :: Bib
+    call evalDisp_node_b(tp, tp%root, r, numb, approxDen, Bib)
   contains
-    recursive subroutine evalDisp_node_b(tp, np, r, numb, approxDen)
+    recursive subroutine evalDisp_node_b(tp, np, r, numb, approxDen, Bib)
       implicit none
       ! Subroutine arguments
       Type (tree_master_record), Pointer :: tp
@@ -843,14 +843,14 @@ Contains
       real(kind=realType), intent(in), dimension(3) :: r
       real(kind=realType), dimension(3) :: numb
       real(kind=realType), intent(in) :: approxDen
-
+      real(kind=realType), dimension(:, :) :: Bib
       ! Working variables
       real(kind=realType), dimension(3) :: rr
       real(kind=realType) :: dist, err
 
       if (np%dnum == 0) then 
          ! Leaf node -> Must do exact calc:
-         call evalNodeExact_b(tp, np, r, numb)
+         call evalNodeExact_b(tp, np, r, numb, Bib)
       else
          ! Tree Node: Compute the distance from 'r' to the
          ! center of the node, np%X
@@ -860,8 +860,8 @@ Contains
          dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2)
 
          if (dist/np%radius < two) then ! Too close...call children
-            call evalDisp_node_b(tp, np%left, r, numb, approxDen)
-            call evalDisp_node_b(tp, np%right, r, numb, approxDen)
+            call evalDisp_node_b(tp, np%left, r, numb, approxDen, Bib)
+            call evalDisp_node_b(tp, np%right, r, numb, approxDen, Bib)
          else 
             ! Use the first error check:
             call getError(tp, np, dist, err)
@@ -869,15 +869,15 @@ Contains
                call evalNodeApprox_b(tp, np, numb, dist)
             else
                ! Not good enough error so call children
-               call evalDisp_node_b(tp, np%left, r, numb, approxDen)
-               call evalDisp_node_b(tp, np%right, r, numb, approxDen)
+               call evalDisp_node_b(tp, np%left, r, numb, approxDen, Bib)
+               call evalDisp_node_b(tp, np%right, r, numb, approxDen, Bib)
             end if
          end if
       end if
     end subroutine evalDisp_node_b
   end subroutine evalDisp_b
 
-  subroutine evalNodeExact_b(tp, np, r, numb)
+  subroutine evalNodeExact_b(tp, np, r, numb, Bib)
     ! Reverse derviative of evalNodeExact
 
     implicit none
@@ -885,6 +885,7 @@ Contains
     Type (tree_node), Pointer :: np
     real(kind=realType), intent(in), dimension(3) :: r, numb
     real(kind=realType), dimension(3) :: rr
+    real(kind=realType), dimension(:, :) :: Bib
     real(kind=realType) :: dist, LdefoDist, LdefoDist3
     real(kind=realType) :: Wi
     integer(kind=intType) :: i
@@ -898,9 +899,13 @@ Contains
        LdefoDist = tp%Ldef/dist
        Ldefodist3 = LdefoDist**3
        Wi = tp%Ai(i)*(Ldefodist3 + tp%alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
-       tp%Bib(1, i) = tp%Bib(1, i) + wi*numb(1)
-       tp%Bib(2, i) = tp%Bib(2, i) + wi*numb(2)
-       tp%Bib(3, i) = tp%Bib(3, i) + wi*numb(3)
+       ! tp%Bib(1, i) = tp%Bib(1, i) + wi*numb(1)
+       ! tp%Bib(2, i) = tp%Bib(2, i) + wi*numb(2)
+       ! tp%Bib(3, i) = tp%Bib(3, i) + wi*numb(3)
+       Bib(1, i) = Bib(1, i) + wi*numb(1)
+       Bib(2, i) = Bib(2, i) + wi*numb(2)
+       Bib(3, i) = Bib(3, i) + wi*numb(3)
+
     end do
   end subroutine evalNodeExact_b
 
