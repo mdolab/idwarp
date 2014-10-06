@@ -899,9 +899,6 @@ Contains
        LdefoDist = tp%Ldef/dist
        Ldefodist3 = LdefoDist**3
        Wi = tp%Ai(i)*(Ldefodist3 + tp%alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
-       ! tp%Bib(1, i) = tp%Bib(1, i) + wi*numb(1)
-       ! tp%Bib(2, i) = tp%Bib(2, i) + wi*numb(2)
-       ! tp%Bib(3, i) = tp%Bib(3, i) + wi*numb(3)
        Bib(1, i) = Bib(1, i) + wi*numb(1)
        Bib(2, i) = Bib(2, i) + wi*numb(2)
        Bib(3, i) = Bib(3, i) + wi*numb(3)
