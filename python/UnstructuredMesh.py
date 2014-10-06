@@ -97,8 +97,9 @@ class USMesh(object):
             self.warp
         except AttributeError:
             curDir = os.path.dirname(os.path.realpath(__file__))
-            self.warp = MExt('warpustruct', [curDir], debug=debug)._module
-
+            #self.warp = MExt('warpustruct', [curDir], debug=debug)._module
+            import warpustruct as warp
+            self.warp = warp
         if options is not None:
             self.solverOptions = options
         else:
