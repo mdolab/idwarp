@@ -2,6 +2,7 @@ subroutine warpDeriv(dXv_f, ndof_warp)
 
   use gridData
   use gridInput
+  use communication
   implicit none
 
   ! Input
@@ -9,8 +10,8 @@ subroutine warpDeriv(dXv_f, ndof_warp)
   real(kind=realType), intent(in) :: dXv_f(ndof_warp)
 
   ! Working Data
-  integer(kind=intType) :: i, iend, ierr
-
+  integer(kind=intType) :: i, istart, iend, ierr, isize
+  real(kind=realType), dimension(:), allocatable :: dxsSummed
   ! Scatter Xs into our local vector  
   call VecScatterBegin(XsToXsLocal, Xs, XsLocal, INSERT_VALUES, SCATTER_FORWARD, ierr)
   call EChk(ierr,__FILE__,__LINE__)
@@ -27,6 +28,9 @@ subroutine warpDeriv(dXv_f, ndof_warp)
   call EChk(ierr,__FILE__,__LINE__)
 
   call VecGetArrayF90(Xv, XvPtr, ierr)
+  call EChk(ierr,__FILE__,__LINE__)
+
+  call VecGetArrayF90(dXs, dXsPtr, ierr)
   call EChk(ierr,__FILE__,__LINE__)
 
   ! Allocate the extra data we need for the warping derivative:
@@ -49,20 +53,22 @@ subroutine warpDeriv(dXv_f, ndof_warp)
      call warpMeshFast_b()
   end if
 
-  ! We add ALL values from Xsptb on all procs. 
-  call VecGetSize(dXs, iend, ierr)
-  do i=0, iend-1
-     call VecSetValues(dXs, 1, (/i/), (/XsPtrb(i+1)/), ADD_VALUES, ierr)
-     call EChk(ierr, __FILE__, __LINE__)
-  end do
+  call VecGetSize(dXs, isize, ierr)
+  call EChk(ierr, __FILE__, __LINE__)
+
+  call VecGetOwnershipRange(Xs, istart, iend, ierr)
+  call EChk(ierr, __FILE__, __LINE__)
+
+  allocate(dxssummed(isize))
+  dxssummed = zero
+
+  call MPI_Allreduce(xsptrb, dxssummed, isize, MPI_REAL8, MPI_SUM, warp_comm_world, ierr)
+  call EChk(ierr, __FILE__, __LINE__)
   
-  ! Must assemble 
-  call VecAssemblyBegin(dXs, ierr)
-  call EChk(ierr, __FILE__, __LINE__)
-
-  call VecAssemblyEnd(dXs, ierr)
-  call EChk(ierr, __FILE__, __LINE__)
-
+  ! Copy just the required part into dXsPtr
+  dXsPtr = dxssummed(iStart+1:iEnd)
+  deallocate(dxssummed)
+  
   ! Deallocate the extra space
   deallocate(XvPtrb, XsPtrb)
   deallocate(mib, Bib, normalsb, normals0b, xub)
@@ -76,4 +82,8 @@ subroutine warpDeriv(dXv_f, ndof_warp)
 
   call VecRestoreArrayF90(Xv, XvPtr, ierr)
   call EChk(ierr,__FILE__,__LINE__)
+
+  call VecRestoreArrayF90(dXs, dXsPtr, ierr)
+  call EChk(ierr,__FILE__,__LINE__)
+  
 end subroutine warpDeriv
