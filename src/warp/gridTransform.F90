@@ -33,6 +33,10 @@ subroutine warp_to_solver_grid(warp_grid, wdof, solver_grid, sdof)
        INSERT_VALUES, SCATTER_REVERSE, ierr)
   call EChk(ierr, __FILE__, __LINE__)
 
+  ! VecPointwiseMult(Vec w, Vec x,Vec y) any of w, x and y can be the same
+  call VecPointwiseMult(commonGridVec, commonGridVec, commonSymmMask, ierr)
+  call EChk(ierr, __FILE__, __LINE__)
+
   ! Now do the vecScatter: common_to_solver in FORWARD
   call VecScatterBegin(common_to_solver, commonGridVec, solverGridVec, &
        INSERT_VALUES, SCATTER_FORWARD, ierr)

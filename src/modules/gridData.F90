@@ -27,7 +27,7 @@ module gridData
   IS IS1, IS2
 
   ! Scatter/ (empty) vectors for doing external solver communication
-  Vec commonGridVec
+  Vec commonGridVec, commonSymmMask
   Vec solverGridVec
   VecScatter common_to_solver
   VecScatter common_to_warp
