@@ -36,7 +36,7 @@ subroutine warpMeshFast_b()
      numb(2) = xvptrb(3*j-1)/den
      numb(3) = xvptrb(3*j  )/den
 
-     call evaLDisp_b(mytree, r, numb, denomenator0(j))
+     call evaLDisp_b(mytree, r, numb, denomenator0(j), Bib)
   end DO
   ! Accumulate into Bib
   call setData_b(myTree)
