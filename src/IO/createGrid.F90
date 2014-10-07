@@ -1,4 +1,4 @@
-subroutine createCommonGrid(volNodes, symmMask, nVolLocal)
+subroutine createCommonGrid(volNodes, nVolLocal)
 
   ! This routine create a few arrys that are the size of the "common"
   ! grid...that is the ordering that is given in the original grid
@@ -13,7 +13,6 @@ subroutine createCommonGrid(volNodes, symmMask, nVolLocal)
 
   ! Subroutine variables
   real(kind=realType), dimension(3, nVolLocal), intent(in) :: volNodes
-  real(kind=realType), dimension(3, nVolLocal), intent(in) :: symmMask
   integer(kind=intType), intent(in) :: nVolLocal
 
   ! Working variables
@@ -58,15 +57,9 @@ subroutine createCommonGrid(volNodes, symmMask, nVolLocal)
   call VecSetSizes(commonGridVec, nVolLocal*3, PETSC_DECIDE, ierr)
   call EChk(ierr,__FILE__,__LINE__)
 
-  call vecDuplicate(commonGridVec, commonSymmMask, ierr)
-  call EChk(ierr,__FILE__,__LINE__)
-
   ! Now each processor adds it's own nodes (It is possible only one proc does it)
   do i=1, nVolLocal 
      call VecSetValuesBlocked(commonGridVec, 1, volNodesProc(myid) + i - 1, volNodes(:, i), INSERT_VALUES, ierr)
-     call EChk(ierr,__FILE__,__LINE__)
-
-     call VecSetValuesBlocked(commonSymmMask, 1, volNodesProc(myid) + i - 1, symmMask(:, i), INSERT_VALUES, ierr)
      call EChk(ierr,__FILE__,__LINE__)
   end do
 
@@ -74,12 +67,6 @@ subroutine createCommonGrid(volNodes, symmMask, nVolLocal)
   call EChk(ierr,__FILE__,__LINE__)
 
   call VecAssemblyEnd(commonGridVec, ierr)
-  call EChk(ierr,__FILE__,__LINE__)
-
-  call VecAssemblyBegin(commonSymmMask, ierr)
-  call EChk(ierr,__FILE__,__LINE__)
-
-  call VecAssemblyEnd(commonSymmMask, ierr)
   call EChk(ierr,__FILE__,__LINE__)
 
   deallocate(volNodesProc)

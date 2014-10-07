@@ -1,6 +1,5 @@
 #!/usr/bin/python
-from __future__ import print_function
-"""Unstructurde Mesh
+"""Unstructured Mesh
 
 The UnstructuredMesh module is used for interacting with an
 unstructured (or structured!)  mesh - typically used in a 3D CFD
@@ -21,12 +20,12 @@ Developers:
 History
 -------
 	v. 1.0 - Initial Class Creation (CAM, 2014)
-
 """
+from __future__ import print_function
+from __future__ import division
 # =============================================================================
 # Imports
 # =============================================================================
-import sys
 import os
 import re
 import shutil
@@ -58,7 +57,7 @@ class Error(Exception):
 # UnstructuredMesh class
 # =============================================================================
 IWALL = 0
-IFAR  = 1
+IFAR = 1
 
 class USMesh(object):
     """
@@ -97,9 +96,7 @@ class USMesh(object):
             self.warp
         except AttributeError:
             curDir = os.path.dirname(os.path.realpath(__file__))
-            #self.warp = MExt('warpustruct', [curDir], debug=debug)._module
-            import warpustruct as warp
-            self.warp = warp
+            self.warp = MExt('warpustruct', [curDir], debug=debug)._module
         if options is not None:
             self.solverOptions = options
         else:
@@ -130,13 +127,17 @@ class USMesh(object):
         # Set remaining default values
         self._checkOptions(self.solverOptions)
         self._setMeshOptions()
+        self.printCurrentOptions()
 
         # Initialize various bits of stored information
         self.OFData = {}
         self.warpInitialized = False
         self.patchSizes = None
         self.familyList = None
-        self.solverMeshDOF = 0
+        self.patchPtr = None
+        self.patchNames = None
+        self.faceSizes = None
+        self.conn = None
         fileName = self.solverOptions['gridFile']
 
         # Determine how to read:
@@ -173,16 +174,16 @@ class USMesh(object):
         shutil.copyfile(self.OFData['refPointsFile'], self.OFData['pointsFile'])
       
         # Read in the volume points
-        self._readVolumeMeshPoints()
+        self._readOFVolumeMeshPoints()
 
         # Read the face info for the mesh
-        self._readFaceInfo()
+        self._readOFFaceInfo()
 
         # Read the boundary info
-        self._readBoundaryInfo()
+        self._readOFBoundaryInfo()
       
         # Read the cell info for the mesh
-        self._readCellInfo()
+        self._readOFCellInfo()
 
         # Finally create the underlying data structure:
         faceSizes = []
@@ -205,7 +206,8 @@ class USMesh(object):
                 if bType == 'patch':
                     localType.append(IFAR)
 
-                # Apparently openfoam will list boundaries with zero faces on them:
+                # Apparently openfoam will list boundaries with zero
+                # faces on them:
                 nFace = len(self.OFData['boundaries'][bName]['faces'])
                 if nFace > 0:
                     for iFace in self.OFData['boundaries'][bName]['faces']:
@@ -267,9 +269,9 @@ class USMesh(object):
                 if fam not in self.familyList:
                     self.familyList[fam.lower()] = pType
 
-    def _readVolumeMeshPoints(self):
+    def _readOFVolumeMeshPoints(self):
         '''
-        return an numpy array of the mesh points
+        Return an numpy array of the mesh points
         '''
 
         # Open the points file for reading
@@ -297,14 +299,15 @@ class USMesh(object):
                 if res:
                     k += 1
                     for idim in range(3):
-                        x[j, idim] = float(lines[j + i][res.start(idim+1):res.end(idim+1)])
+                        x[j, idim] = float(
+                            lines[j + i][res.start(idim+1):res.end(idim+1)])
 
             if k != N:
                 raise Error('Error reading grid coordinates. Expected %d'
                             ' coordinates but found %d'%(N, k))
         self.OFData['x0'] = x
 
-    def _readBoundaryInfo(self):
+    def _readOFBoundaryInfo(self):
         '''
         read the boundary file information for this case and store in a dict.
         '''
@@ -317,7 +320,8 @@ class USMesh(object):
         # Read Regular Header
         foamHeader, i, N = self._parseFoamHeader(lines, i=0)
 
-        # We don't actually need to know the number of blocks...just read them all:
+        # We don't actually need to know the number of blocks...just
+        # read them all:
         boundaries = {}
         keyword = re.compile(r'\s*([a-zA-Z]{1,100})\s*\n')
         while i < len(lines):
@@ -341,7 +345,7 @@ class USMesh(object):
                 i += 1
         self.OFData['boundaries'] = boundaries
 
-    def _readFaceInfo(self):
+    def _readOFFaceInfo(self):
         """
         Read the face info for this case.
         """
@@ -372,7 +376,7 @@ class USMesh(object):
         
             self.OFData['faces'] = faces
 
-    def _readCellInfo(self):
+    def _readOFCellInfo(self):
         """Read the boundary file information for this case and store in the
         OFData dictionary."""
 
@@ -421,18 +425,19 @@ class USMesh(object):
         self.OFData['neighbour'] = neighbour
 
     def addFamilyGroup(self, groupName, families=None):
-        """ 
-        Create a grouping of CGNS families called "groupName"
+        """Create a grouping of CGNS families called "groupName"
         
-        Input Arguments:
-            groupName, str: The name to call this collection of families
-        Optional Arguments:
-            families, list: A list containing the names of the CGNS familes
-                the user wants included in "groupName". The items in the list
-                must be valid family names. The user can call printFamilyList() 
-                to determine what families are present in the CGNS grid.
-                Default: All families
-            """
+        Parameters
+        ----------
+        groupName : str
+            The name to call this collection of families
+        families : list
+           An (optional) list containing the names of the CGNS familes
+           the user wants included in "groupName". The items in the
+           list must be valid family names. The user can call
+           printFamilyList() to determine what families are present in
+           the CGNS grid.  Default: All families
+        """
       
         # Use whole list by default
         if families == None: 
@@ -478,12 +483,14 @@ class USMesh(object):
                 cCnt = 0
           
                 for i in range(len(self.patchNames)):
-                    cellSize = (self.patchSizes[i][0]-1)*(self.patchSizes[i][1]-1)
+                    cellSize = (self.patchSizes[i][0]-1)*\
+                               (self.patchSizes[i][1]-1)
                     if self.patchNames[i] in groupFamList: 
                         # Add the connecitivity minus the number of nodes
                         # we've skipped so far. 
                         cellConn.extend(
-                            self.conn[4*cCnt:4*(cCnt+cellSize)].copy() - nNodesSkipped)
+                            self.conn[4*cCnt:4*(cCnt+cellSize)].copy() - 
+                            nNodesSkipped)
                     else:
                         # If we didn't add this patch increment the number
                         # of nodes we've skipped
@@ -494,8 +501,7 @@ class USMesh(object):
                     np.array(cellConn).reshape((len(cellConn)/4, 4)))
 
     def printFamilyList(self):
-        """ Prints the families in the CGNS file"""
-        
+        """Prints the families in the CGNS file"""
         if self.comm.rank == 0:
             print('Family list is:', self.familyList.keys())
 
@@ -504,14 +510,18 @@ class USMesh(object):
         Returns all surface coordinates on this processor in group
         'groupName'
 
-        Input Arguments:
-           groupName, str: The group from which to obtain the coordinates.
+        Parameters
+        ----------
+        groupName : str
+           The group from which to obtain the coordinates.
            This name must have been obtained from addFamilyGroup() or
-           be the default 'all' which contains all surface coordiantes
-        Output Arguements:
-            coords, numpy array, size(N,3): coordinates of the requested
-            group. This may be empty arry, size (0,3)
-            
+           be the default 'all' which contains all surface coordinates
+
+        Returns
+        -------
+        coords : numpy array size (N,3)
+            Coordinates of the requested group. This may be empty 
+            array, size (0,3)
         """
         self._setInternalSurface()
         indices = self._getIndices(groupName)
@@ -529,16 +539,19 @@ class USMesh(object):
         return self.familyGroup[groupName]['connectivity']
 
     def setSurfaceCoordinates(self, coordinates, groupName):
-        """ Sets all surface coordinates on this processor in group
+        """Sets all surface coordinates on this processor in group
         "groupName"
-        
-        Input Arguments:
-           groupName, str: The group to set the coordinate in. 
-               This name must have been obtained from addFamilyGroup() or
-               be the default 'all' which contains all surface coordiantes
-           coordinates, numpy array, size(N,3): The coordinate to set. This MUST
-               be exactly the same size as the array obtained from 
-               getSurfaceCoordinates()
+
+        Parameters
+        ----------
+        coordinates : numpy array, size(N, 3)
+            The coordinate to set. This MUST be exactly the same size as 
+            the array obtained from getSurfaceCoordinates()
+
+        groupName : str
+            The group to set the coordinate in. This name must have
+            been set using addFamilyGroup() or be the default
+            'all' which contains all surface coordiantes 
         """
 
         indices = self._getIndices(groupName)
@@ -548,7 +561,7 @@ class USMesh(object):
         """ 
         Set the indicies defining the transformation of an external
         solver grid to the original CGNS grid. This is required to use
-        MBMesh functions that involve the word "Solver" and warpDeriv
+        USMesh functions that involve the word "Solver" and warpDeriv
         
         Parameters
         ----------
@@ -556,7 +569,6 @@ class USMesh(object):
             The list of indicies this processor needs from the common mesh file
         """
         self.warp.setexternalmeshindices(ind)
-        self.solverMeshDOF = len(ind)
 
     def setExternalSurface(self, patchNames, patchSizes, conn, pts):
         """
@@ -577,7 +589,7 @@ class USMesh(object):
             Connectivity of the nodes on this processor
         pts : array, size (M, 3)
             Nodes on this processor. 
-           """
+        """
 
         # Since this routine is called by an external structured
         # solver we will unstructured-itize the data. Essentially we
@@ -618,7 +630,7 @@ class USMesh(object):
            format. The len of the array is 3*len(indices) as
            set by setExternalMeshIndices()
         """
-        solverGrid = np.zeros(self.solverMeshDOF, self.dtype)
+        solverGrid = np.zeros(self.warp.griddata.solvermeshdof, self.dtype)
         warpGrid = self.getWarpGrid()
         self.warp.warp_to_solver_grid(warpGrid, solverGrid)
         
@@ -797,7 +809,7 @@ class USMesh(object):
             self.warp.warpderiv(dXvWarp)
 
     def verifyWarpDeriv(self, dXv=None, solverVec=True, dofStart=0, 
-                        dofEnd=25):
+                        dofEnd=10):
         """Run an internal verification of the solid warping
         derivatives"""
         
@@ -816,7 +828,7 @@ class USMesh(object):
 # ==========================================================================
 #                        Output Functionality
 # ==========================================================================
-    def writeGridCGNS(self,fileName):
+    def writeGridCGNS(self, fileName):
         """
         Write the current grid to a CGNS file
         """
@@ -899,7 +911,7 @@ class USMesh(object):
 
         # write right elements (+1 for 1 based ordering)
         for i in range(nFaces):
-            if i< nNeighbours:
+            if i < nNeighbours:
                 f.write('%d\n'% (neighbour[i]+1))
             else:
                 f.write('%d\n'%(0))
@@ -911,7 +923,7 @@ class USMesh(object):
         Write the most recent points to a file
         '''
         fileName = self.OFData['pointsFile']
-        f = open(fileName,'w')
+        f = open(fileName, 'w')
 
         # write the file header
         f.write('/*--------------------------------*- C++ -*----------------------------------*\ \n')
@@ -943,6 +955,16 @@ class USMesh(object):
         f.write(')\n\n\n')
         f.write('// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //\n')
 
+    def printCurrentOptions(self):
+        """Prints a nicely formatted dictionary of all the current options to
+        the stdout on the root processor
+        """
+        if self.comm.rank == 0:
+            print('+---------------------------------------+')
+            print('|     All pyWarpUstruct Options:        |')
+            print('+---------------------------------------+')
+            pprint(self.solverOptions)
+
 # =========================================================================
 #                     Internal Private Functions
 # =========================================================================
@@ -970,9 +992,9 @@ class USMesh(object):
         elif o['evalMode'].lower() == 'exact':
             self.warp.gridinput.evalmode = self.warp.gridinput.eval_exact
 
-    def releaseMemory(self):
+    def __del__(self):
         """Release all the mesh warping memory"""
-        self.warp.destroyall()
+        self.warp.releasememory()
 
     def _getOFFileNames(self, caseDir):
         """
@@ -993,8 +1015,8 @@ class USMesh(object):
         else:
             self.OFData['refPointsFile'] = os.path.join(caseDir, 'constant/polyMesh/points_orig')
             self.OFData['pointsFile'] = os.path.join(caseDir, 'constant/polyMesh/points')
-            self.OFData['boundaryFile'] = os.path.join(caseDir,'constant/polyMesh/boundary')
-            self.OFData['faceFile'] = os.path.join(caseDir,'constant/polyMesh/faces')
+            self.OFData['boundaryFile'] = os.path.join(caseDir, 'constant/polyMesh/boundary')
+            self.OFData['faceFile'] = os.path.join(caseDir, 'constant/polyMesh/faces')
             self.OFData['ownerFile'] = os.path.join(caseDir, 'constant/polyMesh/owner')
             self.OFData['neighbourFile'] = os.path.join(caseDir, 'constant/polyMesh/neighbour')
 
@@ -1051,7 +1073,7 @@ class USMesh(object):
 
         openBracket = re.compile(r'\s*\{\s*\n')
         closeBracket = re.compile(r'\s*\}\s*\n')
-        data= re.compile(r'\s*([a-zA-Z]*)\s*(.*);\s*\n')
+        data = re.compile(r'\s*([a-zA-Z]*)\s*(.*);\s*\n')
 
         blockOpen = False
         imax = len(lines)
@@ -1113,7 +1135,7 @@ class USMesh(object):
 
         """
         for key in self.solverOptionsDefault.keys():
-            if not(key in solverOptions.keys()):
+            if not key in solverOptions.keys():
                 solverOptions[key] = self.solverOptionsDefault[key]
             else:
                 self.solverOptionsDefault[key] = solverOptions[key]	

@@ -22,7 +22,6 @@ subroutine readStructuredCGNS(cgns_file)
   real(kind=8)   ::  data_double(6), avgNodes, symmSum(3)
   real(kind=realType), dimension(:, :, :), allocatable :: coorX, coorY, coorZ
   real(kind=realType), dimension(:, :), allocatable :: allNodes, localNodes
-  real(kind=realType) , dimension(:, :), allocatable :: symmMask, localSymmMask
   integer(kind=intType), dimension(:, :), allocatable :: sizes
 
   integer(kind=intType) :: status(MPI_STATUS_SIZE)
@@ -51,8 +50,7 @@ subroutine readStructuredCGNS(cgns_file)
      ! Now we know the total number of nodes we can allocate the final
      ! required space and read them in. 
      allocate(allNodes(3, nNodes))
-     allocate(symmMask(3, nNodes))
-     symmMask = one
+
      ! Loop back over the nodes and read
      ii = 0;
      familyList(:) = ''
@@ -169,15 +167,6 @@ subroutine readStructuredCGNS(cgns_file)
                     print *, 'pyWarpUnstruct cannot handle this'
                     stop
                  end if
-
-                 ! Flag the symmetry nodes:
-                 do k=pts(3, 1), pts(3, 2)
-                    do j=pts(2, 1), pts(2, 2)
-                       do i=pts(1, 1), pts(1, 2)
-                          symmMask(iSymm, offset + (k-1)*dims(1)*dims(2) + (j-1)*dims(1) + i) = zero
-                       end do
-                    end do
-                 end do
               end if
            end if
         end do bocoLoop
@@ -226,12 +215,11 @@ subroutine readStructuredCGNS(cgns_file)
 
   localSize = iend - istart + 1
   allocate(localNodes(3, localSize))
-  allocate(localSymmMask(3, localSize))
 
   if (myid == 0) then
      ! Just copy for the root proc:
      localNodes(:, :) = allNodes(:, 1:localSize)
-     localSymmMask(:, :) = symmMask(:, 1:localSize)
+
      ! Loop over the remainer of the procs and send
      do iProc=1, nProc-1
         istart = int(iProc * avgNodes)+1
@@ -241,28 +229,19 @@ subroutine readStructuredCGNS(cgns_file)
         call MPI_Send(allNodes(:, iStart), localSize*3, MPI_REAL8, iProc, &
              11, warp_comm_world, ierr)
         call EChk(ierr, __FILE__, __LINE__)
-
-        call MPI_Send(symmMask(:, iStart), localSize*3, MPI_REAL8, iProc, &
-             12, warp_comm_world, ierr)
-        call EChk(ierr, __FILE__, __LINE__)
-
      end do
-     deallocate(allNodes, symmMask)
+     deallocate(allNodes)
   else
      ! Receive on all the other procs:
      call MPI_recv(localNodes, 3*localSize, MPI_REAL8, 0, 11, &
-          warp_comm_world, status, ierr)
-     call EChk(ierr, __FILE__, __LINE__)
-
-     call MPI_recv(localSymmMask, 3*localSize, MPI_REAL8, 0, 12, &
           warp_comm_world, status, ierr)
      call EChk(ierr, __FILE__, __LINE__)
   end if
 
   ! All we are doing to do here is to create the Xv vector --- which
   ! is done via a call to createVolumeGrid
-  call createCommonGrid(localNodes, localSymmMask, size(localNodes, 2))
-  deallocate(localNodes, localSymmMask)
+  call createCommonGrid(localNodes, size(localNodes, 2))
+  deallocate(localNodes)
 end subroutine readStructuredCGNS
 
 subroutine checkInFamilyList(familyList, famName, nFamily, index)
