@@ -15,35 +15,37 @@ subroutine warpMeshExact
   ! Working parameters
   real(kind=realType) :: dist, LdefoDist, Wi, den
   real(kind=realType), dimension(3) :: r, rr,  num, Si
-  integer(kind=intType) :: nVol, i, j, kk ,nSurf
+  integer(kind=intType) :: nVol, i, j, kk ,nSurf, nLoop
   real(kind=realType) :: Ldef, alphaToBexp, oDen
   real(kind=realType) :: LdefoDist3
   real(kind=realType), pointer, dimension(:, :) :: Bi, Xu0
   real(kind=realType), pointer, dimension(:) :: Ai
+  real(kind=realType) :: fact(3, 2)
 
   denomenator = zero
   numerator = zero
   nVol = size(XvPtr)/3
   
-  do kk=1,size(mytrees)
-     ! Update the nodal properties
-     call computeNodalProperties(mytrees(kk)%tp, .False.)
-     Ldef = mytrees(kk)%tp%Ldef0 * LdefFact
-     mytrees(kk)%tp%errTol = errTol
+  ! Update the nodal properties
+  call computeNodalProperties(mytrees(1)%tp, .False.)
+  Ldef = mytrees(1)%tp%Ldef0 * LdefFact
+  mytrees(1)%tp%errTol = errTol
+  call setData(mytrees(1)%tp, mytrees(1)%tp%root)
 
-     call setData(mytrees(kk)%tp, mytrees(kk)%tp%root)
+  ! Extract pointers for easier reading:
+  alphaToBexp = alpha**bExp
+  Bi => mytrees(1)%tp%Bi
+  Xu0 => mytrees(1)%tp%Xu0
+  Ai => mytrees(1)%tp%Ai
+  nSurf = mytrees(1)%tp%n
+  call getLoopFact(nLoop, fact)
 
-     ! Extract pointers for easier reading:
-     alphaToBexp = alpha**bExp
-     Bi => mytrees(kk)%tp%Bi
-     Xu0 => mytrees(kk)%tp%Xu0
-     Ai => mytrees(kk)%tp%Ai
-     nSurf = mytrees(kk)%tp%n
-
+  do kk=1,nLoop
      volLoop: do j=1, nVol
-        r(1) = Xv0Ptr(3*j-2)
-        r(2) = Xv0Ptr(3*j-1)
-        r(3) = Xv0Ptr(3*j)
+        r(1) = Xv0Ptr(3*j-2)*fact(1, kk)
+        r(2) = Xv0Ptr(3*j-1)*fact(2, kk)
+        r(3) = Xv0Ptr(3*j)*fact(3, kk)
+        
         num = zero
         den = zero
         do i=1, nSurf
@@ -56,9 +58,9 @@ subroutine warpMeshExact
            den = den + Wi
         end do
 
-        numerator(1, j) = numerator(1, j) + num(1)
-        numerator(2, j) = numerator(2, j) + num(2)
-        numerator(3, j) = numerator(3, j) + num(3)
+        numerator(1, j) = numerator(1, j) + num(1)*fact(1, kk)
+        numerator(2, j) = numerator(2, j) + num(2)*fact(2, kk)
+        numerator(3, j) = numerator(3, j) + num(3)*fact(3, kk)
         denomenator(j) = denomenator(j) + den
      end do volLoop
   end do

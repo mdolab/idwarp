@@ -12,9 +12,11 @@ include ${RULES_FILE}
 vpath %.o $(OBJDIR)
 
 FILES_TO_COMPLEXIFY = \
+	EChk.F90\
 	initPETSc.F90\
 	vectorUtils.f90\
 	getSpherePts.F90\
+	releaseMemory.F90\
 
 FILES_TO_COPY = 
 
