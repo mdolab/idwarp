@@ -87,6 +87,20 @@ python module warpustruct ! in
          integer(kind=inttype) optional,check(len(dxv_f)>=ndof_warp),depend(dxv_f) :: ndof_warp=len(dxv_f)
        end subroutine warpderiv
 
+       subroutine getdxs(indices,idof,output,ndof) ! in :test:getdXs.F90
+         integer(kind=inttype) dimension(idof),intent(in) :: indices
+         integer(kind=inttype) optional,intent(in),check(len(indices)>=idof),depend(indices) :: idof=len(indices)
+         real(kind=realtype) dimension(ndof),intent(inout) :: output
+         integer(kind=inttype) optional,intent(in),check(len(output)>=ndof),depend(output) :: ndof=len(output)
+       end subroutine getdxs
+       
+       subroutine setdxs(indices,idof,in_vec,ndof) ! in :test:setdXs.F90
+         integer(kind=inttype) dimension(idof),intent(in) :: indices
+         integer(kind=inttype) optional,intent(in),check(len(indices)>=idof),depend(indices) :: idof=len(indices)
+         real(kind=realtype) dimension(ndof),intent(in) :: in_vec
+         integer(kind=inttype) optional,intent(in),check(len(in_vec)>=ndof),depend(in_vec) :: ndof=len(in_vec)
+       end subroutine setdxs
+
        subroutine verifywarpderiv(dxv_f,ndof_warp,dof_start,dof_end) ! in :test:warpDeriv.F90
          real(kind=realtype) dimension(ndof_warp) :: dxv_f
          integer(kind=inttype) optional,check(len(dxv_f)>=ndof_warp),depend(dxv_f) :: ndof_warp=len(dxv_f)
@@ -97,6 +111,9 @@ python module warpustruct ! in
        subroutine writestructuredcgns(cgns_file)
          character*(*) :: cgns_file
        end subroutine writestructuredcgns
+
+       subroutine releasememory
+       end subroutine releasememory
 
        module gridinput
          real(kind=realtype) :: aexp
@@ -116,6 +133,7 @@ python module warpustruct ! in
          character dimension((32),32),intent(c) :: familylist
          integer(kind=inttype) :: nwallfamilies
          integer(kind=inttype) :: warpmeshdof
+         integer(kind=inttype) :: solvermeshdof
          integer(Kind=inttype) :: commonmeshdof
        end module griddata
        

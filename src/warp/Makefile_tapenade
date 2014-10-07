@@ -1,22 +1,21 @@
 # -*- makefile -*-
 TAPENADE_DIRSRC = '../'
 TAPENADE_PARSERFILESEPARATOR = "/"
-TAPENADE_OUTVARS = "Xvptr"
+TAPENADE_OUTVARS = "tp%Bi tp%Mi"
 TAPENADE_VARS = "XsPtr"
-TAPENADE_HEADROUTINE = "warpMeshExact"
+TAPENADE_HEADROUTINE = "computeNodalProperties"
 TAPENADE_MODE = -reverse
 TAPENADE_OUTDIR = './warpingTapenade'
 TAPENADE_PRECISION = -i4 -dr8 -r8
 
-TAPENADE_SRC =	$(TAPENADE_DIRSRC)/warp/warpMeshExact.F90\
-		$(TAPENADE_DIRSRC)/warp/computeNodalProperties.F90\
-		$(TAPENADE_DIRSRC)/warp/getElementProps.F90\
+TAPENADE_SRC =	$(TAPENADE_DIRSRC)/warp/getElementProps.F90\
 		$(TAPENADE_DIRSRC)/utils/vectorUtils.f90\
 		$(TAPENADE_DIRSRC)/modules/gridData.F90\
 		$(TAPENADE_DIRSRC)/modules/gridInput.f90\
 		$(TAPENADE_DIRSRC)/modules/constants.F90\
 		$(TAPENADE_DIRSRC)/modules/precision.F90\
 		$(TAPENADE_DIRSRC)/modules/communication.f90\
+		$(TAPENADE_DIRSRC)/modules/kd_tree.F90\
 
 PREPROCESSED_FILES := $(TAPENADE_SRC:%=%.f90)
 

@@ -27,7 +27,7 @@ module gridData
   IS IS1, IS2
 
   ! Scatter/ (empty) vectors for doing external solver communication
-  Vec commonGridVec, commonSymmMask
+  Vec commonGridVec
   Vec solverGridVec
   VecScatter common_to_solver
   VecScatter common_to_warp
@@ -36,17 +36,19 @@ module gridData
   ! Pointers into the grid vecs
   real(kind=realType), pointer, dimension(:) :: XsPtr, dXsPtr
   real(kind=realType), pointer, dimension(:) :: Xv0Ptr, Xvptr
-  integer(kind=intType) :: warpMeshDOF
-  integer(kind=intType) :: commonMeshDOF
 
 #ifndef USE_TAPENADE
   real(kind=realType), pointer, dimension(:) :: XsPtrb
   real(kind=realType), pointer, dimension(:) :: XvPtrb
 #endif
 
-  logical commonGridVecSet 
-  logical gridIndicesSet 
+  ! Sizes of the three different mesh sizes:
+  integer(kind=intType) :: warpMeshDOF
+  integer(kind=intType) :: commonMeshDOF
+  integer(kind=intType) :: solverMeshDOF
+  logical gridIndicesSet
 
+  ! Storage for family info read from CGNS
   character*32, dimension(maxFamilies) :: familyList
   integer(kind=intType) :: nwallFamilies
 

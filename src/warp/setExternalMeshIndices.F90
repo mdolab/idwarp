@@ -12,11 +12,14 @@ subroutine setExternalMeshIndices(ndof_solver, solver_indices)
   integer(kind=intType) :: DOFSolverProc(nProc)
   integer(kind=intType) :: ierr, iproc
 
+  ! Set the number of DOF for the solver
+  solvermeshdof = ndof_solver
+
   ! Compute the cumDOFProc for the solver
   call mpi_allgather(ndof_solver, 1, MPI_INTEGER, &
        DOFSolverProc, 1, mpi_integer4, warp_comm_world, ierr)
   call EChk(ierr, __FILE__, __LINE__)
-
+  
   cumDOFSolverProc(0) = 0
   do iproc=1, nproc
      cumDOFSolverProc(iproc) = cumDOFSolverProc(iproc-1) + DOFSolverProc(iproc)
@@ -46,6 +49,5 @@ subroutine setExternalMeshIndices(ndof_solver, solver_indices)
   call EChk(ierr, __FILE__, __LINE__)
 
   gridIndicesSet = .True.
-  commonGridVecSet = .True.
 
 end subroutine setExternalMeshIndices

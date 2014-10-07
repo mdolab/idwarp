@@ -49,10 +49,11 @@ Module kd_tree
      real(kind=realType) :: farField 
      real(kind=realType) , dimension(:), pointer :: Ai
      real(kind=realType) , dimension(:, :), pointer :: Bi, Bib 
-     real(kind=realType) , dimension(:, :), allocatable :: normals, normals0
-     real(kind=realType) , dimension(:, :, :), allocatable :: Mi
-     real(kind=realType) , dimension(:, :), pointer :: Xu0, Xu, XuFact
-     integer(kind=intType), dimension(:), allocatable :: XuInd
+     real(kind=realType) , dimension(:, :), pointer :: normals, normalsb
+     real(kind=realType) , dimension(:, :), pointer :: normals0
+     real(kind=realType) , dimension(:, :, :), pointer :: Mi, Mib
+     real(kind=realType) , dimension(:, :), pointer :: Xu0, Xu, Xub
+     integer(kind=intType), dimension(:), pointer :: XuInd
 
      integer(kind=intType), dimension(:), allocatable :: facePtr, faceConn
      integer(kind=intType), dimension(:, :), allocatable :: nodeToElem
@@ -88,11 +89,11 @@ Contains
     Type (tree_master_record), Pointer :: tp
     ! ..
     call destroy_node(tp%root)
-    deallocate (tp%indexes)
-    deallocate (tp%the_data)
-    deallocate(tp%Ai, tp%Bi, tp%Mi, tp%Xu0, tp%Xu, tp%XuInd, tp%XuFact)
+    deallocate(tp%indexes, tp%the_data)
+    deallocate(tp%Ai, tp%Bi, tp%Mi)
+    deallocate(tp%normals, tp%normals0)
+    deallocate(tp%Xu0, tp%Xu, tp%XuInd)
     deallocate(tp%facePtr, tp%faceConn, tp%nodeToElem)
-    Nullify (tp%indexes)
 
   Contains
 
@@ -106,12 +107,10 @@ Contains
       If (ASSOCIATED(np%left)) Then
          Call destroy_node(np%left)
          Deallocate (np%left)
-         Nullify (np%left)
       End If
       If (ASSOCIATED(np%right)) Then
          Call destroy_node(np%right)
          Deallocate (np%right)
-         Nullify (np%right)
       End If
       Return
     End Subroutine destroy_node
@@ -714,6 +713,24 @@ Contains
   !------------------------------------------------------------
   !               DERIVATIVE ROUTINES
   !------------------------------------------------------------
+  subroutine allocDerivValues(tp)
+    ! Allocate the required derivative values
+    implicit none
+    Type (tree_master_record), Pointer :: tp
+    allocate(tp%Bib(3, tp%n), tp%Mib(3, 3, tp%n), tp%normalsb(3, tp%n))
+    allocate(tp%Xub(3, tp%n))
+    tp%Xub = zero
+    tp%Bib = zero
+    tp%Mib = zero
+    tp%normalsb = zero
+  end subroutine allocDerivValues
+
+  subroutine deallocDerivValues(tp)
+    ! Allocate the required derivative values
+    implicit none
+    Type (tree_master_record), Pointer :: tp
+    deallocate(tp%Bib, tp%Mib, tp%normalsb, tp%Xub)
+  end subroutine deallocDerivValues
 
   recursive subroutine zeroDeriv(np)
     ! Zero the derivatives in the nodes
@@ -727,64 +744,54 @@ Contains
     end if
   end subroutine zeroDeriv
 
-  subroutine evalDisp_b(tp, r, numb, approxDen, Bib)
+  recursive subroutine evalDisp_b(tp, np, r, numb, approxDen, Bib, fact)
     implicit none
+    ! Subroutine arguments
     Type (tree_master_record), Pointer :: tp
-    real(kind=realType), intent(in), dimension(3) :: r
+    Type (tree_node), Pointer :: np 
+    real(kind=realType), intent(in), dimension(3) :: r, fact
     real(kind=realType), dimension(3) :: numb
     real(kind=realType), intent(in) :: approxDen
     real(kind=realType), dimension(:, :) :: Bib
-    call evalDisp_node_b(tp, tp%root, r, numb, approxDen, Bib)
-  contains
-    recursive subroutine evalDisp_node_b(tp, np, r, numb, approxDen, Bib)
-      implicit none
-      ! Subroutine arguments
-      Type (tree_master_record), Pointer :: tp
-      Type (tree_node), Pointer :: np 
-      real(kind=realType), intent(in), dimension(3) :: r
-      real(kind=realType), dimension(3) :: numb
-      real(kind=realType), intent(in) :: approxDen
-      real(kind=realType), dimension(:, :) :: Bib
-      ! Working variables
-      real(kind=realType), dimension(3) :: rr
-      real(kind=realType) :: dist, err
+    ! Working variables
+    real(kind=realType), dimension(3) :: rr
+    real(kind=realType) :: dist, err
 
-      if (np%dnum == 0) then 
-         ! Leaf node -> Must do exact calc:
-         call evalNodeExact_b(tp, np, r, numb, Bib)
-      else
-         ! Tree Node: Compute the distance from 'r' to the
-         ! center of the node, np%X
-         rr(1) = r(1) - np%X(1)
-         rr(2) = r(2) - np%X(2)
-         rr(3) = r(3) - np%X(3)
-         dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2)
+    if (np%dnum == 0) then 
+       ! Leaf node -> Must do exact calc:
+       call evalNodeExact_b(tp, np, r, numb, Bib, fact)
+    else
+       ! Tree Node: Compute the distance from 'r' to the
+       ! center of the node, np%X
+       rr(1) = r(1) - np%X(1)
+       rr(2) = r(2) - np%X(2)
+       rr(3) = r(3) - np%X(3)
+       dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2)
 
-         if (dist/np%radius < two) then ! Too close...call children
-            call evalDisp_node_b(tp, np%left, r, numb, approxDen, Bib)
-            call evalDisp_node_b(tp, np%right, r, numb, approxDen, Bib)
-         else 
-            ! Use the first error check:
-            call getError(tp, np, dist, err)
-            if (err < tp%errTol * approxDen) then
-               call evalNodeApprox_b(tp, np, numb, dist)
-            else
-               ! Not good enough error so call children
-               call evalDisp_node_b(tp, np%left, r, numb, approxDen, Bib)
-               call evalDisp_node_b(tp, np%right, r, numb, approxDen, Bib)
-            end if
-         end if
-      end if
-    end subroutine evalDisp_node_b
+       if (dist/np%radius < two) then ! Too close...call children
+          call evalDisp_b(tp, np%left, r, numb, approxDen, Bib, fact)
+          call evalDisp_b(tp, np%right, r, numb, approxDen, Bib, fact)
+       else 
+          ! Use the first error check:
+          call getError(tp, np, dist, err)
+          if (err < tp%errTol * approxDen) then
+             call evalNodeApprox_b(tp, np, numb, dist, fact)
+          else
+             ! Not good enough error so call children
+             call evalDisp_b(tp, np%left, r, numb, approxDen, Bib, fact)
+             call evalDisp_b(tp, np%right, r, numb, approxDen, Bib, fact)
+          end if
+       end if
+    end if
   end subroutine evalDisp_b
 
-  subroutine evalNodeExact_b(tp, np, r, numb, Bib)
+  subroutine evalNodeExact_b(tp, np, r, numb, Bib, fact)
     ! Reverse derviative of evalNodeExact
 
     implicit none
     Type (tree_master_record), Pointer :: tp
     Type (tree_node), Pointer :: np
-    real(kind=realType), intent(in), dimension(3) :: r, numb
+    real(kind=realType), intent(in), dimension(3) :: r, numb, fact
     real(kind=realType), dimension(3) :: rr
     real(kind=realType), dimension(:, :) :: Bib
     real(kind=realType) :: dist, LdefoDist, LdefoDist3
@@ -800,70 +807,169 @@ Contains
        LdefoDist = tp%Ldef/dist
        Ldefodist3 = LdefoDist**3
        Wi = tp%Ai(i)*(Ldefodist3 + tp%alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
-       Bib(1, i) = Bib(1, i) + wi*numb(1)
-       Bib(2, i) = Bib(2, i) + wi*numb(2)
-       Bib(3, i) = Bib(3, i) + wi*numb(3)
-
+       Bib(1, i) = Bib(1, i) + wi*numb(1)*fact(1)
+       Bib(2, i) = Bib(2, i) + wi*numb(2)*fact(2)
+       Bib(3, i) = Bib(3, i) + wi*numb(3)*fact(3)
     end do
   end subroutine evalNodeExact_b
 
-  subroutine evalNodeApprox_b(tp, np, numb, dist)
+  subroutine evalNodeApprox_b(tp, np, numb, dist, fact)
     ! Reverse Sensitivity of evalNodeApprox
     implicit none
     Type (tree_master_record), Pointer :: tp
     Type (tree_node), Pointer :: np
     real(kind=realType), intent(in) :: dist
-    real(kind=realType), dimension(3) :: numb
+    real(kind=realType), dimension(3) :: numb, fact
     real(kind=realType) :: LdefoDist, LdefoDist3
     real(kind=realType) :: Wi
 
     LdefoDist = tp%Ldef/dist
     Ldefodist3 = LdefoDist**3
     Wi = np%Ai*(Ldefodist3 + tp%alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
-    np%Bib(1) = np%Bib(1) + wi*numb(1)
-    np%Bib(2) = np%Bib(2) + wi*numb(2)
-    np%Bib(3) = np%Bib(3) + wi*numb(3)
+    np%Bib(1) = np%Bib(1) + wi*numb(1)*fact(1)
+    np%Bib(2) = np%Bib(2) + wi*numb(2)*fact(2)
+    np%Bib(3) = np%Bib(3) + wi*numb(3)*fact(3)
   end subroutine evalNodeApprox_b
 
-  subroutine setData_b(tp)
+  recursive subroutine setData_b(tp, np)
     ! This performs the reverse accumulation of the nodeal Bib (and
     ! Mib) into the full Bib array.
     implicit none
     Type (tree_master_record), Pointer :: tp
+    Type (tree_node), Pointer :: np
+    real(kind=realType) :: ovrN
+    integer(kind=intType) :: i 
+    if (np%dnum /= 0) then 
+       ovrN = one/ np%n
+       do i=np%l, np%u
+          tp%Bib(1, i) = tp%Bib(1, i) + np%Bib(1)*ovrN
+          tp%Bib(2, i) = tp%Bib(2, i) + np%Bib(2)*ovrN
+          tp%Bib(3, i) = tp%Bib(3, i) + np%Bib(3)*ovrN
+       end do
 
-    call setData_node_b(tp, tp%root)
-  contains
-    recursive subroutine setData_node_b(tp, np)
-      implicit none
-      Type (tree_master_record), Pointer :: tp
-      Type (tree_node), Pointer :: np
-      real(kind=realType) :: ovrN
-      integer(kind=intType) :: i 
-      if (np%dnum /= 0) then 
-         ovrN = one/ np%n
-         do i=np%l, np%u
-            tp%Bib(1, i) = tp%Bib(1, i) + np%Bib(1)*ovrN
-            tp%Bib(2, i) = tp%Bib(2, i) + np%Bib(2)*ovrN
-            tp%Bib(3, i) = tp%Bib(3, i) + np%Bib(3)*ovrN
-            !tp%Mib(:, i) = tp%Mib(:, i) + np%Mib*ovrN
-         end do
-
-         ! Call each of the children
-         call setData_node_b(tp, np%left)
-         call setData_node_b(tp, np%right)
-      end if
-    end subroutine setData_node_b
+       ! Call each of the children
+       call setData_b(tp, np%left)
+       call setData_b(tp, np%right)
+    end if
   end subroutine setData_b
 
-  function myCreateTree(nodes, factor, cumNodesProc, faceSizesLocal, faceConnLocal) Result(tp)
+  ! This originally came from tapenade, but has to extensively
+  ! manually modified for it work iwthout having an enitrely new
+  ! kd_tree_b. 
+#ifndef USE_TAPENADE
+  SUBROUTINE COMPUTENODALPROPERTIES_B(tp, initialpoint)
+    USE GRIDINPUT
+    USE COMMUNICATION
+    USE GRIDDATA
+    IMPLICIT NONE
+    ! Subroutine Variables
+    TYPE(TREE_MASTER_RECORD), POINTER :: tp
+    LOGICAL :: initialpoint
+    ! Working variables
+    REAL(kind=realtype), DIMENSION(3, 20) :: points
+    REAL(kind=realtype), DIMENSION(3, 20) :: pointsb
+    INTEGER(kind=inttype) :: i, j, jj, kk, npts, nelem, ind
+    INTEGER(kind=inttype) :: nptsmax
+    REAL(kind=realtype) :: facearea, facenormal(3)
+    REAL(kind=realtype) :: faceareab, facenormalb(3)
+    REAL(kind=realtype) :: sumarea, sumnormal(3), si(3), ds(3), smean(3)&
+         &    , da, eta, r(3), dx(3)
+    REAL(kind=realtype) :: sumareab, sumnormalb(3), dab
+    INTEGER :: ad_to
+    ! This performs the copy and mirroring as required
+    DO i=1,tp%n
+       j = tp%xuind(i)
+       tp%xu(:, i) = xsptr(3*j-2:3*j)
+    END DO
+    ! Now we loop over nodes and fill up Ai, Bi, and Mi
+    tp%normals = zero
+    tp%normalsb = 0.0_8
+    tp%xub = 0.0_8
+    pointsb = 0.0_8
+    DO i=1,tp%n
+       sumarea = zero
+       sumnormal = zero
+       nelem = tp%nodetoelem(1, i)
+       DO jj=1,nelem
+          ind = tp%nodetoelem(1+jj, i)
+          ! Extract points for this face
+          npts = tp%faceptr(ind) - tp%faceptr(ind-1)
+          DO kk=1,npts
+             CALL PUSHREAL8ARRAY(points(:, kk), realtype*3/8)
+             points(:, kk) = tp%xu(:, tp%faceconn(tp%faceptr(ind-1)+kk))
+          END DO
+          CALL PUSHINTEGER4(kk - 1)
+          CALL PUSHREAL8ARRAY(facenormal, realtype*3/8)
+          CALL GETELEMENTPROPS(points, npts, facearea, facenormal)
+          CALL PUSHREAL8ARRAY(da, realtype/8)
+          ! For face 'ind' how many nodes are on the element?
+          da = facearea/(tp%faceptr(ind)-tp%faceptr(ind-1))
+          sumarea = sumarea + da
+          sumnormal = sumnormal + da*facenormal
+       END DO
+       tp%normals(:, i) = sumnormal/sumarea
+       IF (.NOT.initialpoint) THEN
+          ! Now get the rotation Matrix
+          IF (userotations) THEN
+             tp%xub(:, i) = tp%xub(:, i) + tp%bib(:, i)
+             tp%mib(:, 1, i) = tp%mib(:, 1, i) - tp%xu0(1, i)*tp%bib(:, i)
+             tp%mib(:, 2, i) = tp%mib(:, 2, i) - tp%xu0(2, i)*tp%bib(:, i)
+             tp%mib(:, 3, i) = tp%mib(:, 3, i) - tp%xu0(3, i)*tp%bib(:, i)
+             tp%bib(:, i) = 0.0_8
+          ELSE
+             tp%xub(:, i) = tp%xub(:, i) + tp%bib(:, i)
+             tp%bib(:, i) = 0.0_8
+          END IF
+          CALL GETROTATIONMATRIX3D_B(tp%normals0(:, i), tp%normals(:, i), &
+               &                             tp%normalsb(:, i), tp%mi(:, :, i), tp%mib(:&
+               &                             , :, i))
+          tp%mib(:, :, i) = 0.0_8
+       END IF
+       sumnormalb = 0.0_8
+       sumnormalb = tp%normalsb(:, i)/sumarea
+       sumareab = SUM(-(sumnormal*tp%normalsb(:, i)/sumarea))/sumarea
+       tp%normalsb(:, i) = 0.0_8
+       DO jj=nelem,1,-1
+          facenormalb = 0.0_8
+          dab = sumareab + SUM(facenormal*sumnormalb)
+          facenormalb = da*sumnormalb
+          ind = tp%nodetoelem(1+jj, i)
+          CALL POPREAL8ARRAY(da, realtype/8)
+          faceareab = dab/(tp%faceptr(ind)-tp%faceptr(ind-1))
+          npts = tp%faceptr(ind) - tp%faceptr(ind-1)
+          CALL POPREAL8ARRAY(facenormal, realtype*3/8)
+          CALL GETELEMENTPROPS_B(points, pointsb, npts, facearea, &
+               &                         faceareab, facenormal, facenormalb)
+          CALL POPINTEGER4(ad_to)
+          DO kk=ad_to,1,-1
+             CALL POPREAL8ARRAY(points(:, kk), realtype*3/8)
+             tp%xub(:, tp%faceconn(tp%faceptr(ind-1)+kk)) = tp%xub(:, tp%&
+                  &            faceconn(tp%faceptr(ind-1)+kk)) + pointsb(:, kk)
+             pointsb(:, kk) = 0.0_8
+          END DO
+       END DO
+    END DO
+    !xsptrb = 0.0_8 ! CAN"T ZERO HERE!
+    DO i=tp%n,1,-1
+       j = tp%xuind(i)
+       xsptrb(3*j-2:3*j) = xsptrb(3*j-2:3*j) + tp%xub(:, i)
+       tp%xub(:, i) = 0.0_8
+    END DO
+    tp%bib = 0.0_8
+    tp%mib = 0.0_8
+  END SUBROUTINE COMPUTENODALPROPERTIES_B
+#endif
+
+  function myCreateTree(nodes, cumNodesProc, faceSizesLocal, faceConnLocal) Result(tp)
     use gridInput
     use communication
     implicit none
+#ifndef USE_TAPENADE
 #include "finclude/petsc.h"
 #include "finclude/petscvec.h90"
-
+#endif
     Type (tree_master_record), Pointer :: tp
-    real(kind=realType), dimension(:, :) :: nodes, factor
+    real(kind=realType), dimension(:, :) :: nodes
     integer(kind=intType), dimension(:) :: cumNodesProc, faceSizesLocal, faceConnLocal
 
     ! Working
@@ -935,7 +1041,7 @@ Contains
     ! Now we can point-reduce the nodes:
     allocate(uniquePts(3, size(nodes, 2)), link(size(nodes, 2)))
     call pointReduceFast(nodes, size(nodes, 2), symmTol, uniquePts, link, tp%n)
-
+  
     ! Let the user know the actual number of Surface nodes used for
     ! the calc. You will get one of these for each tree.
     if (myid == 0) then
@@ -1020,13 +1126,12 @@ Contains
     ! sensitivity calc. 
 
     ! Use zero to indicate an un-assigned node
-    allocate(tp%XuInd(tp%n), tp%XuFact(3, tp%n))
+    allocate(tp%XuInd(tp%n))
     tp%XuInd(:) = 0
 
     do i=1, size(nodes, 2)
        if (tp%XuInd(invindices(link(i))) == 0) then ! Un-assigned
           tp%XuInd(invindices(link(i))) = i
-          tp%XuFact(:, invindices(link(i))) = factor(:, i)
        end if
     end do
 
@@ -1126,9 +1231,9 @@ Contains
     ! This performs the copy and mirroring as required
     do i=1, tp%n
        j = tp%XuInd(i)
-       tp%Xu(:, i) = XsPtr(3*j-2:3*j)*tp%XuFact(:, i)
+       tp%Xu(:, i) = XsPtr(3*j-2:3*j)
     end do
- 
+
     ! Now we loop over nodes and fill up Ai, Bi, and Mi
     tp%normals = zero
     tp%mi = zero

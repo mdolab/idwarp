@@ -23,9 +23,8 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
   integer(kind=intType), dimension(:), allocatable :: procSplits, procSplitsLocal
   integer(kind=intType), dimension(:), allocatable :: tempInt
   real(kind=realType), dimension(:), allocatable :: denomenator0Copy
-  real(kind=realType), dimension(:, :), allocatable :: factor
-  real(kind=realtype) :: costOffset, totalCost, averageCost, c, fact(3)
-  integer(kind=intType) :: nVol, curBin, newBin, newDOFProc, totalDOF, nFace
+  real(kind=realtype) :: costOffset, totalCost, averageCost, c, fact(3, 2)
+  integer(kind=intType) :: nVol, curBin, newBin, newDOFProc, totalDOF, nFace, nLoop
 
   ! ----------------------------------------------------------------------
   !   Step 1: Communicate all points with every other proc
@@ -88,56 +87,10 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
   call VecScatterCreateToAll(Xs, XsToXsLocal, XsLocal, ierr)
   call EChk(ierr, __FILE__, __LINE__)
 
-  if (iSymm > 0) then 
-     ! If we have symmetry we will have two trees, one for each side. 
-     allocate(mytrees(2))
-
-     ! For now, all nodes correspond exactly to the Xs nodes
-     allocate(factor(3, nNodesTotal))
-     do i=1, nNodesTotal
-        factor(:, i) = (/one, one, one/)
-     end do
-
-     ! Create the nominal tree:
-     mytrees(1)%tp => myCreateTree(allNodes, factor, cumNodesProc, faceSizesLocal, faceConnLocal)
-     ! Now for the mirror tree, we just modify the factor
-     fact = one
-     fact(iSymm) = -one
-
-     do i=1, nNodesTotal
-        factor(:, i) = fact
-        allNodes(:, i) = allNodes(:, i)*fact
-     end do
-
-     ! We have to be a little more careful about the connectivity
-     ! since we need to reorder all the nodes to correct the
-     ! left-handed elements created by the mirroring
-     allocate(tempInt(size(faceConnLocal)))
-     k = 0
-     n = nFaceConnLocal
-     do i=1, nFaceSizesLocal
-        nFace = faceSizesLocal(i)
-        do j=1, nFace
-           tempInt(k + nFace - j + 1) = faceConnLocal(k + j)
-        end do
-        k = k + nFace
-     end do
-
-     ! Now create the mirror tree
-     mytrees(2)%tp => myCreateTree(allNodes, factor, cumNodesProc, faceSizesLocal, tempInt)
-     deallocate(tempInt, factor)
-  else
-     ! Just create the one tree we have
-     allocate(factor(3, nNodesTotal))
-     factor(:, :) = one
-     allocate(mytrees(1))
-     mytrees(1)%tp => myCreateTree(allNodes, factor, cumNodesProc, faceSizesLocal, faceConnLocal)
-     deallocate(factor)
-  end if
+  ! For now we just have a single tree....we may have more in the future. 
+  allocate(mytrees(1))
+  mytrees(1)%tp => myCreateTree(allNodes, cumNodesProc, faceSizesLocal, faceConnLocal)
   
-  !call writeTreeTecplot(mytrees(1)%tp, 'right.dat')
-  !call writeTreeTecplot(mytrees(2)%tp, 'left.dat')
-
   ! Compute the approximate denomenator:
   call VecGetArrayF90(commonGridVec, Xv0Ptr, ierr)
   call EChk(ierr,__FILE__,__LINE__)
@@ -151,9 +104,11 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
 
   ! Compute the (approx) denomenator. This needs to be done only once.
   denomenator0 = zero
-  do kk=1,size(mytrees)
+  call getLoopFact(nLoop, fact)
+  do kk=1, nLoop
      wiLoop: do j=1, nVol
-        call getWiEstimate(mytrees(kk)%tp, mytrees(kk)%tp%root, Xv0Ptr(3*j-2:3*j), denomenator0(j))
+        call getWiEstimate(mytrees(1)%tp, mytrees(1)%tp%root, Xv0Ptr(3*j-2:3*j)*fact(:, kk), &
+        denomenator0(j))
      end do wiLoop
   end do
 
@@ -167,10 +122,12 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
   end if
   allocate(costs(nVol))
   costs = zero
-  do kk=1, size(mytrees)
+  do kk=1, nLoop
      dryRunLoop: do j=1, nVol
-        call dryRun(mytrees(kk)%tp, mytrees(kk)%tp%root, Xv0Ptr(3*j-2:3*j), denomenator0(j), c)
-        costs(j) = costs(j) + c / mytrees(kk)%tp%n
+        c = zero
+        call dryRun(mytrees(1)%tp, mytrees(1)%tp%root, Xv0Ptr(3*j-2:3*j)*fact(:, kk), &
+             denomenator0(j), c)
+        costs(j) = costs(j) + c / mytrees(1)%tp%n
      end do dryRunLoop
   end do
   ! Don't forget to restore arrays!
@@ -343,10 +300,26 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
   commonMeshDOF = nVol*3
 
   ! Deallocate the memory from this subroutine
-  deallocate(procEndCosts, procSplits, procSplitsLocal, denomenator0Copy)
+  deallocate(nNodesProc, cumNodesProc, allNodes)
+  deallocate(costs, procEndCosts, procSplits, procSplitsLocal, denomenator0Copy)
   if (myid == 0) then 
      print *, 'Finished Mesh Initialization.'
   end if
 
 end subroutine initializeWarping
 
+subroutine getLoopFact(nLoop, fact)
+  use constants
+  use gridInput
+  implicit none
+  integer(kind=intType), intent(out) :: nLoop
+  real(kind=realType), intent(out), dimension(3, 2) :: fact
+
+  nLoop = 1
+  fact = one
+  if (iSymm > 0) then 
+     nLoop = 2
+     fact(iSymm, 2) = -one
+  end if
+
+end subroutine getLoopFact

@@ -50,7 +50,6 @@ subroutine writeStructuredCGNS(cgns_file)
         sizes(4) = blocks(i)%il-1
         sizes(5) = blocks(i)%jl-1
         sizes(6) = blocks(i)%kl-1
-        !print *,' sizes:', sizes(1:3)
         curSize = sizes(1)*sizes(2)*sizes(3)
         allocate(coorX(curSize), coorY(curSize), coorZ(curSize))
 
@@ -114,6 +113,9 @@ subroutine writeStructuredCGNS(cgns_file)
   end if rootProc
 
   call vecDestroy(XvLocal, ierr)
+  call EChk(ierr,__FILE__,__LINE__)
+
+  call VecScatterDestroy(XvToLocal, ierr)
   call EChk(ierr,__FILE__,__LINE__)
 end subroutine writeStructuredCGNS
 
