@@ -4,9 +4,9 @@ module gridData
   !
 
   use constants
-  use kd_tree
   implicit none
   save
+
 #ifndef USE_TAPENADE
 #include "finclude/petsc.h"
 #include "finclude/petscvec.h90"
@@ -33,9 +33,8 @@ module gridData
   VecScatter common_to_warp
 #endif
 
-  ! Pointers into the grid vects
-  real(kind=realType), pointer, dimension(:) :: XsPtr
-  real(kind=realType), pointer, dimension(:) :: dXsPtr
+  ! Pointers into the grid vecs
+  real(kind=realType), pointer, dimension(:) :: XsPtr, dXsPtr
   real(kind=realType), pointer, dimension(:) :: Xv0Ptr, Xvptr
   integer(kind=intType) :: warpMeshDOF
   integer(kind=intType) :: commonMeshDOF
@@ -47,35 +46,11 @@ module gridData
 
   logical commonGridVecSet 
   logical gridIndicesSet 
-  integer(kind=intType), allocatable, dimension(:) :: facePtr, faceConn
-  integer(kind=intType) nFace, lenFaceConn
-
 
   character*32, dimension(maxFamilies) :: familyList
   integer(kind=intType) :: nwallFamilies
 
-  integer(kind=intType) :: nUnique
-  real(kind=realType) :: Ldef0
-  real(kind=realType), dimension(:, :), pointer :: Xu, Xu0
-  integer(kind=intType), dimension(:), allocatable :: XuInd
-  real(kind=realType), dimension(:, :), allocatable :: XuFact
-  real(kind=realType), dimension(:, :, :), pointer :: Mi
-  real(kind=realType), dimension(:, :), pointer :: Bi
-  real(kind=realType), dimension(:, :), allocatable :: normals0, normals
-  real(kind=realType), dimension(:), pointer :: Ai
   real(kind=realType), dimension(:), allocatable :: denomenator, denomenator0
   real(kind=realType), dimension(:, :), allocatable :: numerator
 
-#ifndef USE_TAPENADE
-  real(kind=realType), dimension(:, :), allocatable :: Xub
-  real(kind=realType), dimension(:, :, :), allocatable :: Mib
-  real(kind=realType), dimension(:, :), pointer :: Bib
-  real(kind=realType), dimension(:, :), allocatable :: normals0b, normalsb
-#endif  
-
-#ifndef USE_TAPENADE
-  type(tree_master_record), pointer :: mytree
-#endif
-
-  integer(kind=intType), dimension(:, :), allocatable :: nodeToElem
 end module gridData

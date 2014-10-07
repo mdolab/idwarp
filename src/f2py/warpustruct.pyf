@@ -51,9 +51,6 @@ python module warpustruct ! in
          integer(kind=inttype), optional,intent(in),check(len(faceconnlocal)>=nfaceconnlocal),depend(faceconnlocal) :: nfaceconnlocal=len(faceconnlocal)
        end subroutine initializewarping
 
-       subroutine initnodalproperties
-       end subroutine initnodalproperties
-       
        subroutine warpmesh()
        end subroutine warpmesh
 
