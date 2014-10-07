@@ -25,6 +25,8 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
   real(kind=realType), dimension(:), allocatable :: denomenator0Copy
   real(kind=realtype) :: costOffset, totalCost, averageCost, c, fact(3, 2)
   integer(kind=intType) :: nVol, curBin, newBin, newDOFProc, totalDOF, nFace, nLoop
+  real(Kind=realType) :: dists(1)
+  integer(kind=intType) :: resInd(1)
 
   ! ----------------------------------------------------------------------
   !   Step 1: Communicate all points with every other proc
@@ -305,6 +307,22 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
   if (myid == 0) then 
      print *, 'Finished Mesh Initialization.'
   end if
+
+  ! print *, 'doing distance search'
+  ! call VecGetArrayF90(Xv0, Xv0Ptr, ierr)
+  ! call EChk(ierr,__FILE__,__LINE__)
+
+  ! do j=1,warpMeshDOF/3
+  !    if (mod(j, 10000) == 0) then
+  !       print *, j
+  !    end if
+  !    call n_nearest_to(mytrees(1)%tp, Xv0Ptr(3*j-2:3*j), 1, resInd, dists)
+
+  ! end do
+  ! call VecRestoreArrayF90(Xv0, Xv0Ptr, ierr)
+  ! call EChk(ierr,__FILE__,__LINE__)
+
+  ! print *,' done dist search'
 
 end subroutine initializeWarping
 
