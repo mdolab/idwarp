@@ -11,7 +11,6 @@ include ${RULES_FILE}
 vpath %.o $(OBJDIR)
 
 FILES_TO_COMPLEXIFY = \
-	computeNodalProperties.F90\
 	getdXs.F90\
 	getElementProps.F90\
 	getSurfaceCoordinates.F90\
@@ -19,7 +18,6 @@ FILES_TO_COMPLEXIFY = \
 	getCommonVolumeCoordinates.F90\
 	gridTransform.F90\
 	initializeWarping.F90\
-	initNodalProperties.F90\
 	setdXs.F90\
 	setExternalMeshIndices.F90\
 	setSurfaceCoordinates.F90\
@@ -27,8 +25,10 @@ FILES_TO_COMPLEXIFY = \
 	warpMesh.F90\
 	warpMeshExact.F90\
 	warpMeshFast.F90\
-	warpMeshFast_b.F90\
 	warpDeriv.F90\
+
+#	warpMeshFast_b.F90\
+
 
 FILES_TO_COPY = 
 

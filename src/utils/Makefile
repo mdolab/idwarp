@@ -13,7 +13,6 @@ vpath %.o $(OBJDIR)
 
 FILES_TO_COMPLEXIFY = \
 	initPETSc.F90\
-	pointReduce.f90\
 	vectorUtils.f90\
 	getSpherePts.F90\
 

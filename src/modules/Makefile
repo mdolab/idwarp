@@ -16,22 +16,16 @@ FF90_OBJECTS_1 = precision.o\
 
 FF90_OBJECTS_2 = constants.o\
 
-FF90_OBJECTS_3 = kd_tree.o\
-
-FF90_OBJECTS_4 = communication.o\
-		 gridData.o\
+FF90_OBJECTS_3 = pointReduce.o\
 		 gridInput.o\
-		 structuredCGNS.o\
-		 diffSizes.o\
+		 communication.o\
 
-FILES_TO_COMPLEXIFY =	precision.F90\
-			constants.f90\
-			communication.f90\
-			gridData.f90\
-			gridInput.f90\
-			kd_tree.f90\
-			structuredCGNS.F90\
-			diffSizes.f90\
+FF90_OBJECTS_4 = gridData.o\
+
+FF90_OBJECTS_5 = kd_tree.o\
+		 structuredCGNS.o\
+
+FILES_TO_COMPLEXIFY =		
 
 FILES_TO_COPY = 
 
@@ -42,6 +36,7 @@ all:
 	make $(FF90_OBJECTS_2)
 	make $(FF90_OBJECTS_3)
 	make $(FF90_OBJECTS_4)
+	make $(FF90_OBJECTS_5)
 	cp -f *.mod $(MODDIR)
 
 clean:
