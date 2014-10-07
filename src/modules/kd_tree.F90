@@ -20,6 +20,7 @@ Module kd_tree
   ! you choose this.
   Integer(kind=IntType), Parameter :: bucket_size = 32
   integer(kind=intType), Parameter :: NERR = 12
+
   ! ..  .. Derived Type Declarations ..  
 
   type :: tnp
@@ -61,7 +62,6 @@ Module kd_tree
      real(Kind=realType) :: errTol
      real(kind=realType), dimension(NERR) :: rstar
      integer(kind=intType) :: nFace
-
   End Type tree_master_record
 
   Type :: tree_node
@@ -81,6 +81,16 @@ Module kd_tree
      real(kind=realType) :: err(NERR)
   End Type tree_node
 
+  Type :: tree_search_record
+      Private
+      real(kind=realType) :: bsd
+      Integer(kind=IntType) :: bestind
+      real(kind=realType), Dimension (:), Pointer :: qv
+      Integer(kind=IntType), Dimension (:), Pointer :: il
+      real(kind=realType), Dimension (:), Pointer :: dsl
+      Integer(kind=IntType) :: nbst, nfound
+      Integer(kind=IntType) :: centeridx, correltime
+  End Type tree_search_record
 Contains
 
   Subroutine destroy_tree(tp)
@@ -295,6 +305,159 @@ Contains
     End Function spread_in_coordinate
   end subroutine build_tree
 
+  Subroutine n_nearest_to(tp, qv, n, indexes, distances)
+    ! find the 'n' nearest neighbors to 'qv', returning
+    ! their indexes in indexes and squared Euclidean distances in
+    ! 'distances'
+    ! .. Structure Arguments ..
+    Type (tree_master_record), Pointer :: tp
+    ! ..
+    ! .. Scalar Arguments ..
+    Integer(kind=IntType), Intent (In) :: n
+    ! ..
+    ! .. Array Arguments ..
+    real(kind=realType), Target :: distances(n)
+    real(kind=realType), Target, Intent (In) :: qv(:)
+    Integer(kind=IntType), Target :: indexes(n)
+    ! ..
+    ! .. Local Structures ..
+    Type (tree_search_record), Pointer :: psr
+    Type (tree_search_record), Target :: sr
+    ! ..
+    ! .. Intrinsic Functions ..
+    Intrinsic HUGE
+    ! ..
+    ! the largest real number
+    sr%bsd = HUGE(1.0)
+    sr%qv => qv
+    sr%nbst = n
+    sr%nfound = 0
+    sr%centeridx = -1
+    sr%correltime = 0
+    sr%dsl => distances
+    sr%il => indexes
+    sr%dsl = HUGE(sr%dsl)    ! set to huge positive values
+    sr%il = -1               ! set to invalid indexes
+    psr => sr                ! in C this would be psr = &sr
+
+    Call n_search(tp, psr, tp%root)
+  End Subroutine n_nearest_to
+
+  Recursive Subroutine n_search(tp, sr, node)
+    ! This is the innermost core routine of the kd-tree search.
+    ! it is thus not programmed in quite the clearest style, but is
+    ! designed for speed.  -mbk
+    ! .. Structure Arguments ..
+    Type (tree_node), Pointer :: node
+    Type (tree_search_record), Pointer :: sr
+    Type (tree_master_record), Pointer :: tp
+    ! ..
+    ! .. Local Scalars ..
+    real(kind=realType) :: dp, sd, sdp, tmp
+    Integer(kind=IntType) :: centeridx, i, ii, j, jmax, k, d, correltime, nbst
+    Logical :: not_fully_sized
+    ! ..
+    ! .. Local Arrays ..
+    real(kind=realType), Pointer :: qv(:)
+    Integer(kind=IntType), Pointer :: ind(:)
+    real(kind=realType), dimension(:, :), pointer :: data
+    ! ..
+    ! .. Intrinsic Functions ..
+    Intrinsic ABS, ASSOCIATED
+    ! ..
+    If ( .Not. (ASSOCIATED(node%left)) .And. ( .Not. ASSOCIATED( &
+     node%right))) Then
+       ! we are on a terminal node
+       ind => tp%indexes     ! save for easy access
+       qv => sr%qv
+       data => tp%the_data
+       centeridx = sr%centeridx
+       d = tp%dim
+       correltime = sr%correltime
+       ! search through terminal bucket.
+       nbst = sr%nbst
+       mainloop: Do i = node%l, node%u
+          ii = ind(i)
+          If ( (centeridx<0) .OR. (ABS(ii-centeridx)>=correltime)) Then
+             ! 
+             ! replace with call to square distance with inline
+             ! code, an
+             ! a goto.  Tested to be significantly faster.   SPECIFIC
+             ! FOR
+             ! the EUCLIDEAN METRIC ONLY! BEWARE!
+
+             sd = 0.0
+             Do k = 1, d
+                tmp = data(k, ii) - qv(k)
+                sd = sd + tmp*tmp
+                If (sd>sr%bsd) Then
+                   cycle mainloop
+                End If
+             End Do
+
+             ! Note test moved out of loop to improve vectorization
+             ! should be semantically identical eitehr way as sr%bsd is
+             ! a bound afterwhich it doesn't matter. 
+
+             ! we only consider it if it is better than the 'best' on
+             ! the list so far.
+             ! if we get here
+             ! we know sd is < bsd, and bsd is on the end of the list
+
+             ! special case for nbst = 1 (single nearest neighbor)
+             if (nbst .eq. 1) then
+                sr%il(1) = ii
+                sr%dsl(1) = sd
+                sr%bsd = sd
+             else
+                not_fully_sized = (sr%nfound<nbst)
+                If (not_fully_sized) Then
+                   jmax = sr%nfound
+                   sr%nfound = sr%nfound + 1
+                Else
+                   jmax = nbst - 1
+                End If
+                ! add it to the list
+                
+                ! find the location j where sd >= sr%dsl(j) and sd <
+                ! sr%dsl(j+1...jmax+1)
+                Do j = jmax, 1, -1
+                   If (sd>=sr%dsl(j)) Exit ! we hit insertion location
+                   sr%il(j+1) = sr%il(j)
+                   sr%dsl(j+1) = sr%dsl(j)
+                End Do
+                ! if loop falls through j=0 here.
+                sr%il(j+1) = ii
+                sr%dsl(j+1) = sd
+
+                If ( .Not. not_fully_sized) Then
+                   sr%bsd = sr%dsl(nbst)
+                End If
+             end if
+          End If
+       End Do mainloop
+    Else
+       ! we are not on a terminal node
+
+       ! Alrighty, this section is essentially the content of the
+       ! the Sproul method for searching a Kd-tree, in other words
+       ! the second nested "if" statements in the two halves below
+       ! and when they get activated.
+       dp = sr%qv(node%dnum) - node%val
+       sdp = dp*dp        ! Euclidean
+       If (dp<0.0) Then
+          Call n_search(tp, sr, node%left)
+          If (sdp<sr%bsd) Call n_search(tp, sr, node%right)
+          ! if the distance projected to the 'wall boundary' is less
+          ! than the radius of the ball we must consider, then perform
+          ! search on the 'other side' as well.
+       Else
+          Call n_search(tp, sr, node%right)
+          If (sdp<sr%bsd) Call n_search(tp, sr, node%left)
+       End If
+    End If
+  End Subroutine n_search
+ 
   ! --------------------------------------------------------------------
   !                 Additional routines for IDW Warping
   ! --------------------------------------------------------------------

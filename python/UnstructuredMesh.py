@@ -535,8 +535,7 @@ class USMesh(object):
         Returns the connectivities of the surface coordinates that were
         obtained with getSurfaceCoordinates()
         """
-
-        return self.familyGroup[groupName]['connectivity']
+        return self.familyGroup[groupName]['connectivity'].flatten()
 
     def setSurfaceCoordinates(self, coordinates, groupName):
         """Sets all surface coordinates on this processor in group
@@ -803,10 +802,11 @@ class USMesh(object):
         else:
             dXvWarp = dXv
 
-        if surfOnly:
-            self.warp.warpderivsurfonly(dXvWarp)
-        else:
-            self.warp.warpderiv(dXvWarp)
+        self.warp.warpderiv(dXvWarp)
+        # if surfOnly:
+        #     self.warp.warpderivsurfonly(dXvWarp)
+        # else:
+        #     self.warp.warpderiv(dXvWarp)
 
     def verifyWarpDeriv(self, dXv=None, solverVec=True, dofStart=0, 
                         dofEnd=10):
