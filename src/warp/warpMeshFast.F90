@@ -15,30 +15,41 @@ subroutine warpMeshFast
   ! Working parameters
   real(kind=realType) :: den
   real(kind=realType), dimension(3) :: r, num
-  integer(kind=intType) :: nVol, ierr, j
+  integer(kind=intType) :: nVol, ierr, j, kk
 
-  ! Update the nodal properties
-  call computeNodalProperties(.False.)
-  mytree%Ldef = Ldef0 * LdefFact
-  mytree%alphaToBexp = alpha**bExp
-  mytree%errTol = errTol
+
+  denomenator = zero
+  numerator = zero
   nVol = size(XvPtr)/3
-  call setData(mytree, Bi, Mi)
-   
-  volLoop: do j=1, nVol
-     r(1) = Xv0Ptr(3*j-2)
-     r(2) = Xv0Ptr(3*j-1)
-     r(3) = Xv0Ptr(3*j)
-     num = zero
-     den = zero
-     call evalDisp(mytree, r, num, den, denomenator0(j))
- 
-     XvPtr(3*j-2) = Xv0Ptr(3*j-2) + num(1) / den
-     XvPtr(3*j-1) = Xv0Ptr(3*j-1) + num(2) / den
-     XvPtr(3*j  ) = Xv0Ptr(3*j  ) + num(3) / den
 
-     ! Store these for a future sensitivity calc.
-     numerator(:, j) = num
-     denomenator(j) = den
-  end do volLoop
+  do kk=1,size(mytrees)
+     ! Update the nodal properties
+     call computeNodalProperties(mytrees(kk)%tp, .False.)
+     mytrees(kk)%tp%Ldef = mytrees(kk)%tp%Ldef0 * LdefFact
+     mytrees(kk)%tp%alphaToBexp = alpha**bExp
+     mytrees(kk)%tp%errTol = errTol
+
+     call setData(mytrees(kk)%tp, mytrees(kk)%tp%root)
+
+     volLoop: do j=1, nVol
+        r(1) = Xv0Ptr(3*j-2)
+        r(2) = Xv0Ptr(3*j-1)
+        r(3) = Xv0Ptr(3*j)
+        num = zero
+        den = zero 
+        call evalDisp(mytrees(kk)%tp, mytrees(kk)%tp%root, r, num, den, denomenator0(j))
+
+        numerator(1, j) = numerator(1, j) + num(1)
+        numerator(2, j) = numerator(2, j) + num(2)
+        numerator(3, j) = numerator(3, j) + num(3)
+        denomenator(j) = denomenator(j) + den
+     end do volLoop
+  end do
+
+  updateLoop: do j=1, nVol
+     XvPtr(3*j-2) = Xv0Ptr(3*j-2) + numerator(1, j) / denomenator(j)
+     XvPtr(3*j-1) = Xv0Ptr(3*j-1) + numerator(2, j) / denomenator(j)
+     XvPtr(3*j  ) = Xv0Ptr(3*j  ) + numerator(3, j) / denomenator(j)
+  end do updateLoop
+  
 end subroutine warpMeshFast

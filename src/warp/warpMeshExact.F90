@@ -7,6 +7,7 @@ subroutine warpMeshExact
   ! Tapendade in both forward and reverse modes.
 
   use gridData
+  use kd_tree
   use gridInput
   use communication
   implicit none
@@ -14,42 +15,59 @@ subroutine warpMeshExact
   ! Working parameters
   real(kind=realType) :: dist, LdefoDist, Wi, den
   real(kind=realType), dimension(3) :: r, rr,  num, Si
-  integer(kind=intType) :: nVol, i, j
+  integer(kind=intType) :: nVol, i, j, kk ,nSurf
   real(kind=realType) :: Ldef, alphaToBexp, oDen
   real(kind=realType) :: LdefoDist3
-  real(kind=realType) :: timeA, timeB
+  real(kind=realType), pointer, dimension(:, :) :: Bi, Xu0
+  real(kind=realType), pointer, dimension(:) :: Ai
 
-  ! Update the nodal properties
-  call computeNodalProperties(.False.)
-  Ldef = Ldef0 * LdefFact
-  alphaToBexp = alpha**bExp
+  denomenator = zero
+  numerator = zero
   nVol = size(XvPtr)/3
+  
+  do kk=1,size(mytrees)
+     ! Update the nodal properties
+     call computeNodalProperties(mytrees(kk)%tp, .False.)
+     Ldef = mytrees(kk)%tp%Ldef0 * LdefFact
+     mytrees(kk)%tp%errTol = errTol
 
-  !$AD II-LOOP
-  volLoop: do j=1, nVol
-     r(1) = Xv0Ptr(3*j-2)
-     r(2) = Xv0Ptr(3*j-1)
-     r(3) = Xv0Ptr(3*j)
-     num = zero
-     den = zero
-     do i=1, nUnique
-        rr = r - Xu0(:, i)
-        dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2 + 1e-15)
-        LdefoDist = Ldef/dist
-        Ldefodist3 = LdefoDist**3
-        Wi = Ai(i)*(Ldefodist3 + alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
-        num = num + Wi*Bi(:, i)
-        den = den + Wi
-     end do
+     call setData(mytrees(kk)%tp, mytrees(kk)%tp%root)
 
-     XvPtr(3*j-2) = Xv0Ptr(3*j-2) + num(1) / den
-     XvPtr(3*j-1) = Xv0Ptr(3*j-1) + num(2) / den
-     XvPtr(3*j  ) = Xv0Ptr(3*j  ) + num(3) / den
+     ! Extract pointers for easier reading:
+     alphaToBexp = alpha**bExp
+     Bi => mytrees(kk)%tp%Bi
+     Xu0 => mytrees(kk)%tp%Xu0
+     Ai => mytrees(kk)%tp%Ai
+     nSurf = mytrees(kk)%tp%n
 
-     ! Store these for a future sensitivity calc.
-     numerator(:, j) = num
-     denomenator(j) = den
-  end do volLoop
+     volLoop: do j=1, nVol
+        r(1) = Xv0Ptr(3*j-2)
+        r(2) = Xv0Ptr(3*j-1)
+        r(3) = Xv0Ptr(3*j)
+        num = zero
+        den = zero
+        do i=1, nSurf
+           rr = r - Xu0(:, i)
+           dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2 + 1e-15)
+           LdefoDist = Ldef/dist 
+           Ldefodist3 = LdefoDist**3
+           Wi = Ai(i)*(Ldefodist3 + alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
+           num = num + Wi*Bi(:, i)
+           den = den + Wi
+        end do
+
+        numerator(1, j) = numerator(1, j) + num(1)
+        numerator(2, j) = numerator(2, j) + num(2)
+        numerator(3, j) = numerator(3, j) + num(3)
+        denomenator(j) = denomenator(j) + den
+     end do volLoop
+  end do
+
+  updateLoop: do j=1, nVol
+     XvPtr(3*j-2) = Xv0Ptr(3*j-2) + numerator(1, j) / denomenator(j)
+     XvPtr(3*j-1) = Xv0Ptr(3*j-1) + numerator(2, j) / denomenator(j)
+     XvPtr(3*j  ) = Xv0Ptr(3*j  ) + numerator(3, j) / denomenator(j)
+  end do updateLoop
 
 end subroutine warpMeshExact
 

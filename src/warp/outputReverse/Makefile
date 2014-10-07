@@ -11,7 +11,9 @@ include ${COMMON_FILE}
 include ${RULES_FILE}
 vpath %.o $(OBJDIR)
 
-FF90_OBJECTS =	computenodalproperties_b.o\
+FF90_OBJECTS =	
+
+#computenodalproperties_b.o\
 		cross_product_3d_b.o\
 		getelementprops_b.o\
 		getmag_b.o\
