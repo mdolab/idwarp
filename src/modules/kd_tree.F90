@@ -294,6 +294,49 @@ Contains
       res = smax - smin
     End Function spread_in_coordinate
   end subroutine build_tree
+  function pt_in_tree(tp, qv)
+ ! .. Structure Arguments ..
+    Type (tree_master_record), Pointer :: tp
+    ! ..
+    real(kind=realType), Target, Intent (In) :: qv(:)
+    real(kind=realType), parameter :: tol=1e-6
+  
+    ! .. Scalar Arguments ..
+    Integer(kind=IntType) :: n
+    real(kind=realType), target :: distances(1)
+    Integer(kind=IntType), target :: indexes(1)
+    integer(kind=intType) :: pt_in_tree
+    ! ..
+    ! .. Local Structures ..
+    Type (tree_search_record), Pointer :: psr
+    Type (tree_search_record), Target :: sr
+    ! ..
+    ! .. Intrinsic Functions ..
+    Intrinsic HUGE
+    n = 1
+    ! ..
+    ! the largest real number
+    sr%bsd = HUGE(1.0)
+    sr%qv => qv
+    sr%nbst = n
+    sr%nfound = 0
+    sr%centeridx = -1
+    sr%correltime = 0
+    sr%dsl => distances
+    sr%il => indexes
+    sr%dsl = HUGE(sr%dsl)    ! set to huge positive values
+    sr%il = -1               ! set to invalid indexes
+    psr => sr                ! in C this would be psr = &sr
+
+    Call n_search(tp, psr, tp%root)
+    
+    if (sqrt(distances(1)) < tol) then
+       pt_in_tree = indexes(1)
+    else
+       pt_in_tree = 0_intType
+    end if
+
+  end function pt_in_tree
 
   Subroutine n_nearest_to(tp, qv, n, indexes, distances)
     ! find the 'n' nearest neighbors to 'qv', returning

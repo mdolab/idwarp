@@ -87,6 +87,11 @@ python module warpustruct ! in
          integer(kind=inttype) optional,check(len(dxv_f)>=ndof_warp),depend(dxv_f) :: ndof_warp=len(dxv_f)
        end subroutine warpderiv
 
+       subroutine warpderivsurfonly(dxv_f,ndof)
+         real(kind=realtype) dimension(ndof) :: dxv_f
+         integer(kind=inttype) optional,check(len(dxv_f)>=ndof),depend(dxv_f) :: ndof=len(dxv_f)
+       end subroutine warpderivsurfonly
+
        subroutine getdxs(indices,idof,output,ndof) ! in :test:getdXs.F90
          integer(kind=inttype) dimension(idof),intent(in) :: indices
          integer(kind=inttype) optional,intent(in),check(len(indices)>=idof),depend(indices) :: idof=len(indices)

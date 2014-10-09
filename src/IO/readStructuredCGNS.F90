@@ -22,6 +22,7 @@ subroutine readStructuredCGNS(cgns_file)
   real(kind=8)   ::  data_double(6), avgNodes, symmSum(3)
   real(kind=realType), dimension(:, :, :), allocatable :: coorX, coorY, coorZ
   real(kind=realType), dimension(:, :), allocatable :: allNodes, localNodes
+  integer(kind=intType), dimension(:), allocatable :: wallNodes, localWallNodes
   integer(kind=intType), dimension(:, :), allocatable :: sizes
 
   integer(kind=intType) :: status(MPI_STATUS_SIZE)
@@ -50,6 +51,8 @@ subroutine readStructuredCGNS(cgns_file)
      ! Now we know the total number of nodes we can allocate the final
      ! required space and read them in. 
      allocate(allNodes(3, nNodes))
+     allocate(wallNodes(nNodes))
+     wallNodes = 0
 
      ! Loop back over the nodes and read
      ii = 0;
@@ -126,6 +129,16 @@ subroutine readStructuredCGNS(cgns_file)
                        nwallFamilies = nwallFamilies + 1
                        familyList(nwallFamilies) = famName
                     end if
+
+                    ! Flag the wall nodes:
+                    do k=pts(3, 1), pts(3, 2)
+                       do j=pts(2, 1), pts(2, 2)
+                          do i=pts(1, 1), pts(1, 2)
+                             wallNodes(offset + (k-1)*dims(1)*dims(2) + (j-1)*dims(1) + i) = 1
+                          end do
+                       end do
+                    end do
+                    
                  end if
               end if
 
@@ -215,10 +228,12 @@ subroutine readStructuredCGNS(cgns_file)
 
   localSize = iend - istart + 1
   allocate(localNodes(3, localSize))
+  allocate(localWallNodes(localSize))
 
   if (myid == 0) then
      ! Just copy for the root proc:
      localNodes(:, :) = allNodes(:, 1:localSize)
+     localWallNodes(:) = wallNodes(1:localSize)
 
      ! Loop over the remainer of the procs and send
      do iProc=1, nProc-1
@@ -229,19 +244,27 @@ subroutine readStructuredCGNS(cgns_file)
         call MPI_Send(allNodes(:, iStart), localSize*3, MPI_REAL8, iProc, &
              11, warp_comm_world, ierr)
         call EChk(ierr, __FILE__, __LINE__)
+
+        call MPI_Send(wallNodes(iStart), localSize, MPI_INTEGER4, iProc, &
+             12, warp_comm_world, ierr)
+        call EChk(ierr, __FILE__, __LINE__)
      end do
      deallocate(allNodes)
+     deallocate(wallNodes)
   else
      ! Receive on all the other procs:
      call MPI_recv(localNodes, 3*localSize, MPI_REAL8, 0, 11, &
+          warp_comm_world, status, ierr)
+     call EChk(ierr, __FILE__, __LINE__)
+     call MPI_recv(localWallNodes, localSize, MPI_INTEGER4, 0, 12, &
           warp_comm_world, status, ierr)
      call EChk(ierr, __FILE__, __LINE__)
   end if
 
   ! All we are doing to do here is to create the Xv vector --- which
   ! is done via a call to createVolumeGrid
-  call createCommonGrid(localNodes, size(localNodes, 2))
-  deallocate(localNodes)
+  call createCommonGrid(localNodes, localWallNodes, size(localNodes, 2))
+  deallocate(localNodes, localWallNodes)
 end subroutine readStructuredCGNS
 
 subroutine checkInFamilyList(familyList, famName, nFamily, index)

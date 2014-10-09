@@ -31,6 +31,7 @@ module gridData
   Vec solverGridVec
   VecScatter common_to_solver
   VecScatter common_to_warp
+  VecScatter common_to_dxs
 #endif
 
   ! Pointers into the grid vecs
@@ -59,5 +60,5 @@ module gridData
   real(kind=realType), dimension(:), allocatable :: d2wall
   real(kind=realType), dimension(:), allocatable :: denomenator, denomenator0
   real(kind=realType), dimension(:, :), allocatable :: numerator
-
+  integer(kind=intType), dimension(:), allocatable :: wallIndices
 end module gridData
