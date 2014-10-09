@@ -70,8 +70,7 @@ subroutine createCommonGrid(volNodes, wallNodes, nVolLocal)
   call VecAssemblyEnd(commonGridVec, ierr)
   call EChk(ierr,__FILE__,__LINE__)
 
-
-  ! Create an index set that selects just the wall nodes from the volume nodes
+  ! Create the indices that selects just the wall nodes from the volume nodes
   nWall = sum(wallNodes)
   allocate(wallIndices(nWall*3))
   ! Offset indices by the volnodesProc
@@ -79,14 +78,14 @@ subroutine createCommonGrid(volNodes, wallNodes, nVolLocal)
   j = 0
   do i=1, nVolLocal
      if (wallNodes(i) == 1) then
-
         wallIndices(3*j + 1) = wallIndices(3*j + 1) + 3*(i-1)
         wallIndices(3*j + 2) = wallIndices(3*j + 2) + 3*(i-1)+1
         wallIndices(3*j + 3) = wallIndices(3*j + 3) + 3*(i-1)+2
         j = j + 1
      end if
   end do
-   deallocate(volNodesProc)
+
+  deallocate(volNodesProc)
  commonGridVecSet = 1
 end subroutine createCommonGrid
 
