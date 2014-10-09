@@ -48,6 +48,6 @@ subroutine setExternalMeshIndices(ndof_solver, solver_indices)
   call ISDestroy(IS2, ierr)
   call EChk(ierr, __FILE__, __LINE__)
 
-  gridIndicesSet = .True.
+  gridIndicesSet = 1
 
 end subroutine setExternalMeshIndices

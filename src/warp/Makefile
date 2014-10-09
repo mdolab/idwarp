@@ -23,11 +23,14 @@ FILES_TO_COMPLEXIFY = \
 	setSurfaceCoordinates.F90\
 	verifyWarpDeriv.F90\
 	warpMesh.F90\
-	warpMeshExact.F90\
-	warpMeshExact_b.F90\
-	warpMeshFast.F90\
-	warpMeshFast_b.F90\
 	warpDeriv.F90\
+
+
+#	warpMeshExact_b.F90\
+	warpMeshExact.F90\
+
+# warpMeshFast.F90\
+# warpMeshFast_b.F90\
 
 FILES_TO_COPY = 
 
