@@ -136,6 +136,10 @@ python module warpustruct ! in
          integer(kind=inttype) :: solvermeshdof
          integer(Kind=inttype) :: commonmeshdof
        end module griddata
+
+       module kd_tree
+         integer(kind=inttype) :: bucket_size
+       end module kd_tree
        
     end interface 
 end python module warpustruct

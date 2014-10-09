@@ -121,7 +121,8 @@ class USMesh(object):
             'errTol':0.0005,
             'evalMode':'fast',
             'symmTol':1e-6,
-            'useRotations':False,
+            'useRotations':True,
+            'bucketSize':8,
         }
         
         # Set remaining default values
@@ -987,6 +988,7 @@ class USMesh(object):
         self.warp.gridinput.symmtol = o['symmTol']
         self.warp.gridinput.userotations = o['useRotations']
         self.warp.gridinput.errtol = o['errTol']
+        self.warp.kd_tree.bucket_size = o['bucketSize']
         if o['evalMode'].lower() == 'fast':
             self.warp.gridinput.evalmode = self.warp.gridinput.eval_fast
         elif o['evalMode'].lower() == 'exact':
