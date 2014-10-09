@@ -70,6 +70,7 @@ subroutine createCommonGrid(volNodes, nVolLocal)
   call EChk(ierr,__FILE__,__LINE__)
 
   deallocate(volNodesProc)
+  commonGridVecSet = 1
 end subroutine createCommonGrid
 
 

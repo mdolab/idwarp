@@ -304,25 +304,42 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
   ! Deallocate the memory from this subroutine
   deallocate(nNodesProc, cumNodesProc, allNodes)
   deallocate(costs, procEndCosts, procSplits, procSplitsLocal, denomenator0Copy)
-  if (myid == 0) then 
-     print *, 'Finished Mesh Initialization.'
-  end if
 
-  ! print *, 'doing distance search'
+  ! --------------- We may need this at some point.... -------------
+  ! if (myid == 0) then 
+  !    print *, 'Computing wall distance ...'
+  ! end if
+  ! allocate(d2wall(newDOFProc/3))
   ! call VecGetArrayF90(Xv0, Xv0Ptr, ierr)
   ! call EChk(ierr,__FILE__,__LINE__)
 
   ! do j=1,warpMeshDOF/3
-  !    if (mod(j, 10000) == 0) then
-  !       print *, j
-  !    end if
   !    call n_nearest_to(mytrees(1)%tp, Xv0Ptr(3*j-2:3*j), 1, resInd, dists)
-
+  !    d2wall(j) = dists(1)
   ! end do
   ! call VecRestoreArrayF90(Xv0, Xv0Ptr, ierr)
   ! call EChk(ierr,__FILE__,__LINE__)
+  ! -------------------------------------------------------------------
 
-  ! print *,' done dist search'
+  ! ------------ This is optional -----------
+
+  ! We could perform a test warp to get the "exact" denomenator that
+  ! will result from an actual warp. This most likely isn't necessary
+  ! however.
+
+  ! if (myid == 0) then
+  !    print *, 'Performing Test Warp ...'
+  ! end if
+  ! call warpMesh()
+
+  ! ! Copy in the real denomenator
+  ! denomenator0 = denomenator
+  ! -------------------------------------------
+
+  if (myid == 0) then 
+     print *, 'Finished Mesh Initialization.'
+  end if
+  initializationSet = 1
 
 end subroutine initializeWarping
 

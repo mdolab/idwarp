@@ -10,33 +10,43 @@ subroutine releaseMemory
   integer(kind=intType) :: i, ierr
 
   ! Created in 'createCommonGrid'
-  call VecDestroy(commonGridVec, ierr)
-  call EChk(ierr,__FILE__,__LINE__)
+  if (commonGridVecSet == 1) then 
+     call VecDestroy(commonGridVec, ierr)
+     call EChk(ierr,__FILE__,__LINE__)
+     commonGridVecSet = 0
+  end if
+  
+  if (initializationSet == 1) then 
+     ! The following were created in initialzieWarping:
+     call VecDestroy(Xs, ierr)
+     call EChk(ierr,__FILE__,__LINE__)
+     
+     call VecDestroy(dXs, ierr)
+     call EChk(ierr,__FILE__,__LINE__)
+     
+     call VecDestroy(XsLocal, ierr)
+     call EChk(ierr,__FILE__,__LINE__)
+     
+     call VecScatterDestroy(XsToXsLocal, ierr)
+     call EChk(ierr,__FILE__,__LINE__)
+     
+     call VecDestroy(Xv, ierr)
+     call EChk(ierr,__FILE__,__LINE__)
+     
+     call VecDestroy(Xv0, ierr)
+     call EChk(ierr,__FILE__,__LINE__)
+     
+     call VecDestroy(dXv, ierr)
+     call EChk(ierr,__FILE__,__LINE__)
+     
+     call VecScatterDestroy(common_to_warp, ierr)
+     call EChk(ierr,__FILE__,__LINE__)
 
-  ! The following were created in initialzieWarping:
-  call VecDestroy(Xs, ierr)
-  call EChk(ierr,__FILE__,__LINE__)
-
-  call VecDestroy(dXs, ierr)
-  call EChk(ierr,__FILE__,__LINE__)
-
-  call VecDestroy(XsLocal, ierr)
-  call EChk(ierr,__FILE__,__LINE__)
-
-  call VecScatterDestroy(XsToXsLocal, ierr)
-  call EChk(ierr,__FILE__,__LINE__)
-
-  call VecDestroy(Xv, ierr)
-  call EChk(ierr,__FILE__,__LINE__)
-
-  call VecDestroy(Xv0, ierr)
-  call EChk(ierr,__FILE__,__LINE__)
-
-  call VecDestroy(dXv, ierr)
-  call EChk(ierr,__FILE__,__LINE__)
-
-  call VecScatterDestroy(common_to_warp, ierr)
-  call EChk(ierr,__FILE__,__LINE__)
+     ! Deallocate the num/den data
+     deallocate(numerator, denomenator, denomenator0)
+     
+     initializationSet = 0
+  end if
 
   ! Check if we have a structured mesh
   if (allocated(blocks)) then 
@@ -51,16 +61,14 @@ subroutine releaseMemory
      deallocate(blocks)
   end if
   
-  if (gridIndicesSet) then
+  if (gridIndicesSet == 1) then
      call VecDestroy(solverGridVec, ierr)
      call EChk(ierr,__FILE__,__LINE__)
      
      call VecScatterDestroy(common_to_solver, ierr)
      call EChk(ierr,__FILE__,__LINE__)
+     gridIndicesSet = 0
   end if
-
-  ! Deallocate the num/den data
-  deallocate(numerator, denomenator, denomenator0)
 
   ! Finally delete the trees
   if (allocated(mytrees)) then

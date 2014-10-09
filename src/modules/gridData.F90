@@ -46,12 +46,17 @@ module gridData
   integer(kind=intType) :: warpMeshDOF
   integer(kind=intType) :: commonMeshDOF
   integer(kind=intType) :: solverMeshDOF
-  logical gridIndicesSet
+
+  ! Logicals determine what is allocated:
+  integer(kind=intTYpe) :: gridIndicesSet = 0
+  integer(kind=intType) :: commonGridVecSet = 0
+  integer(kind=intTYpe) ::  initializationSet = 0
 
   ! Storage for family info read from CGNS
   character*32, dimension(maxFamilies) :: familyList
   integer(kind=intType) :: nwallFamilies
 
+  real(kind=realType), dimension(:), allocatable :: d2wall
   real(kind=realType), dimension(:), allocatable :: denomenator, denomenator0
   real(kind=realType), dimension(:, :), allocatable :: numerator
 
