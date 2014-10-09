@@ -1,4 +1,4 @@
-subroutine createCommonGrid(volNodes, nVolLocal)
+subroutine createCommonGrid(volNodes, wallNodes, nVolLocal)
 
   ! This routine create a few arrys that are the size of the "common"
   ! grid...that is the ordering that is given in the original grid
@@ -13,10 +13,11 @@ subroutine createCommonGrid(volNodes, nVolLocal)
 
   ! Subroutine variables
   real(kind=realType), dimension(3, nVolLocal), intent(in) :: volNodes
+  integer(kind=intType), dimension(nVolLocal), intent(in) :: wallNodes
   integer(kind=intType), intent(in) :: nVolLocal
 
   ! Working variables
-  integer(kind=intType) :: i, nVol, ierr
+  integer(kind=intType) :: i, j, nVol, ierr, nWall
   integer(kind=intType), dimension(:), allocatable :: volNodesProc
 
   ! Gather the displacements
@@ -69,8 +70,24 @@ subroutine createCommonGrid(volNodes, nVolLocal)
   call VecAssemblyEnd(commonGridVec, ierr)
   call EChk(ierr,__FILE__,__LINE__)
 
-  deallocate(volNodesProc)
-  commonGridVecSet = 1
+
+  ! Create an index set that selects just the wall nodes from the volume nodes
+  nWall = sum(wallNodes)
+  allocate(wallIndices(nWall*3))
+  ! Offset indices by the volnodesProc
+  wallIndices = volNodesProc(myid)*3
+  j = 0
+  do i=1, nVolLocal
+     if (wallNodes(i) == 1) then
+
+        wallIndices(3*j + 1) = wallIndices(3*j + 1) + 3*(i-1)
+        wallIndices(3*j + 2) = wallIndices(3*j + 2) + 3*(i-1)+1
+        wallIndices(3*j + 3) = wallIndices(3*j + 3) + 3*(i-1)+2
+        j = j + 1
+     end if
+  end do
+   deallocate(volNodesProc)
+ commonGridVecSet = 1
 end subroutine createCommonGrid
 
 
