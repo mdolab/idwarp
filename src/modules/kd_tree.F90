@@ -52,7 +52,8 @@ Module kd_tree
      integer(kind=intType), dimension(:), pointer :: XuInd
      integer(kind=intType), dimension(:), allocatable :: facePtr, faceConn
      integer(kind=intType), dimension(:, :), allocatable :: nodeToElem
-     integer(kind=intTYpe), dimension(:), allocatable :: invLink
+     integer(kind=intType), dimension(:), allocatable :: invLink
+
      real(Kind=realType) :: errTol
      real(kind=realType), dimension(NERR) :: rstar
      integer(kind=intType) :: nFace
@@ -1398,7 +1399,7 @@ Contains
     end do
 
     ! Deallocate memory from this routine
-    deallocate(link, surfSizesProc, surfSizesDisp)
+    deallocate(link, surfSizesProc, surfSizesDisp, invIndices)
     deallocate(surfConnProc, surfConnDisp)
 
     ! Allocate Space for the nodal properties:
