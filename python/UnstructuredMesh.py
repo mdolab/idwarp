@@ -810,7 +810,7 @@ class USMesh(object):
         #     self.warp.warpderiv(dXvWarp)
 
     def verifyWarpDeriv(self, dXv=None, solverVec=True, dofStart=0, 
-                        dofEnd=10):
+                        dofEnd=10, h=1e-6):
         """Run an internal verification of the solid warping
         derivatives"""
         
@@ -824,7 +824,7 @@ class USMesh(object):
             else:
                 dXvWarp = dXv
 
-        self.warp.verifywarpderiv(dXvWarp, dofStart, dofEnd)
+        self.warp.verifywarpderiv(dXvWarp, dofStart, dofEnd, h)
 
 # ==========================================================================
 #                        Output Functionality
