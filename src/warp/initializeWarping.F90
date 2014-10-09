@@ -356,9 +356,8 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
   call VecGetOwnershipRange(CommonGridVec, istart, iend, ierr)
   call EChk(ierr, __FILE__, __LINE__)
 
-   do i=1, size(wallIndices)/3
-     call VecGetValues(CommonGridVec, 3, (/wallIndices(3*i-2), wallIndices(3*i-1), wallIndices(3*i)/), &
-          pt1, ierr)
+  do i=1, size(wallIndices)/3
+     call VecGetValues(CommonGridVec, 3, wallIndices(3*i-2:3*i), pt1, ierr)
      call EChk(ierr, __FILE__, __LINE__)
 
      ! Now search for that node:
