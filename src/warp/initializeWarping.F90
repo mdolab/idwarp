@@ -23,10 +23,12 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
   integer(kind=intType), dimension(:), allocatable :: procSplits, procSplitsLocal
   integer(kind=intType), dimension(:), allocatable :: tempInt
   real(kind=realType), dimension(:), allocatable :: denomenator0Copy
+  integer(kind=intType), pointer :: indices(:)
+  integer(kind=intType), dimension(:), allocatable :: dXsIndices
   real(kind=realtype) :: costOffset, totalCost, averageCost, c, fact(3, 2)
   integer(kind=intType) :: nVol, curBin, newBin, newDOFProc, totalDOF, nFace, nLoop
-  real(Kind=realType) :: dists(1)
-  integer(kind=intType) :: resInd(1)
+  real(Kind=realType) :: dists(1), pt(3)
+  integer(kind=intType) :: resInd(1), surfID
 
   ! ----------------------------------------------------------------------
   !   Step 1: Communicate all points with every other proc
@@ -335,6 +337,62 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
   ! ! Copy in the real denomenator
   ! denomenator0 = denomenator
   ! -------------------------------------------
+
+  ! One last thing...we need to compute a mapping from the volume
+  ! nodes that happen to be on the surface to the actual surface
+  ! nodes. This is required for the fake mesh warp derivatives. We we
+  ! don't have any addiitonal information we will use the tree do to a
+  ! spatial search. This should be reasonably fast since we only are
+  ! checking volume nodes we *know* are already on the surface. This
+  ! is similar to what is done in pyWarp. 
+
+  if (myid == 0) then 
+     print *, 'Performing surface matching ...'
+  end if
+  allocate(dXsIndices(size(wallIndices)))
+
+  ! We happen to know that all of the indices in wallNodesInXv are
+  ! local...so we can use VecGetValues()
+  call VecGetOwnershipRange(CommonGridVec, istart, iend, ierr)
+  call EChk(ierr, __FILE__, __LINE__)
+
+
+  do i=1, size(wallIndices)/3
+     call VecGetValues(CommonGridVec, 3, (/wallIndices(3*i-2), wallIndices(3*i-1), wallIndices(3*i)/), &
+          pt, ierr)
+     call EChk(ierr, __FILE__, __LINE__)
+    ! print *,myid, i, pt
+     ! Now search for that node:
+     surfID = pt_in_tree(mytrees(1)%tp, pt)
+     if (surfID /= 0) then 
+        dXsIndices(3*i-2) = (surfID-1)*3
+        dXsIndices(3*i-1) = (surfID-1)*3 + 1
+        dXsIndices(3*i  ) = (surfID-1)*3 + 2
+     else
+        print *,'Error: Could not find a surface node. Are you actually using the same mesh??'
+        print *, 'The Bad point is:', pt
+        stop
+     end if
+  end do
+  
+  call ISCreateGeneral(warp_comm_world, size(wallIndices), wallIndices, &
+       PETSC_COPY_VALUES, IS1, ierr)
+  call EChk(ierr,__FILE__,__LINE__)
+
+  ! Now create the scatter:
+  call ISCreateGeneral(warp_comm_world, size(dXsIndices), dXsIndices, &
+       PETSC_COPY_VALUES, IS2, ierr)
+
+  call VecScatterCreate(commonGridVec, IS1, dXs, IS2, common_to_dxs, ierr)
+  call EChk(ierr, __FILE__, __LINE__)
+
+  call ISDestroy(IS1, ierr)
+  call EChk(ierr, __FILE__, __LINE__)
+
+  call ISDestroy(IS2, ierr)
+  call EChk(ierr, __FILE__, __LINE__)
+
+  deallocate(dXsIndices)
 
   if (myid == 0) then 
      print *, 'Finished Mesh Initialization.'

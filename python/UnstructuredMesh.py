@@ -796,18 +796,18 @@ class USMesh(object):
         None. However, the resulting calculation is available from
         the getdXs() function.
         """
-
-        if solverVec:
-            dXvWarp = np.zeros(self.warp.griddata.warpmeshdof, self.dtype)
-            self.warp.solver_to_warp_grid(dXv, dXvWarp)
+        if not surfOnly:
+            if solverVec:
+                dXvWarp = np.zeros(self.warp.griddata.warpmeshdof, self.dtype)
+                self.warp.solver_to_warp_grid(dXv, dXvWarp)
+            else:
+                dXvWarp = dXv
+            self.warp.warpderiv(dXvWarp)
         else:
-            dXvWarp = dXv
+            if not solverVec:
+                raise Error('Fake warpDeriv only works with solverVec.')
+            self.warp.warpderivsurfonly(dXv)
 
-        self.warp.warpderiv(dXvWarp)
-        # if surfOnly:
-        #     self.warp.warpderivsurfonly(dXvWarp)
-        # else:
-        #     self.warp.warpderiv(dXvWarp)
 
     def verifyWarpDeriv(self, dXv=None, solverVec=True, dofStart=0, 
                         dofEnd=10, h=1e-6):

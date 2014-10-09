@@ -13,6 +13,8 @@ subroutine releaseMemory
   if (commonGridVecSet == 1) then 
      call VecDestroy(commonGridVec, ierr)
      call EChk(ierr,__FILE__,__LINE__)
+
+     deallocate(wallIndices)
      commonGridVecSet = 0
   end if
   
@@ -38,9 +40,13 @@ subroutine releaseMemory
      
      call VecDestroy(dXv, ierr)
      call EChk(ierr,__FILE__,__LINE__)
-     
+
      call VecScatterDestroy(common_to_warp, ierr)
      call EChk(ierr,__FILE__,__LINE__)
+
+     call VecScatterDestroy(common_to_dXs, ierr)
+     call EChk(ierr,__FILE__,__LINE__)
+    
 
      ! Deallocate the num/den data
      deallocate(numerator, denomenator, denomenator0)

@@ -24,13 +24,7 @@ FILES_TO_COMPLEXIFY = \
 	verifyWarpDeriv.F90\
 	warpMesh.F90\
 	warpDeriv.F90\
-
-
-#	warpMeshExact_b.F90\
-	warpMeshExact.F90\
-
-# warpMeshFast.F90\
-# warpMeshFast_b.F90\
+	warpDerivSurfOnly.F90\
 
 FILES_TO_COPY = 
 
