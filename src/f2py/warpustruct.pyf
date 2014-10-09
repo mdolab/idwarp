@@ -8,11 +8,12 @@ python module warpustruct ! in
          integer(kind=inttype) :: comm
        end subroutine initpetsc
 
-       subroutine createcommongrid(volnodes,nvollocal) ! in :test:createGrid.F90
+       subroutine createcommongrid(volnodes,wallnodes,nvollocal) ! in :test:createGrid.F90
          real(kind=realtype) dimension(3,nvollocal),intent(in) :: volnodes
+         integer(kind=inttype) dimension(nvollocal),intent(in),depend(nvollocal) :: wallnodes
          integer(kind=inttype), optional,intent(in),check(shape(volnodes,1)==nvollocal),depend(volnodes) :: nvollocal=shape(volnodes,1)
        end subroutine createcommongrid
-       
+
        subroutine readstructuredcgns(cgns_file)
          character*(*) :: cgns_file
        end subroutine readstructuredcgns

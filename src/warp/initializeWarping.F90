@@ -27,7 +27,7 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
   integer(kind=intType), dimension(:), allocatable :: dXsIndices
   real(kind=realtype) :: costOffset, totalCost, averageCost, c, fact(3, 2)
   integer(kind=intType) :: nVol, curBin, newBin, newDOFProc, totalDOF, nFace, nLoop
-  real(Kind=realType) :: dists(1), pt(3)
+  real(Kind=realType) :: dists(1), pt1(3), pt2(3), dx(3)
   integer(kind=intType) :: resInd(1), surfID
 
   ! ----------------------------------------------------------------------
@@ -356,25 +356,24 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
   call VecGetOwnershipRange(CommonGridVec, istart, iend, ierr)
   call EChk(ierr, __FILE__, __LINE__)
 
-
-  do i=1, size(wallIndices)/3
+   do i=1, size(wallIndices)/3
      call VecGetValues(CommonGridVec, 3, (/wallIndices(3*i-2), wallIndices(3*i-1), wallIndices(3*i)/), &
-          pt, ierr)
+          pt1, ierr)
      call EChk(ierr, __FILE__, __LINE__)
-    ! print *,myid, i, pt
+
      ! Now search for that node:
-     surfID = pt_in_tree(mytrees(1)%tp, pt)
+     surfID = pt_in_tree(mytrees(1)%tp, pt1)
      if (surfID /= 0) then 
-        dXsIndices(3*i-2) = (surfID-1)*3
-        dXsIndices(3*i-1) = (surfID-1)*3 + 1
-        dXsIndices(3*i  ) = (surfID-1)*3 + 2
+        dXsIndices(3*i-2) = (mytrees(1)%tp%invLink(surfID)-1)*3
+        dXsIndices(3*i-1) = (mytrees(1)%tp%invLink(surfID)-1)*3 + 1
+        dXsIndices(3*i  ) = (mytrees(1)%tp%invLink(surfID)-1)*3 + 2
      else
         print *,'Error: Could not find a surface node. Are you actually using the same mesh??'
-        print *, 'The Bad point is:', pt
+        print *, 'The Bad point is:', pt1
         stop
      end if
   end do
-  
+
   call ISCreateGeneral(warp_comm_world, size(wallIndices), wallIndices, &
        PETSC_COPY_VALUES, IS1, ierr)
   call EChk(ierr,__FILE__,__LINE__)

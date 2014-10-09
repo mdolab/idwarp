@@ -251,7 +251,8 @@ class USMesh(object):
             self.warp.gridinput.isymm = iSymm
 
         # Create the internal structures for volume mesh
-        self.warp.createcommongrid(x0.T)
+        wallNodes = np.zeros(len(x0), 'intc')
+        self.warp.createcommongrid(x0.T, wallNodes)
         pts = np.array(pts)
         # And run the common routine for setting up the surface
         self.warp.initializewarping(np.ravel(pts.real.astype('d')),
@@ -796,6 +797,7 @@ class USMesh(object):
         None. However, the resulting calculation is available from
         the getdXs() function.
         """
+
         if not surfOnly:
             if solverVec:
                 dXvWarp = np.zeros(self.warp.griddata.warpmeshdof, self.dtype)
@@ -807,7 +809,6 @@ class USMesh(object):
             if not solverVec:
                 raise Error('Fake warpDeriv only works with solverVec.')
             self.warp.warpderivsurfonly(dXv)
-
 
     def verifyWarpDeriv(self, dXv=None, solverVec=True, dofStart=0, 
                         dofEnd=10, h=1e-6):

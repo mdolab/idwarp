@@ -52,6 +52,7 @@ Module kd_tree
      integer(kind=intType), dimension(:), pointer :: XuInd
      integer(kind=intType), dimension(:), allocatable :: facePtr, faceConn
      integer(kind=intType), dimension(:, :), allocatable :: nodeToElem
+     integer(kind=intTYpe), dimension(:), allocatable :: invLink
      real(Kind=realType) :: errTol
      real(kind=realType), dimension(NERR) :: rstar
      integer(kind=intType) :: nFace
@@ -98,7 +99,7 @@ Contains
     deallocate(tp%normals, tp%normals0)
     deallocate(tp%Xu0, tp%Xu, tp%XuInd)
     deallocate(tp%facePtr, tp%faceConn, tp%nodeToElem)
-
+    deallocate(tp%invLink)
   Contains
 
     Recursive Subroutine destroy_node(np)
@@ -1279,6 +1280,16 @@ Contains
     allocate(uniquePts(3, size(nodes, 2)), link(size(nodes, 2)))
     call pointReduceFast(nodes, size(nodes, 2), symmTol, uniquePts, link, tp%n)
   
+    ! Compute the inverse of the link arrary: this goes from the tree
+    ! back to the original "nodes".
+    allocate(tp%invLink(tp%n))
+    tp%invLink = 0
+    do i=1, size(nodes, 2)
+       if (tp%invLink(link(i)) == 0) then
+          tp%invLink(link(i)) = i
+       end if
+    end do
+
     ! Let the user know the actual number of Surface nodes used for
     ! the calc. You will get one of these for each tree.
     if (myid == 0) then

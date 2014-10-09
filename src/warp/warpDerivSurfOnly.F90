@@ -10,7 +10,7 @@ subroutine warpDerivSurfOnly(dXv_f, ndof)
   real(kind=realType), intent(in) :: dXv_f(ndof)
 
   ! Local Variables
-  integer(kind=intType) :: ierr
+  integer(kind=intType) :: ierr,i
 
   ! Place arrays
   call VecPlaceArray(solverGridVec, dXv_f, ierr)
@@ -34,7 +34,7 @@ subroutine warpDerivSurfOnly(dXv_f, ndof)
   call VecScatterBegin(common_to_dXs, commonGridVec, dXs, &
        ADD_VALUES, SCATTER_FORWARD, ierr)
   call EChk(ierr, __FILE__, __LINE__)
-  call VecScatterEnd  (common_to_dXs, solverGridVec, dXs, &
+  call VecScatterEnd  (common_to_dXs, commonGridVec, dXs, &
        ADD_VALUES, SCATTER_FORWARD, ierr)
   call EChk(ierr, __FILE__, __LINE__)
   
