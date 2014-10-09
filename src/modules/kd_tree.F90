@@ -11,13 +11,7 @@ Module kd_tree
   ! In otherwords for an embedding of N D-dimensional vectors, the
   ! data file is here, in natural Fortran order  data(1:D, 1:N)
   ! because Fortran lays out columns first,
-  !
-  ! whereas conventionally (C-style) it is data(1:N,1:D)
-  ! as in the original kd_tree module. 
-  !
 
-  ! .. Parameters ..
-  ! you choose this.
   Integer(kind=IntType) :: bucket_size = 18
   integer(kind=intType), Parameter :: NERR = 12
 
@@ -27,6 +21,7 @@ Module kd_tree
      type(tree_master_record), pointer :: tp
   end type tnp
 
+  ! This is the master list of trees
   type(tnp), dimension(:), allocatable :: mytrees
 
   ! Global information about the tree pointer to the actual data array
@@ -55,10 +50,8 @@ Module kd_tree
      real(kind=realType) , dimension(:, :, :), pointer :: Mi, Mib
      real(kind=realType) , dimension(:, :), pointer :: Xu0, Xu, Xub
      integer(kind=intType), dimension(:), pointer :: XuInd
-
      integer(kind=intType), dimension(:), allocatable :: facePtr, faceConn
      integer(kind=intType), dimension(:, :), allocatable :: nodeToElem
-
      real(Kind=realType) :: errTol
      real(kind=realType), dimension(NERR) :: rstar
      integer(kind=intType) :: nFace
@@ -95,10 +88,10 @@ Module kd_tree
 Contains
 
   Subroutine destroy_tree(tp)
-    ! Deallocates all memory for the tree, except input data matrix
-    ! .. Structure Arguments ..
+    ! Deallocates all memory for the tree
+    implicit none
     Type (tree_master_record), Pointer :: tp
-    ! ..
+
     call destroy_node(tp%root)
     deallocate(tp%indexes, tp%the_data)
     deallocate(tp%Ai, tp%Bi, tp%Mi)
@@ -109,12 +102,8 @@ Contains
   Contains
 
     Recursive Subroutine destroy_node(np)
-      ! .. Structure Arguments ..
+      implicit none
       Type (tree_node), Pointer :: np
-      ! ..
-      ! .. Intrinsic Functions ..
-      Intrinsic ASSOCIATED
-      ! ..
       If (ASSOCIATED(np%left)) Then
          Call destroy_node(np%left)
          Deallocate (np%left)
@@ -499,6 +488,7 @@ Contains
   end subroutine labelNodes
 
   recursive subroutine setAi(tp, np)
+    ! Propagate the node weights to all nodes. 
     implicit none
     Type (tree_master_record), Pointer :: tp
     Type (tree_node), Pointer :: np
@@ -557,7 +547,7 @@ Contains
 
   Recursive Subroutine setData(tp, np)
     ! Update the nodal displacements and rotation matrices based on a
-    ! new set of displcements. 
+    ! new set of displcements.
 
     implicit none
     Type (tree_master_record), Pointer :: tp
@@ -577,10 +567,14 @@ Contains
        call setData(tp, np%left)
        call setData(tp, np%right)
     end if
-
   end subroutine setData
 
   recursive subroutine evalNode(tp, np, r, num, den, approxDen)
+    ! This the main fast evaluation routine for the displacements. It
+    ! is therefore recrusive. Note that num and den must be zeroed
+    ! externally before this call. approxDen is used for checking
+    ! error tolerances. 
+
     implicit none
     ! Subroutine arguments
     Type (tree_master_record), Pointer :: tp
@@ -592,9 +586,7 @@ Contains
 
     ! Working variables
     real(kind=realType), dimension(3) :: rr, Si
-    !real(kind=realType) :: Wi, LdefoDist, LdefoDist3
     real(kind=realType) :: dist, err
-    !integer(kind=intType) :: i
 
     if (np%dnum == 0) then 
        ! Leaf node -> Must do exact calc:
@@ -614,7 +606,6 @@ Contains
           ! Use the first error check:
           call getError(tp, np, dist, err)
           if (err < tp%errTol * approxDen) then
-          !if (dist / np%radius > five) then 
              call evalNodeApprox(tp, np, r, num, den, dist)
           else
              ! Not good enough error so call children
@@ -629,8 +620,7 @@ Contains
     ! Loop over the owned nodes and evaluate the exact numerator and
     ! denomenator at the requesed r. Note that this rouine *may* be
     ! called on *any* node including the root node. When called on the
-    ! root node this replicates *precisely* the brute force algorithm
-    ! (although not as efficently)
+    ! root node this is actually the exact scheme. 
     implicit none
     Type (tree_master_record), Pointer :: tp
     Type (tree_node), Pointer :: np
@@ -676,9 +666,7 @@ Contains
     Si(1) = np%Mi(1, 1)*r(1) + np%Mi(1, 2)*r(2) + np%Mi(1, 3)*r(3) + np%bi(1) - r(1)
     Si(2) = np%Mi(2, 1)*r(1) + np%Mi(2, 2)*r(2) + np%Mi(2, 3)*r(3) + np%bi(2) - r(2)
     Si(3) = np%Mi(3, 1)*r(1) + np%Mi(3, 2)*r(2) + np%Mi(3, 3)*r(3) + np%bi(3) - r(3)
-    num(1) = num(1) + Wi*Si(1)
-    num(2) = num(2) + Wi*Si(2)
-    num(3) = num(3) + Wi*Si(3)
+    num = num + Wi*Si
     den = den + Wi
   end subroutine evalNodeApprox
 
@@ -856,70 +844,6 @@ Contains
   end subroutine computeErrors
 
 
- ! recursive subroutine computeErrorsNum(tp, np)
- !    ! This routine computes an estimate of the error to be induced in
- !    ! the denomenator at each tree node. Then, when we are evaluating
- !    ! the displacment we can determine if the errors induced by the
- !    ! approximation are acceptable or not.
-
- !    implicit none
- !    Type (tree_master_record), Pointer :: tp
- !    Type (tree_node), Pointer :: np 
- !    real(kind=realType) , dimension(3, 20) :: vpts
- !    real(kind=realType) , dimension(3, 12) :: fpts
- !    real(kind=realType) :: numExact(3, 20), numApprox(3, 20), rr(3), Si(3)
- !    real(kind=realType) :: LdefoDist, LdefODist3, dist, W, r(3), Wi
- !    integer(kind=intType) :: ii, i, j
-
- !    if (np%dnum /= 0) then 
- !       do j=1, NERR
- !          numExact= zero
- !          numApprox = zero
- !          call getSpherePts(np%X, np%radius*tp%rstar(j), vpts, fpts)
-
- !          np%err(j) = zero
- !          do ii=1, 20
- !             ! Compute exact value:
- !             do i=np%l, np%u
- !                rr = vpts(:, ii) - tp%Xu0(:, i)
- !                dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2)
- !                LdefoDist = tp%Ldef/dist
- !                Ldefodist3 = LdefoDist**3
- !                Wi = tp%Ai(i)*(Ldefodist3 + tp%alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
- !                Si(1) = tp%Mi(1, 1, i)*r(1) + tp%Mi(1, 2, i)*r(2) + tp%Mi(1, 3, i)*r(3) + tp%bi(1, i) - r(1)
- !                Si(2) = tp%Mi(2, 1, i)*r(1) + tp%Mi(2, 2, i)*r(2) + tp%Mi(2, 3, i)*r(3) + tp%bi(2, i) - r(2)
- !                Si(3) = tp%Mi(3, 1, i)*r(1) + tp%Mi(3, 2, i)*r(2) + tp%Mi(3, 3, i)*r(3) + tp%bi(3, i) - r(3)
-  
- !                numExact(:, ii) = numExact(:, ii) + Wi*Si
- !             end do
-
- !             ! And the approx value:
- !             rr = vpts(:, ii) - np%X
- !             dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2)
- !             LdefoDist = tp%Ldef/dist
- !             Ldefodist3 = LdefoDist**3
- !             Wi = np%Ai*(Ldefodist3 + tp%alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
- !             Si(1) = np%Mi(1, 1)*r(1) + np%Mi(1, 2)*r(2) + np%Mi(1, 3)*r(3) + np%bi(1) - r(1)
- !             Si(2) = np%Mi(2, 1)*r(1) + np%Mi(2, 2)*r(2) + np%Mi(2, 3)*r(3) + np%bi(2) - r(2)
- !             Si(3) = np%Mi(3, 1)*r(1) + np%Mi(3, 2)*r(2) + np%Mi(3, 3)*r(3) + np%bi(3) - r(3)
-
- !             numApprox(:, ii) = numApprox(:, ii) + Wi*Si
-
- !             ! Now set the nodal error:
- !             np%NumErr(j) = np%numErr(j) + &
- !                  (numExact(1, ii) - numApprox(1, ii))**2 + &
- !                  (numExact(2, ii) - numApprox(2, ii))**2 + &
- !                  (numExact(3, ii) - numApprox(3, ii))**2  
- !          end do
-
- !          ! This the RMS Error:
- !          np%numErr(j) = sqrt(np%numErr(j)/20)
- !       end do
- !       ! Now call the children:
- !       call computeErrorsNum(tp, np%left)
- !       call computeErrorsNum(tp, np%right)
- !    end if
- !  end subroutine computeErrorsNum
 
   subroutine getError(tp, np, dist, err)
     ! Simple routine to use the stored errors to estimate what the
@@ -1110,7 +1034,6 @@ Contains
           tp%Bib(:, i)    = tp%Bib(:, i)    + np%Bib * ovrN
           tp%Mib(:, :, i) = tp%Mib(:, :, i) + np%Mib * ovrN
        end do
-
        ! Call each of the children
        call setData_b(tp, np%left)
        call setData_b(tp, np%right)
@@ -1154,6 +1077,7 @@ Contains
        sumarea = zero
        sumnormal = zero
        nelem = tp%nodetoelem(1, i)
+      
        DO jj=1,nelem
           ind = tp%nodetoelem(1+jj, i)
           ! Extract points for this face
@@ -1162,7 +1086,7 @@ Contains
              CALL PUSHREAL8ARRAY(points(:, kk), realtype*3/8)
              points(:, kk) = tp%xu(:, tp%faceconn(tp%faceptr(ind-1)+kk))
           END DO
-          CALL PUSHINTEGER4(kk - 1)
+          CALL PUSHINTEGER4(kk-1)
           CALL PUSHREAL8ARRAY(facenormal, realtype*3/8)
           CALL GETELEMENTPROPS(points, npts, facearea, facenormal)
           CALL PUSHREAL8ARRAY(da, realtype/8)
@@ -1223,10 +1147,10 @@ Contains
     DO i=1, tp%n
        j = tp%xuind(i)
        xsptrb(3*j-2:3*j) = xsptrb(3*j-2:3*j) + tp%xub(:, i)
-       tp%xub(:, i) = 0.0_8
+       !tp%xub(:, i) = 0.0_8
     END DO
-    tp%bib = 0.0_8
-    tp%mib = 0.0_8
+    ! tp%bib = 0.0_8
+    ! tp%mib = 0.0_8
   END SUBROUTINE COMPUTENODALPROPERTIES_B
 #endif
 
@@ -1555,3 +1479,68 @@ Contains
   end subroutine computeNodalProperties
 End Module kd_tree
 
+
+ ! recursive subroutine computeErrorsNum(tp, np)
+ !    ! This routine computes an estimate of the error to be induced in
+ !    ! the denomenator at each tree node. Then, when we are evaluating
+ !    ! the displacment we can determine if the errors induced by the
+ !    ! approximation are acceptable or not.
+
+ !    implicit none
+ !    Type (tree_master_record), Pointer :: tp
+ !    Type (tree_node), Pointer :: np 
+ !    real(kind=realType) , dimension(3, 20) :: vpts
+ !    real(kind=realType) , dimension(3, 12) :: fpts
+ !    real(kind=realType) :: numExact(3, 20), numApprox(3, 20), rr(3), Si(3)
+ !    real(kind=realType) :: LdefoDist, LdefODist3, dist, W, r(3), Wi
+ !    integer(kind=intType) :: ii, i, j
+
+ !    if (np%dnum /= 0) then 
+ !       do j=1, NERR
+ !          numExact= zero
+ !          numApprox = zero
+ !          call getSpherePts(np%X, np%radius*tp%rstar(j), vpts, fpts)
+
+ !          np%err(j) = zero
+ !          do ii=1, 20
+ !             ! Compute exact value:
+ !             do i=np%l, np%u
+ !                rr = vpts(:, ii) - tp%Xu0(:, i)
+ !                dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2)
+ !                LdefoDist = tp%Ldef/dist
+ !                Ldefodist3 = LdefoDist**3
+ !                Wi = tp%Ai(i)*(Ldefodist3 + tp%alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
+ !                Si(1) = tp%Mi(1, 1, i)*r(1) + tp%Mi(1, 2, i)*r(2) + tp%Mi(1, 3, i)*r(3) + tp%bi(1, i) - r(1)
+ !                Si(2) = tp%Mi(2, 1, i)*r(1) + tp%Mi(2, 2, i)*r(2) + tp%Mi(2, 3, i)*r(3) + tp%bi(2, i) - r(2)
+ !                Si(3) = tp%Mi(3, 1, i)*r(1) + tp%Mi(3, 2, i)*r(2) + tp%Mi(3, 3, i)*r(3) + tp%bi(3, i) - r(3)
+  
+ !                numExact(:, ii) = numExact(:, ii) + Wi*Si
+ !             end do
+
+ !             ! And the approx value:
+ !             rr = vpts(:, ii) - np%X
+ !             dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2)
+ !             LdefoDist = tp%Ldef/dist
+ !             Ldefodist3 = LdefoDist**3
+ !             Wi = np%Ai*(Ldefodist3 + tp%alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
+ !             Si(1) = np%Mi(1, 1)*r(1) + np%Mi(1, 2)*r(2) + np%Mi(1, 3)*r(3) + np%bi(1) - r(1)
+ !             Si(2) = np%Mi(2, 1)*r(1) + np%Mi(2, 2)*r(2) + np%Mi(2, 3)*r(3) + np%bi(2) - r(2)
+ !             Si(3) = np%Mi(3, 1)*r(1) + np%Mi(3, 2)*r(2) + np%Mi(3, 3)*r(3) + np%bi(3) - r(3)
+
+ !             numApprox(:, ii) = numApprox(:, ii) + Wi*Si
+
+ !             ! Now set the nodal error:
+ !             np%NumErr(j) = np%numErr(j) + &
+ !                  (numExact(1, ii) - numApprox(1, ii))**2 + &
+ !                  (numExact(2, ii) - numApprox(2, ii))**2 + &
+ !                  (numExact(3, ii) - numApprox(3, ii))**2  
+ !          end do
+
+ !          ! This the RMS Error:
+ !          np%numErr(j) = sqrt(np%numErr(j)/20)
+ !       end do
+ !       ! Now call the children:
+ !       call computeErrorsNum(tp, np%left)
+ !       call computeErrorsNum(tp, np%right)
+ !    end if
+ !  end subroutine computeErrorsNum

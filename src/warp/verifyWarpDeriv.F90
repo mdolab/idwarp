@@ -1,4 +1,4 @@
-subroutine verifyWarpDeriv(dXv_f, ndof_warp, dof_start, dof_end)
+subroutine verifyWarpDeriv(dXv_f, ndof_warp, dof_start, dof_end, h)
 
   use gridData
   use gridInput
@@ -8,17 +8,15 @@ subroutine verifyWarpDeriv(dXv_f, ndof_warp, dof_start, dof_end)
 
   ! Input
   integer(kind=intType) :: ndof_warp
-  real(kind=realType) :: dXv_f(ndof_warp)
+  real(kind=realType) :: dXv_f(ndof_warp), h
   integer(kind=inttype) :: dof_start, dof_end
 
   ! Working
   integer(kind=intType) :: istart, iend, dof, dofSurfMax, ierr, nDof_to_check
-  real(kind=realType) :: h, FDvalue, ADValue(1), value, err, orig_value(1), val
+  real(kind=realType) ::FDvalue, ADValue(1), value, err, orig_value(1), val
   real(kind=realType), dimension(:), allocatable :: deriv, xplus, xminus
 
   allocate(deriv(warpMeshDOF), xplus(warpMeshDOF), xminus(warpMeshDOF))
-
-  h = 1.0e-4_realType
 
   call VecGetSize(dXs, dofSurfMax, ierr)
   call EChk(ierr, __FILE__, __LINE__)
