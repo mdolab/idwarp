@@ -105,7 +105,7 @@ class USMesh(object):
                         "creation of this object")
 
         # Initialize PETSc if not done so
-        self.warp.initpetsc(comm.py2f())
+        self.warp.initpetsc(self.comm.py2f())
 
         # Set realtype of 'd'. 'D' is used in Complex and set in
         # UnstructuredMesh_C.py
