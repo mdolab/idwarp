@@ -60,7 +60,7 @@ subroutine createCommonGrid(volNodes, wallNodes, nVolLocal)
 
   ! Now each processor adds it's own nodes (It is possible only one proc does it)
   do i=1, nVolLocal 
-     call VecSetValuesBlocked(commonGridVec, 1, volNodesProc(myid) + i - 1, volNodes(:, i), INSERT_VALUES, ierr)
+     call VecSetValuesBlocked(commonGridVec, 1, (/volNodesProc(myid) + i - 1/), volNodes(:, i), INSERT_VALUES, ierr)
      call EChk(ierr,__FILE__,__LINE__)
   end do
 
