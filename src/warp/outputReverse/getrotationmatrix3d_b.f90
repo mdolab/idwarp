@@ -16,15 +16,15 @@
    ! Local Variables
    REAL(kind=realtype), DIMENSION(3) :: axis, vv1, vv2
    REAL(kind=realtype), DIMENSION(3) :: axisb, vv2b
-   REAL(kind=realtype) :: magv1, magv2, axismag, angle
-   REAL(kind=realtype) :: magv2b, axismagb, angleb
+   REAL(kind=realtype) :: magv1, magv2, axismag, angle, arg
+   REAL(kind=realtype) :: magv2b, axismagb, angleb, argb
    REAL(kind=realtype), DIMENSION(3, 3) :: a, c
    REAL(kind=realtype), DIMENSION(3, 3) :: ab, cb
    INTEGER :: branch
    INTRINSIC COS
    INTRINSIC SIN
-   REAL(kind=realtype) :: tempb
    INTRINSIC ACOS
+   INTRINSIC MIN
    CALL GETMAG(v1, magv1)
    CALL GETMAG(v2, magv2)
    ! Start by determining the rotation axis by getting the 
@@ -46,7 +46,14 @@
    ! Now compute the rotation angle about that axis
    vv1 = v1/magv1
    vv2 = v2/magv2
-   angle = ACOS(vv1(1)*vv2(1) + vv1(2)*vv2(2) + vv1(3)*vv2(3))
+   IF (one .GT. vv1(1)*vv2(1) + vv1(2)*vv2(2) + vv1(3)*vv2(3)) THEN
+   arg = vv1(1)*vv2(1) + vv1(2)*vv2(2) + vv1(3)*vv2(3)
+   CALL PUSHCONTROL1B(0)
+   ELSE
+   arg = one
+   CALL PUSHCONTROL1B(1)
+   END IF
+   angle = ACOS(arg)
    CALL PUSHCONTROL1B(1)
    END IF
    ! Now that we have an axis and an angle,build the rotation Matrix
@@ -150,17 +157,20 @@
    axisb = 0.0_8
    axismagb = 0.0_8
    ELSE
-   vv2b = 0.0_8
-   IF (vv1(1)*vv2(1) + vv1(2)*vv2(2) + vv1(3)*vv2(3) .EQ. 1.0 .OR. vv1(&
-   &        1)*vv2(1) + vv1(2)*vv2(2) + vv1(3)*vv2(3) .EQ. (-1.0)) THEN
-   tempb = 0.0
+   IF (arg .EQ. 1.0 .OR. arg .EQ. (-1.0)) THEN
+   argb = 0.0
    ELSE
-   tempb = -(angleb/SQRT(1.0-(vv1(1)*vv2(1)+vv1(2)*vv2(2)+vv1(3)*vv2(&
-   &        3))**2))
+   argb = -(angleb/SQRT(1.0-arg**2))
    END IF
-   vv2b(1) = vv2b(1) + vv1(1)*tempb
-   vv2b(2) = vv2b(2) + vv1(2)*tempb
-   vv2b(3) = vv2b(3) + vv1(3)*tempb
+   CALL POPCONTROL1B(branch)
+   IF (branch .EQ. 0) THEN
+   vv2b = 0.0_8
+   vv2b(1) = vv2b(1) + vv1(1)*argb
+   vv2b(2) = vv2b(2) + vv1(2)*argb
+   vv2b(3) = vv2b(3) + vv1(3)*argb
+   ELSE
+   vv2b = 0.0_8
+   END IF
    v2b = v2b + vv2b/magv2
    magv2b = SUM(-(v2*vv2b/magv2))/magv2
    CALL POPREAL8ARRAY(axis, realtype*3/8)
