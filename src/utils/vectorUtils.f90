@@ -39,7 +39,7 @@ subroutine getRotationMatrix3d(v1, v2, Mi)
 
   ! Local Variables
   real(kind=realType), dimension(3) :: axis, vv1, vv2
-  real(kind=realType):: magV1, magV2, axisMag, angle
+  real(kind=realType):: magV1, magV2, axisMag, angle, arg
   real(kind=realType), dimension(3, 3):: A, C
 
   call getMag(v1, magV1)
@@ -63,11 +63,11 @@ subroutine getRotationMatrix3d(v1, v2, Mi)
      ! Now compute the rotation angle about that axis
      vv1 = v1/magv1
      vv2 = v2/magv2
-     angle = acos(vv1(1)*vv2(1) + vv1(2)*vv2(2) + vv1(3)*vv2(3))
+     arg = min(one, vv1(1)*vv2(1) + vv1(2)*vv2(2) + vv1(3)*vv2(3))
+     angle = acos(arg)
   end if
   ! Now that we have an axis and an angle,build the rotation Matrix
-
-! A skew symmetric representation of the normalized axis 
+  ! A skew symmetric representation of the normalized axis 
   A(1,1) = zero
   A(1,2) = -axis(3)
   A(1,3) = axis(2)
