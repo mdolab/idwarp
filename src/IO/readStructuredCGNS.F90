@@ -174,6 +174,16 @@ subroutine readStructuredCGNS(cgns_file)
                     iSymm = tmpSym
                  end if
                
+
+                 ! Hard zero the sym plane in case our mesh is bad
+                 do k=pts(3, 1), pts(3, 2)
+                    do j=pts(2, 1), pts(2, 2)
+                       do i=pts(1, 1), pts(1, 2)
+                          allNodes(isymm, offset + (k-1)*dims(1)*dims(2) + (j-1)*dims(1) + i) = zero
+                       end do
+                    end do
+                 end do
+
                  if (tmpSym /= iSymm) then
                     print *, 'Error: detected more than 1 symmetry plane direction.'
                     print *, 'pyWarpUnstruct cannot handle this'
