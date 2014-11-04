@@ -947,7 +947,7 @@ class USMesh(object):
         f.write('\n')
         f.write('\n')
 
-        nodes = self.getWarpGrid()
+        nodes = self.getCommonGrid()
         nodes = nodes.reshape((len(nodes)/3, 3))
         nPoints = len(nodes)
         f.write('%d\n'% nPoints)
