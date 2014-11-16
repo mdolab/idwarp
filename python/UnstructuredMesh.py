@@ -500,7 +500,7 @@ class USMesh(object):
                     cCnt += cellSize
 
                 self.familyGroup[groupName]['connectivity'] = (
-                    np.array(cellConn).reshape((len(cellConn)/4, 4)))
+                    np.array(cellConn).astype('intc').reshape((len(cellConn)/4, 4)))
 
     def printFamilyList(self):
         """Prints the families in the CGNS file"""
@@ -947,7 +947,7 @@ class USMesh(object):
         f.write('\n')
         f.write('\n')
 
-        nodes = self.getWarpGrid()
+        nodes = self.getCommonGrid()
         nodes = nodes.reshape((len(nodes)/3, 3))
         nPoints = len(nodes)
         f.write('%d\n'% nPoints)
