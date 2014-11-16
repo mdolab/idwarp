@@ -30,14 +30,7 @@ default:
 	echo "The modify this config file as required. Typically the CGNS directory "; \
 	echo "will have to be modified. With the config file specified, rerun "; \
 	echo "'make' and the build will start"; \
-	fi;
-# Otherwise we do the acutal make:
-	@if [ -f "config/config.mk" ]; then \
-	mkdir -p obj;\
-	mkdir -p mod;\
-	ln -sf config/config.mk config.mk;\
-	make warp;\
-	(cd src/f2py && make);\
+	else make warp;\
 	fi;
 
 clean:
@@ -54,6 +47,10 @@ clean:
 	rm -f lib/lib* mod/* obj/*
 
 warp:
+	mkdir -p obj
+	mkdir -p mod
+	ln -sf config/config.mk config.mk
+
 	@for subdir in $(WARP_SUBDIRS) ; \
 		do \
 			echo "making $@ in $$subdir"; \
@@ -61,4 +58,5 @@ warp:
 			(cd $$subdir && make) || exit 1; \
 		done
 	(cd lib && make)
+	(cd src/f2py && make)
 
