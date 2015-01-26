@@ -229,27 +229,24 @@ subroutine readStructuredCGNS(cgns_file)
   call MPI_bcast(nNodes, 1, MPI_INTEGER, 0, warp_comm_world, ierr)
   call EChk(ierr, __FILE__, __LINE__)
 
-  ! Now determine the local size:
-  avgNodes = dble(nNodes)/nProc
-
-  istart = int(myid * avgNodes)+1
-  iend   = int((myid+1)*avgNodes)
-
-  localSize = iend - istart + 1
-  allocate(localNodes(3, localSize))
-  allocate(localWallNodes(localSize))
-
   if (myid == 0) then
+
+     istart = 0 + 1
+     iend   = int(nNodes*(one/nProc))
+     localSize = iend - istart + 1
+     allocate(localNodes(3, localSize))
+     allocate(localWallNodes(localSize))
+
      ! Just copy for the root proc:
      localNodes(:, :) = allNodes(:, 1:localSize)
      localWallNodes(:) = wallNodes(1:localSize)
 
      ! Loop over the remainer of the procs and send
      do iProc=1, nProc-1
-        istart = int(iProc * avgNodes)+1
-        iend   = int((iProc+1)*avgNodes)
+        istart = int(nNodes*(dble(iProc)/nProc)) +1 
+        iend   = int(nNodes*(dble(iProc+1)/nProc))
         localSize = iend - istart + 1
-        
+
         call MPI_Send(allNodes(:, iStart), localSize*3, MPI_REAL8, iProc, &
              11, warp_comm_world, ierr)
         call EChk(ierr, __FILE__, __LINE__)
@@ -261,6 +258,14 @@ subroutine readStructuredCGNS(cgns_file)
      deallocate(allNodes)
      deallocate(wallNodes)
   else
+
+     istart = int(nNodes*(dble(myid)/nProc)) +1 
+     iend   = int(nNodes*(dble(myid+1)/nProc))
+     localSize = iend - istart + 1
+     
+     allocate(localNodes(3, localSize))
+     allocate(localWallNodes(localSize))
+
      ! Receive on all the other procs:
      call MPI_recv(localNodes, 3*localSize, MPI_REAL8, 0, 11, &
           warp_comm_world, status, ierr)
@@ -272,6 +277,7 @@ subroutine readStructuredCGNS(cgns_file)
 
   ! All we are doing to do here is to create the Xv vector --- which
   ! is done via a call to createCommonGrid
+
   call createCommonGrid(localNodes, localWallNodes, size(localNodes, 2))
   deallocate(localNodes, localWallNodes)
 end subroutine readStructuredCGNS
