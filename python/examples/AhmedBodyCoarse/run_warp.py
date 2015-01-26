@@ -217,7 +217,7 @@ mesh.setSurfaceCoordinates(DVGeo.update(ptSetName),'all')
 mesh.warpMesh()
 DVGeo.writeTecplot('warpedFFD.dat')
 mesh.writeOFGridTecplot('warped.dat')
-
+mesh.writeOpenFOAMVolumePoints()
 
 # # Repeat ================
 # #xDV['length'][2] = 1.25#2.0#1.05
