@@ -953,7 +953,7 @@ class USMesh(object):
         f.write('%d\n'% nPoints)
         f.write('(\n')
         for i in range(nPoints):
-            f.write('(%f %f %f)\n'%(nodes[i, 0], nodes[i, 1], nodes[i, 2]))
+            f.write('(%20.12f %20.12f %20.12f)\n'%(nodes[i, 0], nodes[i, 1], nodes[i, 2]))
         f.write(')\n\n\n')
         f.write('// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //\n')
 
