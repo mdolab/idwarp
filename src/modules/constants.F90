@@ -29,9 +29,9 @@ module constants
   integer(kind=intType), parameter :: maxCGNSNameLen =  32
 
   ! Numerical constants
-
   real(kind=realType), parameter :: pi    = 3.1415926535897931_realType
-  real(kind=realType), parameter :: phi = 1+sqrt(5.0_realType)/2.0_realType
+  real(kind=realType), parameter :: phi = 2.1180339887498949 !1+sqrt(5.0)/2
+
   ! Floating point parameters.
   real(kind=realType), parameter :: zero  = 0.0_realType
   real(kind=realType), parameter :: one   = 1.0_realType
@@ -49,6 +49,5 @@ module constants
   real(kind=realType), parameter :: quarter= 0.25_realType
   real(kind=realType), parameter :: sixth  = one/six
   real(kind=realType), parameter :: eighth = 0.125_realType
-
 
 end module constants

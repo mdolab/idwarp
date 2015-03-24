@@ -13,6 +13,7 @@ SUBDIR_SRC    = src/modules	\
 		src/ADFirstAidKit\
 		src/warp	\
 		src/warp/outputReverse\
+		src/warp/outputForward\
 
 
 WARP_SUBDIRS       = $(SUBDIR_SRC)
