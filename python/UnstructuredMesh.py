@@ -832,10 +832,11 @@ class USMesh(object):
             the solverVec flag.
         """
         indices = self._getIndices('all')
-        dXvWarp = numpy.zeros(self.warpMeshDOF)
+        dXvWarp = np.zeros(self.warp.griddata.warpmeshdof)
+        self.warpMesh()
         self.warp.warpderivfwd(indices, dXs.flatten(), dXvWarp)
         if solverVec:
-            dXv = numpy.zeros(self.solverMeshDOF)
+            dXv = np.zeros(self.warp.griddata.solvermeshdof)
             self.warp.warp_to_solver_grid(dXvWarp, dXv)
             return dXv
         else:
@@ -1149,11 +1150,9 @@ class USMesh(object):
             self.familyList[fam] = IWALL
 
     def _getIndices(self, groupName):
-        """
-        Try to see if groupName is already set, if not raise an
-        exception
+        """ Try to see if groupName is already set, if not raise an
+        exception """
 
-        """
         try: 
             indices = self.familyGroup[groupName]['indices']
         except:
@@ -1162,12 +1161,9 @@ class USMesh(object):
         return indices
 
     def _checkOptions(self, solverOptions):
-        """
-        Check the solver options against the default ones
-        and add opt
-        ion iff it is NOT in solverOptions
+        """ Check the solver options against the default ones and add
+        opt ion iff it is NOT in solverOptions """
 
-        """
         for key in self.solverOptionsDefault.keys():
             if not key in solverOptions.keys():
                 solverOptions[key] = self.solverOptionsDefault[key]
