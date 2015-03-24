@@ -1,7 +1,10 @@
 !    -*- f90 -*-
 ! Note: the context of this file is case sensitive.
-
+#ifdef USE_COMPLEX
+python module warpustruct_cs ! in 
+#else
 python module warpustruct ! in 
+#endif
     interface  ! in :warpustruct
 
        subroutine initpetsc(comm)
@@ -149,7 +152,11 @@ python module warpustruct ! in
        end module kd_tree
        
     end interface 
+#ifdef USE_COMPLEX
+end python module warpustruct_cs
+#else
 end python module warpustruct
+#endif
 
 ! This file was auto-generated with f2py (version:2).
 ! See http://cens.ioc.ee/projects/f2py2e/

@@ -326,7 +326,7 @@ Contains
     sr%correltime = 0
     sr%dsl => distances
     sr%il => indexes
-    sr%dsl = HUGE(sr%dsl)    ! set to huge positive values
+    sr%dsl = HUGE(1.0)    ! set to huge positive values
     sr%il = -1               ! set to invalid indexes
     psr => sr                ! in C this would be psr = &sr
 
@@ -371,7 +371,7 @@ Contains
     sr%correltime = 0
     sr%dsl => distances
     sr%il => indexes
-    sr%dsl = HUGE(sr%dsl)    ! set to huge positive values
+    sr%dsl = HUGE(1.0)    ! set to huge positive values
     sr%il = -1               ! set to invalid indexes
     psr => sr                ! in C this would be psr = &sr
 
@@ -971,7 +971,7 @@ Contains
        call zeroDeriv(np%right)
     end if
   end subroutine zeroDeriv
-
+#ifndef USE_COMPLEX
   recursive subroutine evalNode_b(tp, np, r, numb, approxDen, Bib, Mib)
     implicit none
     ! Subroutine arguments
@@ -1198,7 +1198,7 @@ Contains
     ! tp%mib = 0.0_8
   END SUBROUTINE COMPUTENODALPROPERTIES_B
 #endif
-
+#endif
   function myCreateTree(nodes, cumNodesProc, faceSizesLocal, faceConnLocal) Result(tp)
     use gridInput
     use communication
@@ -1420,9 +1420,20 @@ Contains
     ! up and it seemed to work so I never touch it after. A good thing
     ! would be to plot the actual error profiles and see how the
     ! linear approximation at the following points matches. 
-    tp%rstar = (/two, three, four, five, 7.5_realType, 10.0_realType, &
-         20.0_realType, 40.0_realType, 80.0_realType, 160.0_realType, 320.0_realType, &
-         640.0_realType/)
+
+    tp%rstar(1) = two
+    tp%rstar(2) = three
+    tp%rstar(3) = four
+    tp%rstar(4) = five
+    tp%rstar(5) = 7.5_realType
+    tp%rstar(6) = 10.0_realType
+    tp%rstar(7) = 20.0_realType
+    tp%rstar(8) = 40.0_realType
+    tp%rstar(9) = 80.0_realType
+    tp%rstar(10) = 160.0_realType
+    tp%rstar(11) = 320.0_realType
+    tp%rstar(12) = 640.0_realType
+
     ! Perform some initialization on the tree
     call computeErrors(tp, tp%root)
   end function myCreateTree

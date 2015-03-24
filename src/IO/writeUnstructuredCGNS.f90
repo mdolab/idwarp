@@ -1,17 +1,10 @@
-! ====================================================================
-! File: writeUnstructuredCGNS.f90
-! Author: C.A.(Sandy) Mader
-! Date Started: July 10, 2014
-! Date Modified:
+subroutine writeUnstructuredCGNSFile()!cgns_file, comm)
 
-subroutine writeUnstructuredCGNSFile(cgns_file, comm)
-
-!   use precision
-!   use communication
-!   use gridData
-!   use cgnsData
-!   implicit none
-!   !include 'cgnslib_f.h'
+  use precision
+  use communication
+  use gridData
+  implicit none
+  !include 'cgnslib_f.h'
 
 !   ! Input Arguments
 !   character*(*) :: cgns_file

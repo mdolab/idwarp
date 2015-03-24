@@ -1,21 +1,15 @@
-! ====================================================================
-! File: readUnstructuredCGNS.f90
-! Author: C.A.(Sandy) Mader
-! Date Started: July 10, 2014
-! Date Modified:
+subroutine readUnstructuredCGNSFile(cgns_file, comm)
 
-! subroutine readUnstructuredCGNSFile(cgns_file, comm)
-
-!   use precision
-!   use communication
-!   use gridData
+  use precision
+  use communication
+  use gridData
 !   use cgnsData
-!   implicit none
+  implicit none
 
 
-!   ! Input Arguments
-   ! character*(*) :: cgns_file
-   ! integer(kind=intType) :: comm
+  ! Input Arguments
+   character*(*) :: cgns_file
+   integer(kind=intType) :: comm
 
 !   integer(kind=intType):: ierr
 !   ! integer(kind=intType):: index_base, index_zone
@@ -422,6 +416,6 @@
 !      end do
 !   end do
 
-! end subroutine readUnstructuredCGNSFile
+end subroutine readUnstructuredCGNSFile
 
 

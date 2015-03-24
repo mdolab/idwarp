@@ -48,4 +48,4 @@ complexify:
 			cp $$file ../../src_cs/IO/$$file; \
 		fi;\
 		done
-
+	cp Makefile ../../src_cs/IO
