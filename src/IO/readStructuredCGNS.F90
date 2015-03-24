@@ -21,7 +21,11 @@ subroutine readStructuredCGNS(cgns_file)
   integer(kind=intType) :: ptset_type, normalIndex(3), NormalListFlag, datatype, ndataset
   real(kind=8)   ::  data_double(6), avgNodes, symmSum(3)
   real(kind=realType), dimension(:, :, :), allocatable :: coorX, coorY, coorZ
+#ifdef USE_COMPLEX
+  complex(kind=realType), dimension(:, :), allocatable :: allNodes, localNodes
+#else
   real(kind=realType), dimension(:, :), allocatable :: allNodes, localNodes
+#endif
   integer(kind=intType), dimension(:), allocatable :: wallNodes, localWallNodes
   integer(kind=intType), dimension(:, :), allocatable :: sizes
 
@@ -83,9 +87,15 @@ subroutine readStructuredCGNS(cgns_file)
            do j=1, dims(2)
               do i=1, dims(1)
                  ii = ii + 1
+#ifdef USE_COMPLEX
+                 allNodes(1, ii) = cmplx(coorX(i, j, k), 0.0)
+                 allNodes(2, ii) = cmplx(coorY(i, j, k), 0.0)
+                 allNodes(3, ii) = cmplx(coorZ(i, j, k), 0.0)
+#else
                  allNodes(1, ii) = coorX(i, j, k)
                  allNodes(2, ii) = coorY(i, j, k)
                  allNodes(3, ii) = coorZ(i, j, k)
+#endif
               end do
            end do
         end do
@@ -246,9 +256,13 @@ subroutine readStructuredCGNS(cgns_file)
         istart = int(nNodes*(dble(iProc)/nProc)) +1 
         iend   = int(nNodes*(dble(iProc+1)/nProc))
         localSize = iend - istart + 1
-
+#ifdef USE_COMPLEX
+        call MPI_Send(allNodes(:, iStart), localSize*3, MPI_COMPLEX16, iProc, &
+             11, warp_comm_world, ierr)
+#else
         call MPI_Send(allNodes(:, iStart), localSize*3, MPI_REAL8, iProc, &
              11, warp_comm_world, ierr)
+#endif
         call EChk(ierr, __FILE__, __LINE__)
 
         call MPI_Send(wallNodes(iStart), localSize, MPI_INTEGER4, iProc, &
@@ -267,8 +281,13 @@ subroutine readStructuredCGNS(cgns_file)
      allocate(localWallNodes(localSize))
 
      ! Receive on all the other procs:
+#ifdef USE_COMPLEX
+     call MPI_recv(localNodes, 3*localSize, MPI_COMPLEX16, 0, 11, &
+          warp_comm_world, status, ierr)
+#else
      call MPI_recv(localNodes, 3*localSize, MPI_REAL8, 0, 11, &
           warp_comm_world, status, ierr)
+#endif
      call EChk(ierr, __FILE__, __LINE__)
      call MPI_recv(localWallNodes, localSize, MPI_INTEGER4, 0, 12, &
           warp_comm_world, status, ierr)

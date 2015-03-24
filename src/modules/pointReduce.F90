@@ -13,21 +13,35 @@ contains
 
     ! Input Parameters
     integer(kind=intType), intent(in) :: N
+#ifdef USE_COMPLEX
+    complex(kind=realType), intent(in), dimension(:, :) :: pts
+    complex(kind=realType), intent(in) :: tol
+#else
     real(kind=realType), intent(in), dimension(:, :) :: pts
     real(kind=realType), intent(in) :: tol
-
+#endif
     ! Output Parametres
+#ifdef USE_COMPLEX
+    complex(kind=realType), intent(out), dimension(:,:) :: uniquePts
+#else
     real(kind=realType), intent(out), dimension(:,:) :: uniquePts
+#endif
     integer(kind=intType), intent(out), dimension(:) :: link
     integer(kind=intType), intent(out) :: nUnique
 
     ! Working Parameters
+#ifdef USE_COMPLEX
+    complex(kind=realType), allocatable, dimension(:) :: dists, tmp
+    complex(kind=realType), dimension(:, :), allocatable :: subPts, subUniquePts
+#else
     real(kind=realType), allocatable, dimension(:) :: dists, tmp
+    real(kind=realType), dimension(:, :), allocatable :: subPts, subUniquePts
+#endif
     integer(kind=intType), allocatable, dimension(:) :: ind
     integer(kind=intType) :: i, j, nTmp, link_counter, ii, nSubUnique
     logical cont, cont2
     integer(kind=intType), dimension(:), allocatable :: tmpInd, subLInk
-    real(kind=realType), dimension(:, :), allocatable :: subPts, subUniquePts
+
     integer(kind=intType) :: maxSubUnique
 
     maxSubUnique = 10
@@ -117,17 +131,31 @@ contains
 
     ! Input Parameters
     integer(kind=intType), intent(in) :: N
+#ifdef USE_COMPLEX
+    complex(kind=realType), intent(in), dimension(:, :) :: pts
+    complex(kind=realType), intent(in) :: tol
+#else
     real(kind=realType), intent(in), dimension(:, :) :: pts
     real(kind=realType), intent(in) :: tol
-
+#endif
     ! Output Parametres
+#ifdef USE_COMPLEX
+    complex(kind=realType), intent(out), dimension(:,:) :: uniquePts
+#else
     real(kind=realType), intent(out), dimension(:,:) :: uniquePts
+#endif
+
     integer(kind=intType), intent(out), dimension(:) :: link
     integer(kind=intType), intent(out) :: nUnique
 
     ! Working parameters
-    integer(kind=intType) :: i, j
+#ifdef USE_COMPLEX
+    complex(kind=realType) :: dist
+#else
     real(kind=realType) :: dist
+#endif
+    integer(kind=intType) :: i, j
+
     logical :: found_it
 
     ! First point is *always* unique
@@ -170,12 +198,19 @@ contains
 
     ! DUMMY ARGUMENTS
     integer(kind=intType), intent(in) :: nA
+#ifdef USE_COMPLEX
+    complex(kind=realType), dimension(nA), intent(inout) :: A
+    complex(kind=realType) :: pivot, temp
+#else
     real(kind=realType), dimension(nA), intent(inout) :: A
+    real(kind=realType) :: pivot, temp
+#endif
+    real(kind=realType) :: random
     integer(kind=intType), dimension(nA), intent(inout) :: ind
 
     ! LOCAL VARIABLES
     integer(kind=intType) :: left, right, itemp, i
-    real(kind=realType) :: random, pivot, temp
+
     integer(kind=intType) :: marker
 
     if (nA > 1) then

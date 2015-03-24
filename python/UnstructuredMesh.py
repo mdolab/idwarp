@@ -810,6 +810,38 @@ class USMesh(object):
                 raise Error('Fake warpDeriv only works with solverVec.')
             self.warp.warpderivsurfonly(dXv)
 
+    def warpDerivFwd(self, dXs, solverVec=True):
+        """Compute the forward mode warping derivative
+
+        This routine is not used for "regular" optimization; it is
+        used for matrix-free type optimization. dXs is assumed to be
+        the the peturbation on all the surface nodes. 
+
+        Parameters
+        ----------
+        dXs : array, size Nsx3
+            This is the forward mode peturbation seed. 
+        solverVec : bool
+            Whether or not to convert to the solver ordering.
+
+        Returns
+        -------
+        dXv : array
+            The peturbation on the volume meshes. It may be 
+            in warp ordering or solver ordering depending on 
+            the solverVec flag.
+        """
+        indices = self._getIndices('all')
+        dXvWarp = np.zeros(self.warp.griddata.warpmeshdof)
+        self.warpMesh()
+        self.warp.warpderivfwd(indices, dXs.flatten(), dXvWarp)
+        if solverVec:
+            dXv = np.zeros(self.warp.griddata.solvermeshdof)
+            self.warp.warp_to_solver_grid(dXvWarp, dXv)
+            return dXv
+        else:
+            return dXvWarp
+
     def verifyWarpDeriv(self, dXv=None, solverVec=True, dofStart=0, 
                         dofEnd=10, h=1e-6):
         """Run an internal verification of the solid warping
@@ -1118,11 +1150,9 @@ class USMesh(object):
             self.familyList[fam] = IWALL
 
     def _getIndices(self, groupName):
-        """
-        Try to see if groupName is already set, if not raise an
-        exception
+        """ Try to see if groupName is already set, if not raise an
+        exception """
 
-        """
         try: 
             indices = self.familyGroup[groupName]['indices']
         except:
@@ -1131,12 +1161,9 @@ class USMesh(object):
         return indices
 
     def _checkOptions(self, solverOptions):
-        """
-        Check the solver options against the default ones
-        and add opt
-        ion iff it is NOT in solverOptions
+        """ Check the solver options against the default ones and add
+        opt ion iff it is NOT in solverOptions """
 
-        """
         for key in self.solverOptionsDefault.keys():
             if not key in solverOptions.keys():
                 solverOptions[key] = self.solverOptionsDefault[key]

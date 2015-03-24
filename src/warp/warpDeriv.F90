@@ -1,15 +1,19 @@
 subroutine warpDeriv(dXv_f, ndof_warp)
 
+  ! Compute the following matrix vector product:
+  !  dXv/dXs^T * Xvbar
+  ! The result XsBar is available from python's getdXs()
+
   use gridData
   use gridInput
   use communication
   use kd_tree
   implicit none
-
+  
   ! Input
   integer(kind=intType), intent(in) :: ndof_warp
   real(kind=realType), intent(in) :: dXv_f(ndof_warp)
-
+#ifndef USE_COMPLEX
   ! Working Data
   integer(kind=intType) :: i, j, kk, istart, iend, ierr, isize, nVol, nLoop
   real(kind=realType), dimension(:), allocatable :: dxsSummed
@@ -71,10 +75,10 @@ subroutine warpDeriv(dXv_f, ndof_warp)
         r(3) = xv0ptr(3*j  )*fact(3, kk)
 
         ! Numerator derivative
-        oden = one
-        numb(1) = xvptrb(3*j-2)/denomenator(j)*fact(1, kk)
-        numb(2) = xvptrb(3*j-1)/denomenator(j)*fact(2, kk)
-        numb(3) = xvptrb(3*j  )/denomenator(j)*fact(3, kk)
+        oden = one/denomenator(j)
+        numb(1) = xvptrb(3*j-2)*oden*fact(1, kk)
+        numb(2) = xvptrb(3*j-1)*oden*fact(2, kk)
+        numb(3) = xvptrb(3*j  )*oden*fact(3, kk)
         if (evalMode == EVAL_EXACT) then 
            call evalNodeExact_b(mytrees(1)%tp, mytrees(1)%tp%root, r, numb, Bib, Mib)
         else           
@@ -124,5 +128,5 @@ subroutine warpDeriv(dXv_f, ndof_warp)
 
   call VecRestoreArrayF90(dXs, dXsPtr, ierr)
   call EChk(ierr,__FILE__,__LINE__)
-  
+#endif  
 end subroutine warpDeriv
