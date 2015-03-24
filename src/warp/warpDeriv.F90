@@ -1,5 +1,9 @@
 subroutine warpDeriv(dXv_f, ndof_warp)
 
+  ! Compute the following matrix vector product:
+  !  dXv/dXs^T * Xvbar
+  ! The result XsBar is available from python's getdXs()
+
   use gridData
   use gridInput
   use communication

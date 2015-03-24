@@ -15,7 +15,7 @@ module gridData
   Vec Xv, Xv0, dXv, XvLocal
 
   ! Surface Grid vecs
-  Vec Xs, dXs, XsLocal
+  Vec Xs, dXs, XsLocal, dXsLocal
 
   ! Scatter context going from partitioned Xs to (full) local Copy
   VecScatter XsToXsLocal
@@ -39,8 +39,8 @@ module gridData
   real(kind=realType), pointer, dimension(:) :: Xv0Ptr, Xvptr
 
 #ifndef USE_TAPENADE
-  real(kind=realType), pointer, dimension(:) :: XsPtrb
-  real(kind=realType), pointer, dimension(:) :: XvPtrb
+  real(kind=realType), pointer, dimension(:) :: XsPtrb, XsPtrd
+  real(kind=realType), pointer, dimension(:) :: XvPtrb, XVPtrd
 #endif
 
   ! Sizes of the three different mesh sizes:

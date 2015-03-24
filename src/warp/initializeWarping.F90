@@ -86,6 +86,9 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
   call VecScatterCreateToAll(Xs, XsToXsLocal, XsLocal, ierr)
   call EChk(ierr, __FILE__, __LINE__)
 
+  Call VecDuplicate(XsLocal, dXsLocal, ierr)
+  call EChk(ierr, __FILE__, __LINE__)
+
   ! For now we just have a single tree....we may have more in the future. 
   allocate(mytrees(1))
   mytrees(1)%tp => myCreateTree(allNodes, cumNodesProc, faceSizesLocal, faceConnLocal)
