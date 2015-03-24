@@ -39,6 +39,7 @@ subroutine verifyWarpDeriv(dXv_f, ndof_warp, dof_start, dof_end, h)
      print *, 'Running AD Version'
   end if
   
+  call warpMesh()
   call WarpDeriv(dXv_f, ndof_warp)
 
   ! dXs now contains actual AD derivative

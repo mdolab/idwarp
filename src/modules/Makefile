@@ -12,6 +12,8 @@ include ${RULES_FILE}
 vpath %.o $(OBJDIR)
 
 # Name of files to be compiled...Order here matters!
+FF90_OBJECTS_0 = complexify.o\
+
 FF90_OBJECTS_1 = precision.o\
 
 FF90_OBJECTS_2 = constants.o\
@@ -25,13 +27,21 @@ FF90_OBJECTS_4 = gridData.o\
 FF90_OBJECTS_5 = kd_tree.o\
 		 structuredCGNS.o\
 
-FILES_TO_COMPLEXIFY =		
+FILES_TO_COMPLEXIFY =	precision.F90\
+			constants.F90\
+			gridInput.f90\
+			communication.f90\
+			gridData.F90\
+			kd_tree.F90\
+			structuredCGNS.F90\
 
-FILES_TO_COPY = 
+FILES_TO_COPY = complexify.f90\
+		pointReduce.F90\
 
 default: all
 
 all: 
+	make $(FF90_OBJECTS_0)
 	make $(FF90_OBJECTS_1)
 	make $(FF90_OBJECTS_2)
 	make $(FF90_OBJECTS_3)
@@ -57,3 +67,4 @@ complexify:
 			cp $$file ../../src_cs/modules/$$file; \
 		fi;\
 		done
+	cp Makefile ../../src_cs/modules
