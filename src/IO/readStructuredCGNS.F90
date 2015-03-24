@@ -256,9 +256,13 @@ subroutine readStructuredCGNS(cgns_file)
         istart = int(nNodes*(dble(iProc)/nProc)) +1 
         iend   = int(nNodes*(dble(iProc+1)/nProc))
         localSize = iend - istart + 1
-
+#ifdef USE_COMPLEX
+        call MPI_Send(allNodes(:, iStart), localSize*3, MPI_COMPLEX16, iProc, &
+             11, warp_comm_world, ierr)
+#else
         call MPI_Send(allNodes(:, iStart), localSize*3, MPI_REAL8, iProc, &
              11, warp_comm_world, ierr)
+#endif
         call EChk(ierr, __FILE__, __LINE__)
 
         call MPI_Send(wallNodes(iStart), localSize, MPI_INTEGER4, iProc, &
@@ -277,8 +281,13 @@ subroutine readStructuredCGNS(cgns_file)
      allocate(localWallNodes(localSize))
 
      ! Receive on all the other procs:
+#ifdef USE_COMPLEX
+     call MPI_recv(localNodes, 3*localSize, MPI_COMPLEX16, 0, 11, &
+          warp_comm_world, status, ierr)
+#else
      call MPI_recv(localNodes, 3*localSize, MPI_REAL8, 0, 11, &
           warp_comm_world, status, ierr)
+#endif
      call EChk(ierr, __FILE__, __LINE__)
      call MPI_recv(localWallNodes, localSize, MPI_INTEGER4, 0, 12, &
           warp_comm_world, status, ierr)
