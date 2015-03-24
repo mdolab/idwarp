@@ -28,6 +28,9 @@ subroutine releaseMemory
      
      call VecDestroy(XsLocal, ierr)
      call EChk(ierr,__FILE__,__LINE__)
+
+     call VecDestroy(dXsLocal, ierr)
+     call EChk(ierr,__FILE__,__LINE__)
      
      call VecScatterDestroy(XsToXsLocal, ierr)
      call EChk(ierr,__FILE__,__LINE__)

@@ -71,13 +71,8 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
 
   i = 1
   do ii=istart,iend-1
-#ifdef USE_COMPLEX
-     call VecSetValues(Xs, 1, (/ii/), cmplx(pts(i), 0.0), &
-          INSERT_VALUES, ierr)
-#else
      call VecSetValues(Xs, 1, (/ii/), pts(i), &
           INSERT_VALUES, ierr)
-#endif
      call EChk(ierr, __FILE__, __LINE__)
      i = i + 1
   end do
@@ -89,6 +84,9 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
 
   ! Create a scatter object so everyone can get the full copy Xs
   call VecScatterCreateToAll(Xs, XsToXsLocal, XsLocal, ierr)
+  call EChk(ierr, __FILE__, __LINE__)
+
+  Call VecDuplicate(XsLocal, dXsLocal, ierr)
   call EChk(ierr, __FILE__, __LINE__)
 
   ! For now we just have a single tree....we may have more in the future. 

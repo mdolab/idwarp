@@ -1,7 +1,10 @@
 !    -*- f90 -*-
 ! Note: the context of this file is case sensitive.
-
+#ifdef USE_COMPLEX
+python module warpustruct_cs ! in 
+#else
 python module warpustruct ! in 
+#endif
     interface  ! in :warpustruct
 
        subroutine initpetsc(comm)
@@ -88,6 +91,15 @@ python module warpustruct ! in
          integer(kind=inttype) optional,check(len(dxv_f)>=ndof_warp),depend(dxv_f) :: ndof_warp=len(dxv_f)
        end subroutine warpderiv
 
+       subroutine warpderivfwd(indices,idof,xsdot,cdof,outvec,warpmeshdof) ! in :test:warpMeshd.F90
+         integer(kind=inttype) dimension(idof),intent(in) :: indices
+         integer(kind=inttype), optional,intent(in),check(len(indices)>=idof),depend(indices) :: idof=len(indices)
+         real(kind=realtype) dimension(cdof),intent(in) :: xsdot
+         integer(kind=inttype), optional,intent(in),check(len(xsdot)>=cdof),depend(xsdot) :: cdof=len(xsdot)
+         real(kind=realtype) dimension(warpmeshdof),intent(inout) :: outvec
+         integer(kind=inttype), optional,intent(in),check(len(outvec)>=warpmeshdof),depend(outvec) :: warpmeshdof=len(outvec)
+       end subroutine warpderivfwd
+
        subroutine warpderivsurfonly(dxv_f,ndof)
          real(kind=realtype) dimension(ndof) :: dxv_f
          integer(kind=inttype) optional,check(len(dxv_f)>=ndof),depend(dxv_f) :: ndof=len(dxv_f)
@@ -149,7 +161,11 @@ python module warpustruct ! in
        end module kd_tree
        
     end interface 
+#ifdef USE_COMPLEX
+end python module warpustruct_cs
+#else
 end python module warpustruct
+#endif
 
 ! This file was auto-generated with f2py (version:2).
 ! See http://cens.ioc.ee/projects/f2py2e/

@@ -78,14 +78,14 @@ Module kd_tree
   End Type tree_node
 
   Type :: tree_search_record
-      Private
-      real(kind=realType) :: bsd
-      Integer(kind=IntType) :: bestind
-      real(kind=realType), Dimension (:), Pointer :: qv
-      Integer(kind=IntType), Dimension (:), Pointer :: il
-      real(kind=realType), Dimension (:), Pointer :: dsl
-      Integer(kind=IntType) :: nbst, nfound
-      Integer(kind=IntType) :: centeridx, correltime
+     Private
+     real(kind=realType) :: bsd
+     Integer(kind=IntType) :: bestind
+     real(kind=realType), Dimension (:), Pointer :: qv
+     Integer(kind=IntType), Dimension (:), Pointer :: il
+     real(kind=realType), Dimension (:), Pointer :: dsl
+     Integer(kind=IntType) :: nbst, nfound
+     Integer(kind=IntType) :: centeridx, correltime
   End Type tree_search_record
 Contains
 
@@ -297,12 +297,12 @@ Contains
     End Function spread_in_coordinate
   end subroutine build_tree
   function pt_in_tree(tp, qv)
- ! .. Structure Arguments ..
+    ! .. Structure Arguments ..
     Type (tree_master_record), Pointer :: tp
     ! ..
     real(kind=realType), Target, Intent (In) :: qv(:)
     real(kind=realType), parameter :: tol=1e-6
-  
+
     ! .. Scalar Arguments ..
     Integer(kind=IntType) :: n
     real(kind=realType), target :: distances(1)
@@ -326,12 +326,12 @@ Contains
     sr%correltime = 0
     sr%dsl => distances
     sr%il => indexes
-    sr%dsl = HUGE(sr%dsl)    ! set to huge positive values
+    sr%dsl = HUGE(1.0)    ! set to huge positive values
     sr%il = -1               ! set to invalid indexes
     psr => sr                ! in C this would be psr = &sr
 
     Call n_search(tp, psr, tp%root)
-    
+
     if (sqrt(distances(1)) < tol) then
        pt_in_tree = indexes(1)
     else
@@ -371,7 +371,7 @@ Contains
     sr%correltime = 0
     sr%dsl => distances
     sr%il => indexes
-    sr%dsl = HUGE(sr%dsl)    ! set to huge positive values
+    sr%dsl = HUGE(1.0)    ! set to huge positive values
     sr%il = -1               ! set to invalid indexes
     psr => sr                ! in C this would be psr = &sr
 
@@ -401,7 +401,7 @@ Contains
     Intrinsic ABS, ASSOCIATED
     ! ..
     If ( .Not. (ASSOCIATED(node%left)) .And. ( .Not. ASSOCIATED( &
-     node%right))) Then
+         node%right))) Then
        ! we are on a terminal node
        ind => tp%indexes     ! save for easy access
        qv => sr%qv
@@ -453,7 +453,7 @@ Contains
                    jmax = nbst - 1
                 End If
                 ! add it to the list
-                
+
                 ! find the location j where sd >= sr%dsl(j) and sd <
                 ! sr%dsl(j+1...jmax+1)
                 Do j = jmax, 1, -1
@@ -492,7 +492,7 @@ Contains
        End If
     End If
   End Subroutine n_search
- 
+
   ! --------------------------------------------------------------------
   !                 Additional routines for IDW Warping
   ! --------------------------------------------------------------------
@@ -670,8 +670,8 @@ Contains
     Type (tree_master_record), Pointer :: tp
     Type (tree_node), Pointer :: np
     real(kind=realType), intent(in), dimension(3) :: r
-    real(kind=realType), intent(out), dimension(3) :: num
-    real(kind=realType), intent(out) :: den
+    real(kind=realType), intent(inout), dimension(3) :: num
+    real(kind=realType), intent(inout) :: den
     real(kind=realType), dimension(3) :: rr, Si
     real(kind=realType) :: dist, LdefoDist, LdefoDist3
     real(kind=realType) :: Wi
@@ -688,7 +688,7 @@ Contains
        Si = tp%Mi(:, 1, i)*r(1) + tp%Mi(:, 2, i)*r(2) + tp%Mi(:, 3, i)*r(3) + tp%bi(:, i) - r(:)
        num = num + Wi*Si
        den = den + Wi
-      end do
+    end do
   end subroutine evalNodeExact
 
   subroutine evalNodeApprox(tp, np, r, num, den, dist)
@@ -971,7 +971,7 @@ Contains
        call zeroDeriv(np%right)
     end if
   end subroutine zeroDeriv
-
+#ifndef USE_COMPLEX
   recursive subroutine evalNode_b(tp, np, r, numb, approxDen, Bib, Mib)
     implicit none
     ! Subroutine arguments
@@ -1043,7 +1043,7 @@ Contains
        mib(:, 3, i) = mib(:, 3, i) + r(3)*sib
        bib(:, i) = bib(:, i) + sib
     end do
-    
+
   end subroutine evalNodeExact_b
 
   subroutine evalNodeApprox_b(tp, np, numb, r, dist)
@@ -1122,7 +1122,7 @@ Contains
        sumarea = zero
        sumnormal = zero
        nelem = tp%nodetoelem(1, i)
-      
+
        DO jj=1,nelem
           ind = tp%nodetoelem(1+jj, i)
           ! Extract points for this face
@@ -1197,8 +1197,212 @@ Contains
     ! tp%bib = 0.0_8
     ! tp%mib = 0.0_8
   END SUBROUTINE COMPUTENODALPROPERTIES_B
-#endif
 
+  recursive subroutine evalNode_d(tp, np, r, numd, approxDen)
+    implicit none
+    ! Subroutine arguments
+    Type (tree_master_record), Pointer :: tp
+    Type (tree_node), Pointer :: np 
+    real(kind=realType), intent(in), dimension(3) :: r
+    real(kind=realType), intent(inout), dimension(3) :: numd
+    real(kind=realType), intent(in) :: approxDen
+
+    ! Working variables
+    real(kind=realType), dimension(3) :: rr
+    real(kind=realType) :: dist, err
+
+    if (np%dnum == 0) then 
+       ! Leaf node -> Must do exact calc:
+       call evalNodeExact_d(tp, np, r, numd)
+    else
+       ! Tree Node: Compute the distance from 'r' to the
+       ! center of the node, np%X
+       rr(1) = r(1) - np%X(1)
+       rr(2) = r(2) - np%X(2)
+       rr(3) = r(3) - np%X(3)
+       dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2)
+
+       if (dist/np%radius < two) then ! Too close...call children
+          call evalNode_d(tp, np%left, r, numd, approxDen)
+          call evalNode_d(tp, np%right, r, numd, approxDen)
+       else 
+          ! Use the first error check:
+          call getError(tp, np, dist, err)
+          if (err < tp%errTol * approxDen) then
+             call evalNodeApprox_d(tp, np, r, numd, dist)
+          else
+             ! Not good enough error so call children
+             call evalNode_d(tp, np%left, r, numd, approxDen)
+             call evalNode_d(tp, np%right, r, numd, approxDen)
+          end if
+       end if
+    end if
+  end subroutine evalNode_d
+
+  subroutine evalNodeExact_d(tp, np, r, numd)
+    ! Forward derviative of evalNodeExact
+    implicit none
+    Type (tree_master_record), Pointer :: tp
+    Type (tree_node), Pointer :: np
+    real(kind=realType), intent(in), dimension(3) :: r
+    real(kind=realType), intent(inout), dimension(3) :: numd
+    real(kind=realType), dimension(3) :: rr, Sib
+    real(kind=realType) :: dist, LdefoDist, LdefoDist3
+    real(kind=realType) :: Wi
+    integer(kind=intType) :: i
+
+    do i=np%l, np%u
+       rr(1) = r(1) - tp%Xu0(1, i)
+       rr(2) = r(2) - tp%Xu0(2, i)
+       rr(3) = r(3) - tp%Xu0(3, i)
+       dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2+1e-15)
+       LdefoDist = tp%Ldef/dist
+       Ldefodist3 = LdefoDist**3
+       Wi = tp%Ai(i)*(Ldefodist3 + tp%alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
+       Sib = tp%Mib(:, 1, i)*r(1) + tp%Mib(:, 2, i)*r(2) + tp%Mib(:, 3, i)*r(3) + tp%bib(:, i) 
+       numd = numd + Wi*Sib
+    end do
+
+  end subroutine evalNodeExact_d
+
+  subroutine evalNodeApprox_d(tp, np, r, numd, dist)
+    ! Forward Sensitivity of evalNodeApprox
+    implicit none
+    Type (tree_master_record), Pointer :: tp
+    Type (tree_node), Pointer :: np
+    real(kind=realType), intent(in) :: dist
+    real(kind=realType), dimension(3) :: numd, r
+    real(kind=realType) :: LdefoDist, LdefoDist3, Wi, sib(3)
+
+    LdefoDist = tp%Ldef/dist
+    Ldefodist3 = LdefoDist**3
+    Wi = np%Ai*(Ldefodist3 + tp%alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
+    Sib(1) = np%Mib(1, 1)*r(1) + np%Mib(1, 2)*r(2) + np%Mib(1, 3)*r(3) + np%bib(1) 
+    Sib(2) = np%Mib(2, 1)*r(1) + np%Mib(2, 2)*r(2) + np%Mib(2, 3)*r(3) + np%bib(2) 
+    Sib(3) = np%Mib(3, 1)*r(1) + np%Mib(3, 2)*r(2) + np%Mib(3, 3)*r(3) + np%bib(3) 
+    numd = numd + Wi*Sib
+  end subroutine evalNodeApprox_d
+
+  recursive subroutine setData_d(tp, np)
+    ! This performs the forward mode derivative of setData
+    implicit none
+    Type (tree_master_record), Pointer :: tp
+    Type (tree_node), Pointer :: np
+    real(kind=realType) :: ovrN
+    integer(kind=intType) :: i 
+    if (np%dnum /= 0) then 
+       np%Bib = zero
+       np%Mib = zero
+       do i=np%l, np%u
+          np%Bib = np%Bib + tp%Bib(:, i)
+          np%Mib = np%Mib + tp%Mib(:, :, i)
+       end do
+       np%Bib = np%Bib / np%n
+       np%Mib = np%Mib / np%n
+
+       ! Call each of the children
+       call setData_d(tp, np%left)
+       call setData_d(tp, np%right)
+    end if
+  end subroutine setData_d
+
+   !  Differentiation of computenodalproperties in forward (tangent) mode (with options noISIZE i4 dr8 r8):
+   !   variations   of useful results: *(*tp.bi) *(*tp.mi)
+   !   with respect to varying inputs: *xsptr
+   !   RW status of diff variables: *xsptr:in *(*tp.bi):out *(*tp.mi):out
+   !   Plus diff mem management of: xsptr:in tp:in *tp.bi:in *tp.normals:in
+   !                *tp.mi:in *tp.xu:in
+  SUBROUTINE COMPUTENODALPROPERTIES_D(tp, initialpoint)
+    USE GRIDDATA
+    USE GRIDINPUT
+    USE COMMUNICATION
+    IMPLICIT NONE
+    ! Subroutine Variables
+    TYPE(TREE_MASTER_RECORD), POINTER :: tp
+
+    LOGICAL :: initialpoint
+    ! Working variables
+    REAL(kind=realtype), DIMENSION(3, 20) :: points
+    REAL(kind=realtype), DIMENSION(3, 20) :: pointsd
+    INTEGER(kind=inttype) :: i, j, jj, kk, npts, nelem, ind
+    INTEGER(kind=inttype), SAVE :: nptsmax=10
+    REAL(kind=realtype) :: facearea, facenormal(3)
+    REAL(kind=realtype) :: facearead, facenormald(3)
+    REAL(kind=realtype) :: sumarea, sumnormal(3), si(3), ds(3), smean(3)&
+         &   , da, eta, r(3), dx(3)
+    REAL(kind=realtype) :: sumaread, sumnormald(3), dad
+    tp%xub = 0.0_8
+    ! This performs the copy and mirroring as required
+    DO i=1,tp%n
+       j = tp%xuind(i)
+       tp%xub(:, i) = xsptrd(3*j-2:3*j)
+       tp%xu(:, i) = xsptr(3*j-2:3*j)
+    END DO
+    ! Now we loop over nodes and fill up Ai, Bi, and Mi
+    tp%normalsb = 0.0_8
+    tp%normals = zero
+    tp%mib = 0.0_8
+    tp%mi = zero
+    tp%bib = 0.0_8
+    tp%bi = zero
+    tp%bib = 0.0_8
+    tp%normalsb = 0.0_8
+    tp%mib = 0.0_8
+    pointsd = 0.0_8
+    DO i=1,tp%n
+       sumarea = zero
+       sumnormal = zero
+       nelem = tp%nodetoelem(1, i)
+       sumnormald = 0.0_8
+       sumaread = 0.0_8
+       DO jj=1,nelem
+          ind = tp%nodetoelem(1+jj, i)
+          ! Extract points for this face
+          npts = tp%faceptr(ind) - tp%faceptr(ind-1)
+          DO kk=1,npts
+             pointsd(:, kk) = tp%xub(:, tp%faceconn(tp%faceptr(ind-1)+kk))
+             points(:, kk) = tp%xu(:, tp%faceconn(tp%faceptr(ind-1)+kk))
+          END DO
+          CALL GETELEMENTPROPS_D(points, pointsd, npts, facearea, &
+               &                        facearead, facenormal, facenormald)
+          ! For face 'ind' how many nodes are on the element?
+          dad = facearead/(tp%faceptr(ind)-tp%faceptr(ind-1))
+          da = facearea/(tp%faceptr(ind)-tp%faceptr(ind-1))
+          sumaread = sumaread + dad
+          sumarea = sumarea + da
+          sumnormald = sumnormald + dad*facenormal + da*facenormald
+          sumnormal = sumnormal + da*facenormal
+       END DO
+       tp%normalsb(:, i) = (sumnormald*sumarea-sumnormal*sumaread)/&
+            &       sumarea**2
+       tp%normals(:, i) = sumnormal/sumarea
+       IF (.NOT.initialpoint) THEN
+          ! Now get the rotation Matrix
+          IF (userotations) THEN
+             CALL GETROTATIONMATRIX3D_D(tp%normals0(:, i), tp%normals(:, i)&
+                  &                              , tp%normalsb(:, i), tp%mi(:, :, i), tp%&
+                  &                              mib(:, :, i))
+          ELSE
+             ! Set identity
+             tp%mib(:, :, i) = 0.0_8
+             tp%mi(:, :, i) = zero
+             tp%mib(1, 1, i) = 0.0_8
+             tp%mi(1, 1, i) = one
+             tp%mib(2, 2, i) = 0.0_8
+             tp%mi(2, 2, i) = one
+             tp%mib(3, 3, i) = 0.0_8
+             tp%mi(3, 3, i) = one
+          END IF
+          tp%bib(:, i) = tp%xub(:, i) - tp%xu0(1, i)*tp%mib(:, 1, i) - tp%&
+               &         xu0(2, i)*tp%mib(:, 2, i) - tp%xu0(3, i)*tp%mib(:, 3, i)
+          tp%bi(:, i) = tp%xu(:, i) - (tp%mi(:, 1, i)*tp%xu0(1, i)+tp%mi(:&
+               &         , 2, i)*tp%xu0(2, i)+tp%mi(:, 3, i)*tp%xu0(3, i))
+       END IF
+    END DO
+  END SUBROUTINE COMPUTENODALPROPERTIES_D
+
+#endif
+#endif
   function myCreateTree(nodes, cumNodesProc, faceSizesLocal, faceConnLocal) Result(tp)
     use gridInput
     use communication
@@ -1280,7 +1484,7 @@ Contains
     ! Now we can point-reduce the nodes:
     allocate(uniquePts(3, size(nodes, 2)), link(size(nodes, 2)))
     call pointReduceFast(nodes, size(nodes, 2), symmTol, uniquePts, link, tp%n)
-  
+
     ! Compute the inverse of the link arrary: this goes from the tree
     ! back to the original "nodes".
     allocate(tp%invLink(tp%n))
@@ -1420,9 +1624,20 @@ Contains
     ! up and it seemed to work so I never touch it after. A good thing
     ! would be to plot the actual error profiles and see how the
     ! linear approximation at the following points matches. 
-    tp%rstar = (/two, three, four, five, 7.5_realType, 10.0_realType, &
-         20.0_realType, 40.0_realType, 80.0_realType, 160.0_realType, 320.0_realType, &
-         640.0_realType/)
+
+    tp%rstar(1) = two
+    tp%rstar(2) = three
+    tp%rstar(3) = four
+    tp%rstar(4) = five
+    tp%rstar(5) = 7.5_realType
+    tp%rstar(6) = 10.0_realType
+    tp%rstar(7) = 20.0_realType
+    tp%rstar(8) = 40.0_realType
+    tp%rstar(9) = 80.0_realType
+    tp%rstar(10) = 160.0_realType
+    tp%rstar(11) = 320.0_realType
+    tp%rstar(12) = 640.0_realType
+
     ! Perform some initialization on the tree
     call computeErrors(tp, tp%root)
   end function myCreateTree
@@ -1528,74 +1743,74 @@ Contains
              tp%Mi(2, 2, i) = one
              tp%Mi(3, 3, i) = one
           end if
-             tp%Bi(:, i) = tp%Xu(:, i) - (tp%Mi(:, 1, i)*tp%Xu0(1, i) + tp%Mi(:, 2, i)*tp%Xu0(2, i) + tp%Mi(:, 3, i)*tp%Xu0(3, i))
-          end if
+          tp%Bi(:, i) = tp%Xu(:, i) - (tp%Mi(:, 1, i)*tp%Xu0(1, i) + tp%Mi(:, 2, i)*tp%Xu0(2, i) + tp%Mi(:, 3, i)*tp%Xu0(3, i))
+       end if
     end do
   end subroutine computeNodalProperties
 End Module kd_tree
 
 
- ! recursive subroutine computeErrorsNum(tp, np)
- !    ! This routine computes an estimate of the error to be induced in
- !    ! the denomenator at each tree node. Then, when we are evaluating
- !    ! the displacment we can determine if the errors induced by the
- !    ! approximation are acceptable or not.
+! recursive subroutine computeErrorsNum(tp, np)
+!    ! This routine computes an estimate of the error to be induced in
+!    ! the denomenator at each tree node. Then, when we are evaluating
+!    ! the displacment we can determine if the errors induced by the
+!    ! approximation are acceptable or not.
 
- !    implicit none
- !    Type (tree_master_record), Pointer :: tp
- !    Type (tree_node), Pointer :: np 
- !    real(kind=realType) , dimension(3, 20) :: vpts
- !    real(kind=realType) , dimension(3, 12) :: fpts
- !    real(kind=realType) :: numExact(3, 20), numApprox(3, 20), rr(3), Si(3)
- !    real(kind=realType) :: LdefoDist, LdefODist3, dist, W, r(3), Wi
- !    integer(kind=intType) :: ii, i, j
+!    implicit none
+!    Type (tree_master_record), Pointer :: tp
+!    Type (tree_node), Pointer :: np 
+!    real(kind=realType) , dimension(3, 20) :: vpts
+!    real(kind=realType) , dimension(3, 12) :: fpts
+!    real(kind=realType) :: numExact(3, 20), numApprox(3, 20), rr(3), Si(3)
+!    real(kind=realType) :: LdefoDist, LdefODist3, dist, W, r(3), Wi
+!    integer(kind=intType) :: ii, i, j
 
- !    if (np%dnum /= 0) then 
- !       do j=1, NERR
- !          numExact= zero
- !          numApprox = zero
- !          call getSpherePts(np%X, np%radius*tp%rstar(j), vpts, fpts)
+!    if (np%dnum /= 0) then 
+!       do j=1, NERR
+!          numExact= zero
+!          numApprox = zero
+!          call getSpherePts(np%X, np%radius*tp%rstar(j), vpts, fpts)
 
- !          np%err(j) = zero
- !          do ii=1, 20
- !             ! Compute exact value:
- !             do i=np%l, np%u
- !                rr = vpts(:, ii) - tp%Xu0(:, i)
- !                dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2)
- !                LdefoDist = tp%Ldef/dist
- !                Ldefodist3 = LdefoDist**3
- !                Wi = tp%Ai(i)*(Ldefodist3 + tp%alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
- !                Si(1) = tp%Mi(1, 1, i)*r(1) + tp%Mi(1, 2, i)*r(2) + tp%Mi(1, 3, i)*r(3) + tp%bi(1, i) - r(1)
- !                Si(2) = tp%Mi(2, 1, i)*r(1) + tp%Mi(2, 2, i)*r(2) + tp%Mi(2, 3, i)*r(3) + tp%bi(2, i) - r(2)
- !                Si(3) = tp%Mi(3, 1, i)*r(1) + tp%Mi(3, 2, i)*r(2) + tp%Mi(3, 3, i)*r(3) + tp%bi(3, i) - r(3)
-  
- !                numExact(:, ii) = numExact(:, ii) + Wi*Si
- !             end do
+!          np%err(j) = zero
+!          do ii=1, 20
+!             ! Compute exact value:
+!             do i=np%l, np%u
+!                rr = vpts(:, ii) - tp%Xu0(:, i)
+!                dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2)
+!                LdefoDist = tp%Ldef/dist
+!                Ldefodist3 = LdefoDist**3
+!                Wi = tp%Ai(i)*(Ldefodist3 + tp%alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
+!                Si(1) = tp%Mi(1, 1, i)*r(1) + tp%Mi(1, 2, i)*r(2) + tp%Mi(1, 3, i)*r(3) + tp%bi(1, i) - r(1)
+!                Si(2) = tp%Mi(2, 1, i)*r(1) + tp%Mi(2, 2, i)*r(2) + tp%Mi(2, 3, i)*r(3) + tp%bi(2, i) - r(2)
+!                Si(3) = tp%Mi(3, 1, i)*r(1) + tp%Mi(3, 2, i)*r(2) + tp%Mi(3, 3, i)*r(3) + tp%bi(3, i) - r(3)
 
- !             ! And the approx value:
- !             rr = vpts(:, ii) - np%X
- !             dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2)
- !             LdefoDist = tp%Ldef/dist
- !             Ldefodist3 = LdefoDist**3
- !             Wi = np%Ai*(Ldefodist3 + tp%alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
- !             Si(1) = np%Mi(1, 1)*r(1) + np%Mi(1, 2)*r(2) + np%Mi(1, 3)*r(3) + np%bi(1) - r(1)
- !             Si(2) = np%Mi(2, 1)*r(1) + np%Mi(2, 2)*r(2) + np%Mi(2, 3)*r(3) + np%bi(2) - r(2)
- !             Si(3) = np%Mi(3, 1)*r(1) + np%Mi(3, 2)*r(2) + np%Mi(3, 3)*r(3) + np%bi(3) - r(3)
+!                numExact(:, ii) = numExact(:, ii) + Wi*Si
+!             end do
 
- !             numApprox(:, ii) = numApprox(:, ii) + Wi*Si
+!             ! And the approx value:
+!             rr = vpts(:, ii) - np%X
+!             dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2)
+!             LdefoDist = tp%Ldef/dist
+!             Ldefodist3 = LdefoDist**3
+!             Wi = np%Ai*(Ldefodist3 + tp%alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
+!             Si(1) = np%Mi(1, 1)*r(1) + np%Mi(1, 2)*r(2) + np%Mi(1, 3)*r(3) + np%bi(1) - r(1)
+!             Si(2) = np%Mi(2, 1)*r(1) + np%Mi(2, 2)*r(2) + np%Mi(2, 3)*r(3) + np%bi(2) - r(2)
+!             Si(3) = np%Mi(3, 1)*r(1) + np%Mi(3, 2)*r(2) + np%Mi(3, 3)*r(3) + np%bi(3) - r(3)
 
- !             ! Now set the nodal error:
- !             np%NumErr(j) = np%numErr(j) + &
- !                  (numExact(1, ii) - numApprox(1, ii))**2 + &
- !                  (numExact(2, ii) - numApprox(2, ii))**2 + &
- !                  (numExact(3, ii) - numApprox(3, ii))**2  
- !          end do
+!             numApprox(:, ii) = numApprox(:, ii) + Wi*Si
 
- !          ! This the RMS Error:
- !          np%numErr(j) = sqrt(np%numErr(j)/20)
- !       end do
- !       ! Now call the children:
- !       call computeErrorsNum(tp, np%left)
- !       call computeErrorsNum(tp, np%right)
- !    end if
- !  end subroutine computeErrorsNum
+!             ! Now set the nodal error:
+!             np%NumErr(j) = np%numErr(j) + &
+!                  (numExact(1, ii) - numApprox(1, ii))**2 + &
+!                  (numExact(2, ii) - numApprox(2, ii))**2 + &
+!                  (numExact(3, ii) - numApprox(3, ii))**2  
+!          end do
+
+!          ! This the RMS Error:
+!          np%numErr(j) = sqrt(np%numErr(j)/20)
+!       end do
+!       ! Now call the children:
+!       call computeErrorsNum(tp, np%left)
+!       call computeErrorsNum(tp, np%right)
+!    end if
+!  end subroutine computeErrorsNum

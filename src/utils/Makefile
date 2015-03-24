@@ -12,13 +12,12 @@ include ${RULES_FILE}
 vpath %.o $(OBJDIR)
 
 FILES_TO_COMPLEXIFY = \
-	EChk.F90\
 	initPETSc.F90\
 	vectorUtils.f90\
 	getSpherePts.F90\
 	releaseMemory.F90\
 
-FILES_TO_COPY = 
+FILES_TO_COPY = EChk.F90\
 
 ALL_FILES = $(FILES_TO_COMPLEXIFY) $(FILES_TO_COPY)
 OFILES := $(ALL_FILES:%.f90=%.o) $(ALL_FILES:%.F90=%.o) $(ALL_FILES:%.c=%.o)
@@ -48,6 +47,5 @@ complexify:
 			cp $$file ../../src_cs/utils/$$file; \
 		fi;\
 		done
-
-
+	cp Makefile ../../src_cs/utils
 
