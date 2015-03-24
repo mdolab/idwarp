@@ -1,4 +1,4 @@
-subroutine warpDerivFwd(indices, idof, Xsdot, cDof, Xvdot, warpMeshDOF)
+subroutine warpDerivFwd(indices, idof, Xsdot, cDof, Xvdot, meshDOF)
 
   use gridData
   use gridInput
@@ -7,20 +7,21 @@ subroutine warpDerivFwd(indices, idof, Xsdot, cDof, Xvdot, warpMeshDOF)
   implicit none
   
   ! Input Arguments
-  integer(kind=intType) , intent(in) :: idof, cdof, warpMeshDOF
+  integer(kind=intType) , intent(in) :: idof, cdof, meshDOF
   integer(kind=intType) , intent(in) :: indices(idof)
   real(kind=realType)   , intent(in) :: xsdot(cdof)
   
   ! Output Arguments
-  real(kind=realType), intent(inout), dimension(warpMeshDOF) :: XvDot
-
+  real(kind=realType), intent(inout), dimension(meshDOF) :: XvDot
+#ifndef USE_COMPLEX
   ! Working Data
   integer(kind=intType) :: i, j, kk, istart, iend, ierr, isize, nVol, nLoop
+  integer(kind=intType) :: ind(idof)
   real(kind=realType), dimension(3) :: r, rr, numd
   real(kind=realType) :: fact(3, 2), oden
 
   ! Dump our Xsdot into the dXs array
-  call VecZeroEntires(dXs, ierr)
+  call VecZeroEntries(dXs, ierr)
   call EChk(ierr, __FILE__, __LINE__)
 
   call VecGetOwnershipRange(dXs, istart, iend, ierr)
@@ -90,7 +91,7 @@ subroutine warpDerivFwd(indices, idof, Xsdot, cDof, Xvdot, warpMeshDOF)
   end do
   
   ! Done with derivative values 
-  call dallocDerivValues(mytrees(1)%tp)
+  call deallocDerivValues(mytrees(1)%tp)
   
   updateLoop: do j=1, nVol
      oden = one / denomenator(j)
@@ -103,10 +104,10 @@ subroutine warpDerivFwd(indices, idof, Xsdot, cDof, Xvdot, warpMeshDOF)
   call VecRestoreArrayF90(XsLocal, XsPtr, ierr)
   call EChk(ierr,__FILE__,__LINE__)
 
-  call VecRestoreArrayF90(XsLocald, dXsPtr, ierr)
+  call VecRestoreArrayF90(dXsLocal, dXsPtr, ierr)
   call EChk(ierr,__FILE__,__LINE__)
 
   call VecRestoreArrayF90(Xv0, Xv0Ptr, ierr)
   call EChk(ierr,__FILE__,__LINE__)
-
-end subroutine warpDeriv
+#endif
+end subroutine warpDerivFwd

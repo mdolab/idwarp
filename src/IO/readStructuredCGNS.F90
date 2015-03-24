@@ -21,7 +21,11 @@ subroutine readStructuredCGNS(cgns_file)
   integer(kind=intType) :: ptset_type, normalIndex(3), NormalListFlag, datatype, ndataset
   real(kind=8)   ::  data_double(6), avgNodes, symmSum(3)
   real(kind=realType), dimension(:, :, :), allocatable :: coorX, coorY, coorZ
+#ifdef USE_COMPLEX
+  complex(kind=realType), dimension(:, :), allocatable :: allNodes, localNodes
+#else
   real(kind=realType), dimension(:, :), allocatable :: allNodes, localNodes
+#endif
   integer(kind=intType), dimension(:), allocatable :: wallNodes, localWallNodes
   integer(kind=intType), dimension(:, :), allocatable :: sizes
 
@@ -83,9 +87,15 @@ subroutine readStructuredCGNS(cgns_file)
            do j=1, dims(2)
               do i=1, dims(1)
                  ii = ii + 1
+#ifdef USE_COMPLEX
+                 allNodes(1, ii) = cmplx(coorX(i, j, k), 0.0)
+                 allNodes(2, ii) = cmplx(coorY(i, j, k), 0.0)
+                 allNodes(3, ii) = cmplx(coorZ(i, j, k), 0.0)
+#else
                  allNodes(1, ii) = coorX(i, j, k)
                  allNodes(2, ii) = coorY(i, j, k)
                  allNodes(3, ii) = coorZ(i, j, k)
+#endif
               end do
            end do
         end do
