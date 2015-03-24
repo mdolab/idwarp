@@ -1,12 +1,5 @@
 # -*- makefile -*-
 TAPENADE_DIRSRC = '../'
-TAPENADE_PARSERFILESEPARATOR = "/"
-#TAPENADE_OUTVARS = "tp%Bi tp%Mi"
-TAPENADE_OUTVARS = "XvPtr"
-TAPENADE_VARS = "XsPtr"
-TAPENADE_HEADROUTINE = "warpMesh" #"computeNodalProperties"
-TAPENADE_MODE = -reverse
-TAPENADE_OUTDIR = './warpingTapenade'
 TAPENADE_PRECISION = -i4 -dr8 -r8
 
 TAPENADE_SRC =	$(TAPENADE_DIRSRC)/warp/getElementProps.F90\
@@ -21,8 +14,6 @@ TAPENADE_SRC =	$(TAPENADE_DIRSRC)/warp/getElementProps.F90\
 
 PREPROCESSED_FILES := $(TAPENADE_SRC:%=%.f90)
 
-default: ad_forward
-
 cleanpreprocess: 
 	@echo "Cleaning up preprocessed file ..."
 	@for file in $(TAPENADE_SRC); do \
@@ -36,21 +27,36 @@ preprocess:
 		cpp -DUSE_TAPENADE -traditional -P $$file $$file.f90; \
 	done
 
-ad_forward:
+ad_reverse:
 # Create holding folders and run preprocessor
 	rm -fr temp_reverse
 	mkdir -p temp_reverse
 	make -f Makefile_tapenade preprocess
 
 # the following ist he actual tapenade command to run
-	$(TAPENADE_HOME)/bin/tapenade -parserfileseparator $(TAPENADE_PARSERFILESEPARATOR) \
-	-outvars $(TAPENADE_OUTVARS) \
-	-vars $(TAPENADE_VARS) \
-	-head $(TAPENADE_HEADROUTINE) \
+	$(TAPENADE_HOME)/bin/tapenade \
+	-head "kd_tree%computeNodalProperties(XsPtr, tp%Mi, tp%Bi)>(tp%Mi, tp%Bi)" \
 	-noisize \
-	$(TAPENADE_MODE) -msglevel 30 \
+	-reverse -msglevel 30 \
 	-O temp_reverse $(TAPENADE_PRECISION) $(PREPROCESSED_FILES) -html
 	python autoEdit/autoEditReverse.py temp_reverse outputReverse
+
+# Clean up files
+	make -f Makefile_tapenade cleanpreprocess
+
+ad_forward:
+# Create holding folders and run preprocessor
+	rm -fr temp_forward
+	mkdir -p temp_forward
+	make -f Makefile_tapenade preprocess
+
+# the following ist he actual tapenade command to run
+	$(TAPENADE_HOME)/bin/tapenade \
+	-head "kd_tree%computeNodalProperties(XsPtr, tp%Mi, tp%Bi)>(tp%Mi, tp%Bi)" \
+	-noisize \
+	-forward -msglevel 30  -tgtvarname %b \
+	-O temp_forward $(TAPENADE_PRECISION) $(PREPROCESSED_FILES) -html
+	python autoEdit/autoEditForward.py temp_forward outputForward
 
 # Clean up files
 	make -f Makefile_tapenade cleanpreprocess
