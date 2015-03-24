@@ -56,6 +56,4 @@ complexify:
 			cp $$file ../../src_cs/warp/$$file; \
 		fi;\
 		done
-
-
-
+	cp Makefile ../../src_cs/warp

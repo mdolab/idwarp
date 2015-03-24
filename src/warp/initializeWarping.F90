@@ -71,13 +71,8 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
 
   i = 1
   do ii=istart,iend-1
-#ifdef USE_COMPLEX
-     call VecSetValues(Xs, 1, (/ii/), cmplx(pts(i), 0.0), &
-          INSERT_VALUES, ierr)
-#else
      call VecSetValues(Xs, 1, (/ii/), pts(i), &
           INSERT_VALUES, ierr)
-#endif
      call EChk(ierr, __FILE__, __LINE__)
      i = i + 1
   end do

@@ -50,6 +50,7 @@ warp:
 	mkdir -p obj
 	mkdir -p mod
 	ln -sf config/config.mk config.mk
+	ln -sf Common_real.mk Common.mk
 
 	@for subdir in $(WARP_SUBDIRS) ; \
 		do \
