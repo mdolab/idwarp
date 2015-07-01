@@ -1408,8 +1408,16 @@ Contains
     use communication
     implicit none
 #ifndef USE_TAPENADE
-#include "finclude/petsc.h"
-#include "finclude/petscvec.h90"
+
+#include "include/petscversion.h"
+#if PETSC_VERSION_MINOR > 5
+#include "petsc/finclude/petsc.h"
+#include "petsc/finclude/petscvec.h90"
+#else
+#include "include/finclude/petsc.h"
+#include "include/finclude/petscvec.h90"
+#endif
+
 #endif
     Type (tree_master_record), Pointer :: tp
     real(kind=realType), dimension(:, :) :: nodes

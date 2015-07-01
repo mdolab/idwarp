@@ -8,8 +8,16 @@ module gridData
   save
 
 #ifndef USE_TAPENADE
-#include "finclude/petsc.h"
-#include "finclude/petscvec.h90"
+
+#include "include/petscversion.h"
+#if PETSC_VERSION_MINOR > 5
+#include "petsc/finclude/petsc.h"
+#include "petsc/finclude/petscvec.h90"
+#else
+#include "include/finclude/petsc.h"
+#include "include/finclude/petscvec.h90"
+#endif
+
 
   ! Volume grid vecs
   Vec Xv, Xv0, dXv, XvLocal
