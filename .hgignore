@@ -13,7 +13,6 @@ src/warp/temp_reverse/*
 *.pyf
 *.cgns
 *.a
-doc/*
 *.dat
 *.mk
 *.xyz
