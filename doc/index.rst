@@ -6,8 +6,8 @@
 .. _pyWarpUstruct:
 
 
-Welcome to pyWarpUstruct's documentation!
-=========================================
+pywarpustruct
+=============
 
 Contents:
 
