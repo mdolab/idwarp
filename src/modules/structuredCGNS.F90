@@ -8,15 +8,15 @@ module structuredCGNSGrid
   save
 
   type bctype
-     character*32 name
+     character(maxCGNSNameLen) :: name
      integer(kind=intType) :: bocoType
      integer(kind=intType) :: ptRange(3, 2)
-     character*32 family
+     character(maxCGNSNameLen) :: family
   end type bctype
 
   type B2B
-     character*32 name
-     character*32 donorName
+     character(maxCGNSNameLen) :: name
+     character(maxCGNSNameLen) :: donorName
      integer(kind=intType) :: ptRange(3, 2)
      integer(kind=intType) :: donorRange(3, 2)
      integer(kind=intType) :: transform(3)
@@ -24,7 +24,7 @@ module structuredCGNSGrid
 
   type blocktype
      integer :: il, jl, kl
-     character*32 :: name
+     character(maxCGNSNameLen) :: name
      type(bcType), dimension(:), allocatable :: bocos
      type(B2B), dimension(:), allocatable :: B2Bs
   end type blocktype

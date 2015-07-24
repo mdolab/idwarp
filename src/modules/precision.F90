@@ -1,4 +1,7 @@
 module precision
+  ! Define precision variables for pyWarpUStrct. We ensure at least 12
+  ! digits for the real and standand integers. 
+
   implicit none
   save 
 

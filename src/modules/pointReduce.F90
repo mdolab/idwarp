@@ -11,43 +11,43 @@ contains
     use precision
     implicit none
 
-    ! Input Parameters
+
     integer(kind=intType), intent(in) :: N
 #ifdef USE_COMPLEX
+    ! Input Parameters
     complex(kind=realType), intent(in), dimension(:, :) :: pts
     complex(kind=realType), intent(in) :: tol
-#else
-    real(kind=realType), intent(in), dimension(:, :) :: pts
-    real(kind=realType), intent(in) :: tol
-#endif
     ! Output Parametres
-#ifdef USE_COMPLEX
     complex(kind=realType), intent(out), dimension(:,:) :: uniquePts
-#else
-    real(kind=realType), intent(out), dimension(:,:) :: uniquePts
-#endif
-    integer(kind=intType), intent(out), dimension(:) :: link
-    integer(kind=intType), intent(out) :: nUnique
-
     ! Working Parameters
-#ifdef USE_COMPLEX
     complex(kind=realType), allocatable, dimension(:) :: dists, tmp
     complex(kind=realType), dimension(:, :), allocatable :: subPts, subUniquePts
 #else
+    ! Input Parameters
+    real(kind=realType), intent(in), dimension(:, :) :: pts
+    real(kind=realType), intent(in) :: tol
+    ! Output Parametres
+    real(kind=realType), intent(out), dimension(:,:) :: uniquePts
+    ! Working Parameters
     real(kind=realType), allocatable, dimension(:) :: dists, tmp
     real(kind=realType), dimension(:, :), allocatable :: subPts, subUniquePts
 #endif
+    ! Output Parameters
+    integer(kind=intType), intent(out), dimension(:) :: link
+    integer(kind=intType), intent(out) :: nUnique
+
+    ! Working parameters
     integer(kind=intType), allocatable, dimension(:) :: ind
     integer(kind=intType) :: i, j, nTmp, link_counter, ii, nSubUnique
     logical cont, cont2
     integer(kind=intType), dimension(:), allocatable :: tmpInd, subLInk
-
     integer(kind=intType) :: maxSubUnique
 
     maxSubUnique = 10
     ! Allocate dists, and the ind pointer
-    allocate(dists(N), tmp(N), ind(N), tmpInd(maxSubUnique), subLink(maxSubUnique), &
-         subPts(3, maxSubUnique), subUniquePts(3, maxSubUnique))
+    allocate(dists(N), tmp(N), ind(N), tmpInd(maxSubUnique), &
+         subLink(maxSubUnique), subPts(3, maxSubUnique), &
+         subUniquePts(3, maxSubUnique))
 
     ! Compute distances of all points from the origin
     do i=1, N

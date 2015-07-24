@@ -2,7 +2,7 @@ subroutine getElementProps(points, nPts, area, normal)
   use constants
   implicit none
 
-  ! subroutine Variables
+  ! Subroutine Variables
   real(kind=realType), dimension(3, nPts), intent(in) :: points
   integer(kind=intType), intent(in) :: nPts
   real(kind=realType), dimension(3), intent(out) :: normal

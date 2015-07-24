@@ -1,4 +1,5 @@
-! This routine get/sets the current grid nodes from the Common grid ordering.
+! This routine get/sets the current grid nodes from the Common grid
+! ordering.
 subroutine getCommonVolumeCoordinates(gridNodes, nDOF)
 
   use gridData
@@ -22,6 +23,7 @@ subroutine getCommonVolumeCoordinates(gridNodes, nDOF)
   call VecGetArrayF90(commonGridVec, xx, ierr)
   call EChk(ierr,__FILE__,__LINE__)
   
+  ! Perform the actual copy
   gridNodes = xx
 
   call VecRestoreArrayF90(Xv, xx, ierr)
@@ -43,6 +45,7 @@ subroutine setCommonVolumeCoordinates(gridNodes, nDOF)
   call VecGetArrayF90(commonGridVec, xx, ierr)
   call EChk(ierr,__FILE__,__LINE__)
   
+  ! Perform actual copy
   xx = gridNodes
 
   call VecRestoreArrayF90(commonGridVec, xx, ierr)
