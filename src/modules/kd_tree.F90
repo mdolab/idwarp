@@ -3,8 +3,7 @@ Module kd_tree
   use pointReduce
   ! K-D tree routines in Fortran 90 by Matt Kennel.
   ! Original program was written in Sather by Steve Omohundro and
-  ! Matt Kennel.  Only the Euclidean metric works so far.
-
+  ! Matt Kennel. Only the Euclidean metric works so far.
   !
   ! This module is identical to 'kd_tree', except that the order
   ! of subscripts is reversed in the data file.
@@ -32,6 +31,11 @@ Module kd_tree
   ! indices of points included in this node, referring back to indices
   ! child pointers 
 
+  real(kind=realType), parameter, dimension(NERR) :: rstar = &
+       (/two, three, four, five, 7.5_realType, 10.0_realType, 20.0_realType, 40.0_realType, &
+       80.0_realType, 160.0_realType, 320.0_realType, 640.0_realType/)
+  real(kind=realType),  dimension(NERR-1) :: orstar
+
   Type :: tree_master_record
      real(kind=realType), Dimension (:, :), allocatable :: the_data
      Integer(kind=IntType) :: dim, n
@@ -42,7 +46,6 @@ Module kd_tree
      integer(kind=intType) :: maxDepth
      real(kind=realType) :: Ldef, Ldef0
      real(kind=realType) :: alphaToBExp
-     real(kind=realType) :: farField 
      real(kind=realType) , dimension(:), pointer :: Ai
      real(kind=realType) , dimension(:, :), pointer :: Bi, Bib 
      real(kind=realType) , dimension(:, :), pointer :: normals, normalsb
@@ -55,7 +58,6 @@ Module kd_tree
      integer(kind=intType), dimension(:), allocatable :: invLink
 
      real(Kind=realType) :: errTol
-     real(kind=realType), dimension(NERR) :: rstar
      integer(kind=intType) :: nFace
   End Type tree_master_record
 
@@ -70,11 +72,9 @@ Module kd_tree
      real(kind=realType) :: Bi(3), Bib(3)
      real(kind=realType) :: Mi(3, 3), Mib(3, 3)
      real(kind=realType) :: X(3)
-     real(kind=realType) :: radius
+     real(kind=realType) :: oradius
      integer(kind=intType) :: lvl
-     integer(kind=intType) :: id
      real(kind=realType) :: err(NERR)
-     real(kind=realType) :: numErr(NERR)
   End Type tree_node
 
   Type :: tree_search_record
@@ -522,7 +522,6 @@ Contains
       integer(kind=intType) :: level
       integer(kind=intType) :: id
       np%lvl = level
-      np%id = id
       id = id + 1
       tp%maxDepth = max(tp%maxDepth, level)
       if (np%dnum /= 0) then 
@@ -564,8 +563,8 @@ Contains
     Type (tree_master_record), Pointer :: tp
     Type (tree_node), Pointer :: np
     integer(kind=intType) :: i
-    real(kind=realType) :: Xcen(3), Xmax, dist, dx(3)
-
+    real(kind=realType) :: Xcen(3), Xmax, dist, dx(3), radius
+    
     ! Sum up all the children
     np%X = zero
     do i=np%l, np%u
@@ -574,13 +573,14 @@ Contains
     np%X = np%X / np%n
 
     ! Now do the radius
-    np%radius = zero
+    radius = zero
     do i=np%l, np%u
        dx = tp%the_data(:, tp%indexes(i)) - np%X
        dist = sqrt(dx(1)**2 + dx(2)**2 + dx(3)**2)
-       if (dist > np%radius) then 
-          np%radius = dist
+       if (dist > radius) then 
+          radius = dist
        end if
+       np%oradius = one/radius
     end do
 
     ! Now call the children
@@ -630,7 +630,7 @@ Contains
     real(kind=realType), intent(in) :: approxDen
 
     ! Working variables
-    real(kind=realType), dimension(3) :: rr, Si
+    real(kind=realType), dimension(3) :: Si
     real(kind=realType) :: dist, err
 
     if (np%dnum == 0) then 
@@ -639,12 +639,11 @@ Contains
     else
        ! Tree Node: Compute the distance from 'r' to the
        ! center of the node, np%X
-       rr(1) = r(1) - np%X(1)
-       rr(2) = r(2) - np%X(2)
-       rr(3) = r(3) - np%X(3)
-       dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2)
+       dist = sqrt((r(1) - np%X(1))**2 + &
+                   (r(2) - np%X(2))**2 + & 
+                   (r(3) - np%X(3))**2)
 
-       if (dist/np%radius < two) then ! Too close...call children
+       if (dist*np%oradius < two) then ! Too close...call children
           call evalNode(tp, np%left, r, num, den, approxDen)
           call evalNode(tp, np%right, r, num, den, approxDen)
        else 
@@ -673,7 +672,7 @@ Contains
     real(kind=realType), intent(inout), dimension(3) :: num
     real(kind=realType), intent(inout) :: den
     real(kind=realType), dimension(3) :: rr, Si
-    real(kind=realType) :: dist, LdefoDist, LdefoDist3
+    real(kind=realType) :: LdefoDist, LdefoDist3
     real(kind=realType) :: Wi
     integer(kind=intType) :: i
 
@@ -681,8 +680,7 @@ Contains
        rr(1) = r(1) - tp%Xu0(1, i)
        rr(2) = r(2) - tp%Xu0(2, i)
        rr(3) = r(3) - tp%Xu0(3, i)
-       dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2+1e-15)
-       LdefoDist = tp%Ldef/dist
+       LdefoDist = tp%Ldef/sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2+eps)
        Ldefodist3 = LdefoDist**3
        Wi = tp%Ai(i)*(Ldefodist3 + tp%alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
        Si = tp%Mi(:, 1, i)*r(1) + tp%Mi(:, 2, i)*r(2) + tp%Mi(:, 3, i)*r(3) + tp%bi(:, i) - r(:)
@@ -765,22 +763,20 @@ Contains
     real(kind=realType), intent(inout) :: den
     real(kind=realType), dimension(3) :: rr
     real(kind=realType) :: dist, LdefoDist, LdefoDist3, err
-    integer(kind=intType) :: ii, evals, i
-
+    integer(kind=intType) :: i
     if (np%dnum == 0) then 
        ! Leaf node. Do regular calc:
        do i=np%l, np%u
           rr = r - tp%Xu0(:, i)
-          dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2+1e-16)
-          LdefoDist = tp%Ldef/dist
+          LdefoDist = tp%Ldef/sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2+1e-16)
           Ldefodist3 = LdefoDist**3
           den = den + tp%Ai(i)*(Ldefodist3 + tp%alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
        end do
     else
        rr = r - np%X
        dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2)
-       call getError(tp, np, dist, err)
-       if (dist/np%radius > 5.0) then
+       
+       if (dist*np%oradius > 5.0) then
           ! Far field calc is ok:
           LdefoDist = tp%Ldef/dist
           Ldefodist3 = LdefoDist**3
@@ -815,10 +811,10 @@ Contains
     else
        rr = r - np%X
        dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2)
-       ! This three cost accounts for the subroutine calling
+       ! This 0.5 cost accounts for the subroutine calling
        ! overhead and the above dist calc.
-       c = c + three
-       if (dist/np%radius < two) then ! Too close...call children
+       c = c + half
+       if (dist*np%oradius < two) then ! Too close...call children
           call dryRun(tp, np%left, r, approxDen, c)
           call dryRun(tp, np%right, r, approxDen, c)
        else 
@@ -826,7 +822,7 @@ Contains
           call getError(tp, np, dist, err)
           if (err < tp%errTol * approxDen) then
              ! This is includes the getError calc
-             c = c + 1.5
+             c = c + 1.1
           else
              ! Not good enough error so call children
              call dryRun(tp, np%left, r, approxDen, c)
@@ -855,7 +851,7 @@ Contains
        do j=1, NERR
           dExact= zero
           dApprox = zero
-          call getSpherePts(np%X, np%radius*tp%rstar(j), vpts, fpts)
+          call getSpherePts(np%X, one/np%oradius*rstar(j), vpts, fpts)
 
           np%err(j) = zero
           do ii=1, 20
@@ -888,8 +884,6 @@ Contains
     end if
   end subroutine computeErrors
 
-
-
   subroutine getError(tp, np, dist, err)
     ! Simple routine to use the stored errors to estimate what the
     ! error will be for dist 'dist'.
@@ -900,43 +894,22 @@ Contains
     real(Kind=realType), intent(out) :: err
     real(kind=realType) :: dOvrR
     real(kind=realType) :: fact
-    integer(kind=intType) :: bin, i
+    integer(kind=intType) :: i
 
-    dOvrR = dist / np%radius
-    bin = 11
-    do i=2,11
-       if (dOvrR < tp%rstar(i)) then
-          bin = i-1
+    dOvrR = dist * np%oradius
+    
+    ! This is a linear search. However, trust me, it is faster than a
+    ! binary search since N is small and fixed
+    err = np%err(NERR)
+    do i=1,11
+       if (dOvrR < rstar(i+1)) then
+          fact = (dOvrR - rstar(i))*orstar(i)
+          err = (one-fact)*np%err(i) + fact*np%err(i+1)
           exit
        end if
     end do
-    fact = (dOvrR - tp%rstar(bin))/(tp%rstar(bin+1)-tp%rstar(bin))
-    err = (one-fact)*np%err(bin) + fact*np%err(bin+1)
+ 
   end subroutine getError
-
-  subroutine getErrorNum(tp, np, dist, err)
-    ! Simple routine to use the stored errors to estimate what the
-    ! error will be for dist 'dist'.
-    implicit none
-    Type (tree_master_record), Pointer :: tp
-    Type (tree_node), Pointer :: np 
-    real(kind=realType), intent(in) :: dist
-    real(Kind=realType), intent(out) :: err
-    real(kind=realType) :: dOvrR
-    real(kind=realType) :: fact
-    integer(kind=intType) :: bin, i
-
-    dOvrR = dist / np%radius
-    bin = 11
-    do i=2,11
-       if (dOvrR < tp%rstar(i)) then
-          bin = i-1
-          exit
-       end if
-    end do
-    fact = (dOvrR - tp%rstar(bin))/(tp%rstar(bin+1)-tp%rstar(bin))
-    err = (one-fact)*np%numerr(bin) + fact*np%numerr(bin+1)
-  end subroutine getErrorNum
 
   !------------------------------------------------------------
   !               DERIVATIVE ROUTINES
@@ -997,7 +970,7 @@ Contains
        rr(3) = r(3) - np%X(3)
        dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2)
 
-       if (dist/np%radius < two) then ! Too close...call children
+       if (dist*np%oradius < two) then ! Too close...call children
           call evalNode_b(tp, np%left, r, numb, approxDen, Bib, Mib)
           call evalNode_b(tp, np%right, r, numb, approxDen, Bib, Mib)
        else 
@@ -1033,7 +1006,7 @@ Contains
        rr(2) = r(2) - tp%xu0(2, i)
        rr(3) = r(3) - tp%xu0(3, i)
 
-       dist = SQRT(rr(1)**2 + rr(2)**2 + rr(3)**2 + 1e-15)
+       dist = SQRT(rr(1)**2 + rr(2)**2 + rr(3)**2 + eps)
        ldefodist = tp%ldef/dist
        ldefodist3 = ldefodist**3
        wi = tp%Ai(i)*(ldefodist3+tp%alphatobexp*ldefodist3*ldefodist*ldefodist)
@@ -1222,7 +1195,7 @@ Contains
        rr(3) = r(3) - np%X(3)
        dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2)
 
-       if (dist/np%radius < two) then ! Too close...call children
+       if (dist*np%oradius < two) then ! Too close...call children
           call evalNode_d(tp, np%left, r, numd, approxDen)
           call evalNode_d(tp, np%right, r, numd, approxDen)
        else 
@@ -1255,7 +1228,7 @@ Contains
        rr(1) = r(1) - tp%Xu0(1, i)
        rr(2) = r(2) - tp%Xu0(2, i)
        rr(3) = r(3) - tp%Xu0(3, i)
-       dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2+1e-15)
+       dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2+eps)
        LdefoDist = tp%Ldef/dist
        Ldefodist3 = LdefoDist**3
        Wi = tp%Ai(i)*(Ldefodist3 + tp%alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
@@ -1633,18 +1606,11 @@ Contains
     ! would be to plot the actual error profiles and see how the
     ! linear approximation at the following points matches. 
 
-    tp%rstar(1) = two
-    tp%rstar(2) = three
-    tp%rstar(3) = four
-    tp%rstar(4) = five
-    tp%rstar(5) = 7.5_realType
-    tp%rstar(6) = 10.0_realType
-    tp%rstar(7) = 20.0_realType
-    tp%rstar(8) = 40.0_realType
-    tp%rstar(9) = 80.0_realType
-    tp%rstar(10) = 160.0_realType
-    tp%rstar(11) = 320.0_realType
-    tp%rstar(12) = 640.0_realType
+ 
+
+    do i=1,NERR-1
+       orstar(i) = one/(rstar(i+1) - rstar(i))
+    end do
 
     ! Perform some initialization on the tree
     call computeErrors(tp, tp%root)

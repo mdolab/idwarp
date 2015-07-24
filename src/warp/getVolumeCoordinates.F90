@@ -13,7 +13,8 @@ subroutine getVolumeCoordinates(gridNodes, nDOF)
   ! No error checking here!
   call VecGetArrayF90(Xv, xx, ierr)
   call EChk(ierr,__FILE__,__LINE__)
-  
+
+  ! Perform copy
   gridNodes = xx
 
   call VecRestoreArrayF90(Xv, xx, ierr)
@@ -36,6 +37,7 @@ subroutine setVolumeCoordinates(gridNodes, nDOF)
   call VecGetArrayF90(Xv, xx, ierr)
   call EChk(ierr,__FILE__,__LINE__)
   
+  ! Perform copy
   xx = gridNodes
 
   call VecRestoreArrayF90(Xv, xx, ierr)
