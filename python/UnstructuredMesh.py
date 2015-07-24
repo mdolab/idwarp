@@ -123,6 +123,7 @@ class USMesh(object):
             'symmTol':1e-6,
             'useRotations':True,
             'bucketSize':8,
+            'fileType':None
         }
         
         # Set remaining default values
@@ -139,17 +140,27 @@ class USMesh(object):
         self.patchNames = None
         self.faceSizes = None
         self.conn = None
+        self.meshType = None
         fileName = self.solverOptions['gridFile']
+        self.meshType = self.solverOptions['fileType']
 
         # Determine how to read:
-        if os.path.isfile(fileName):
-            self.warp.readstructuredcgns(fileName)
-            self._getCGNSFamilyList()
-
-        elif os.path.isdir(fileName):
-            self._readOFGrid(fileName)
+        if not self.meshType == None:
+            if self.meshType.lower() == "structuredcgns":
+                #if os.path.isfile(fileName):
+                self.warp.readstructuredcgns(fileName)
+                self._getCGNSFamilyList()
+            elif self.meshType.lower() == "unstructuredcgns":
+                self.warp.readunstructuredcgns(fileName)
+                self._getCGNSFamilyList()
+                
+            elif self.meshType.lower() == "openfoam":
+                #elif os.path.isdir(fileName):
+                self._readOFGrid(fileName)
+                
         else:
-            raise Error('Invalid input file type. CGNS or OpenFOAM required')
+            raise Error('Invalid input file type. valid options are: \
+            structuredCGNS, unstructuredCGNS or OpenFOAM.')
 
         # Add a default family group 'all' which will always be there.
         self.familyGroup = {}
@@ -186,90 +197,93 @@ class USMesh(object):
         # Read the cell info for the mesh
         self._readOFCellInfo()
 
-        # Finally create the underlying data structure:
-        faceSizes = []
-        faceConn = []
-        pts = []
-        x0 = self.OFData['x0']
-        faces = self.OFData['faces']
-        connCount = 0
-        localFamilies = []
-        localType = []
-        self.patchNames = []
-        self.patchPtr = [0]
-        symNodes = []
-        for bName in self.OFData['boundaries']:
-            bType = self.OFData['boundaries'][bName]['type'].lower()
-            if bType in ['patch', 'wall']:
-                localFamilies.append(bName)
-                if bType == 'wall':
-                    localType.append(IWALL)
-                if bType == 'patch':
-                    localType.append(IFAR)
+        # Read the Family data
+        self._readOFFamilyInfo()
 
-                # Apparently openfoam will list boundaries with zero
-                # faces on them:
-                nFace = len(self.OFData['boundaries'][bName]['faces'])
-                if nFace > 0:
-                    for iFace in self.OFData['boundaries'][bName]['faces']:
-                        face = faces[iFace]
-                        nNodes = len(face)
-                        # Pull out the 'len(face)' nodes from x0.
-                        for j in range(nNodes):
-                            pts.append(x0[face[j]])
-                        faceSizes.append(nNodes)
-                        faceConn.extend(range(connCount, connCount + nNodes))
-                        connCount += nNodes
+        # # Finally create the underlying data structure:
+        # faceSizes = []
+        # faceConn = []
+        # pts = []
+        # x0 = self.OFData['x0']
+        # faces = self.OFData['faces']
+        # connCount = 0
+        # localFamilies = []
+        # localType = []
+        # self.patchNames = []
+        # self.patchPtr = [0]
+        # symNodes = []
+        # for bName in self.OFData['boundaries']:
+        #     bType = self.OFData['boundaries'][bName]['type'].lower()
+        #     if bType in ['patch', 'wall']:
+        #         localFamilies.append(bName)
+        #         if bType == 'wall':
+        #             localType.append(IWALL)
+        #         if bType == 'patch':
+        #             localType.append(IFAR)
 
-                    self.patchNames.append(bName.lower())
-                    self.patchPtr.append(connCount)
-            if bType.lower() == 'symmetry':
-                # Gather up all the sym nodes
-                for iFace in self.OFData['boundaries'][bName]['faces']:
-                    face = faces[iFace]
-                    for j in range(len(face)):
-                        symNodes.append(x0[face[j]])
+        #         # Apparently openfoam will list boundaries with zero
+        #         # faces on them:
+        #         nFace = len(self.OFData['boundaries'][bName]['faces'])
+        #         if nFace > 0:
+        #             for iFace in self.OFData['boundaries'][bName]['faces']:
+        #                 face = faces[iFace]
+        #                 nNodes = len(face)
+        #                 # Pull out the 'len(face)' nodes from x0.
+        #                 for j in range(nNodes):
+        #                     pts.append(x0[face[j]])
+        #                 faceSizes.append(nNodes)
+        #                 faceConn.extend(range(connCount, connCount + nNodes))
+        #                 connCount += nNodes
 
-        # Gather all symmetry nodes:
-        if len(symNodes) == 0:
-            symNodes = np.zeros((0, 3))
-        else:
-            symNodes = np.array(symNodes)
+        #             self.patchNames.append(bName.lower())
+        #             self.patchPtr.append(connCount)
+        #     if bType.lower() == 'symmetry':
+        #         # Gather up all the sym nodes
+        #         for iFace in self.OFData['boundaries'][bName]['faces']:
+        #             face = faces[iFace]
+        #             for j in range(len(face)):
+        #                 symNodes.append(x0[face[j]])
+
+        # # Gather all symmetry nodes:
+        # if len(symNodes) == 0:
+        #     symNodes = np.zeros((0, 3))
+        # else:
+        #     symNodes = np.array(symNodes)
         
-        allSymNodes = self.comm.allgather(symNodes)
-        allSymNodes = np.vstack(allSymNodes)
-        iSymm = 0
-        if len(allSymNodes > 0):
-            symmSum = np.sum(allSymNodes, axis=0)
-            n = len(symmSum)
-            if symmSum[0] / n < self.solverOptions['symmTol']:
-                iSymm = 1
-            elif symmSum[1] / n < self.solverOptions['symmTol']:
-                iSymm = 2
-            elif symmSum[2] / n < self.solverOptions['symmTol']:
-                iSymm = 3
-            self.warp.gridinput.isymm = iSymm
+        # allSymNodes = self.comm.allgather(symNodes)
+        # allSymNodes = np.vstack(allSymNodes)
+        # iSymm = 0
+        # if len(allSymNodes > 0):
+        #     symmSum = np.sum(allSymNodes, axis=0)
+        #     n = len(symmSum)
+        #     if symmSum[0] / n < self.solverOptions['symmTol']:
+        #         iSymm = 1
+        #     elif symmSum[1] / n < self.solverOptions['symmTol']:
+        #         iSymm = 2
+        #     elif symmSum[2] / n < self.solverOptions['symmTol']:
+        #         iSymm = 3
+        #     self.warp.gridinput.isymm = iSymm
 
-        # Create the internal structures for volume mesh
-        wallNodes = np.zeros(len(x0), 'intc')
-        self.warp.createcommongrid(x0.T, wallNodes)
-        pts = np.array(pts)
-        # And run the common routine for setting up the surface
-        self.warp.initializewarping(np.ravel(pts.real.astype('d')),
-                                    faceSizes, faceConn)
-        self.warpInitialized = True
+        # # Create the internal structures for volume mesh
+        # wallNodes = np.zeros(len(x0), 'intc')
+        # self.warp.createcommongrid(x0.T, wallNodes)
+        # pts = np.array(pts)
+        # # And run the common routine for setting up the surface
+        # self.warp.initializewarping(np.ravel(pts.real.astype('d')),
+        #                             faceSizes, faceConn)
+        # self.warpInitialized = True
 
-        # Now communicate all the family stuff
-        tmpFamilies = self.comm.allgather(localFamilies)
-        tmpPatchType = self.comm.allgather(localType)
+        # # Now communicate all the family stuff
+        # tmpFamilies = self.comm.allgather(localFamilies)
+        # tmpPatchType = self.comm.allgather(localType)
         
-        self.familyList = {}
-        for iProc in range(self.comm.size):
-            for j in range(len(tmpFamilies[iProc])):
-                fam = tmpFamilies[iProc][j]
-                pType = tmpPatchType[iProc][j]
-                if fam not in self.familyList:
-                    self.familyList[fam.lower()] = pType
+        # self.familyList = {}
+        # for iProc in range(self.comm.size):
+        #     for j in range(len(tmpFamilies[iProc])):
+        #         fam = tmpFamilies[iProc][j]
+        #         pType = tmpPatchType[iProc][j]
+        #         if fam not in self.familyList:
+        #             self.familyList[fam.lower()] = pType
 
     def _readOFVolumeMeshPoints(self):
         '''
@@ -426,6 +440,32 @@ class USMesh(object):
         self.OFData['owner'] = owner
         self.OFData['neighbour'] = neighbour
 
+    def _readOFFamilyInfo(self):
+        # loop over the existing data and generate a list of available familie
+        localFamilies = []
+        localType = []
+        for bName in self.OFData['boundaries']:
+            bType = self.OFData['boundaries'][bName]['type'].lower()
+            if bType in ['patch', 'wall']:
+                localFamilies.append(bName)
+                if bType == 'wall':
+                    localType.append(IWALL)
+                if bType == 'patch':
+                    localType.append(IFAR)
+
+
+        # now communicate all the family stuff
+        tmpFamilies = self.comm.allgather(localFamilies)
+        tmpPatchType = self.comm.allgather(localType)
+        
+        self.familyList = {}
+        for iProc in range(self.comm.size):
+            for j in range(len(tmpFamilies[iProc])):
+                fam = tmpFamilies[iProc][j]
+                pType = tmpPatchType[iProc][j]
+                if fam not in self.familyList:
+                    self.familyList[fam.lower()] = pType
+
     def addFamilyGroup(self, groupName, families=None):
         """Create a grouping of CGNS families called "groupName"
         
@@ -448,6 +488,7 @@ class USMesh(object):
                 if self.familyList[fam] == IWALL:
                     families.append(fam)
                     
+        print('families',families)
         groupFamList = []
         for fam in families:
             if fam.lower() in self.familyList:
@@ -571,7 +612,10 @@ class USMesh(object):
         """
         self.warp.setexternalmeshindices(ind)
 
-    def setExternalSurface(self, patchNames, patchSizes, conn, pts):
+    def setExternalSurface(self, **kwargs):
+
+   # def setExternalSurface(self, patchNames, patchSizes, conn, pts, faceSizes = None, 
+   #                         patchPtr = None):
         """
         This is the Master function that defines the surface
         coordinates the external solver wants to use.
@@ -592,21 +636,39 @@ class USMesh(object):
             Nodes on this processor. 
         """
 
-        # Since this routine is called by an external structured
-        # solver we will unstructured-itize the data. Essentially we
-        # just turn the patch sizes in to pointer of length patchNames
-        # + 1 such that we can figure out what indices correspond to
-        # the particular family. 
+        keys = set(kwargs.keys())
+        print('sets',keys,set(('patchNames','patchSizes', 'conn', 'pts')),set(('patchNames','patchSizes', 'conn', 'pts')) <= keys)
+        if set(('patchNames','patchSizes', 'conn', 'pts')) <= keys:
+            print('in call')
+            # this is the SUmb call pattern
+            self.patchNames = kwargs['patchNames']
+            self.patchSizes = kwargs['patchSizes']
+            nFaces = len(kwargs['conn'])
+            self.conn = np.array(kwargs['conn']).flatten()
+            pts = kwargs['pts']
 
-        patchPtr = np.zeros(len(patchSizes) + 1, 'intc')
-        for i in range(len(patchSizes)):
-            patchPtr[i+1] = patchPtr[i] + patchSizes[i][0]*patchSizes[i][1]
-        self.patchSizes = patchSizes
-        self.patchPtr = patchPtr
-        self.patchNames = patchNames
-        self.conn = np.array(conn).flatten()
-        # All faces are quads so just use '4' for them all
-        self.faceSizes = 4*np.ones(len(conn), 'intc') 
+            # Since this routine is called by an external structured
+            # solver, we will unstructured-itize the data. Essentially we
+            # just turn the patch sizes in to pointer of length patchNames
+            # + 1 such that we can figure out what indices correspond to
+            # the particular family. 
+            
+            self.patchPtr = np.zeros(len(self.patchSizes) + 1, 'intc')
+            for i in range(len(self.patchSizes)):
+                self.patchPtr[i+1] = self.patchPtr[i] + \
+                                     self.patchSizes[i][0]*self.patchSizes[i][1]
+
+            # Assume all faces are quads so just use '4' for them all
+            self.faceSizes = 4*np.ones(nFaces, 'intc')
+        elif set(('patchNames', 'conn', 'pts','faceSizes','patchPtr')) <= keys:
+            # this is the openfoam format
+            self.patchNames = kwargs['patchNames']
+            self.conn = np.array(kwargs['conn']).flatten()
+            pts = kwargs['pts']
+            self.patchPtr = kwargs['patchPtr']
+            self.faceSizes = kwargs['faceSizes']
+        else:
+            raise Error('Unknown call pattern for setExternalSurface.')
         
         # Call the fortran initialze warping command with  the
         # coordinates and the patch connectivity given to us. 
@@ -764,8 +826,15 @@ class USMesh(object):
         This will update the volume coordinates to match surface
         coordinates set with setSurfaceCoordinates()
         """
+        # Initialize internal surface if one isn't set
+        self._setInternalSurface()
+
+        # Set Options
         self._setMeshOptions()
+
+        # Now run mesh warp command
         self.warp.warpmesh()
+
 
     def warpDeriv(self, dXv, solverVec=True, surfOnly=False):
         """Compute the warping derivative (dXvdXs^T)*Vec
@@ -1009,6 +1078,214 @@ class USMesh(object):
         information. Currently not written.
         """
         pass
+
+        if self.warpInitialized is False:
+            if self.comm.rank == 0:
+                print(" -> Info: Using Internal pyWarp Surfaces. If "
+                      "this mesh object is to be used with SUmb, ensure "
+                      " the mesh object is passed to SUmb immediately after "
+                      "creation.")
+
+
+            if self.meshType.lower()=="structuredcgns":
+                npatch = self.warp.getnpatchesstructured()
+                print (npatch)
+                patchNames = []
+                patchSizes = []
+                ptSize = 0
+                nCell = 0
+                for i in xrange(npatch):
+                    #tmp = np.zeros(256, 'c')
+                    name = self.warp.getpatchnamestructured(i)
+                    print(i,name)
+                    patchNames.append(name.lower().strip())
+                    #''.join([tmp[j] for j in range(256)]).lower().strip())
+                    patchSizes.append(self.warp.getpatchsizestructured(i))
+                    ptSize += patchSizes[-1][0]*patchSizes[-1][1]
+                    nCell += (patchSizes[-1][0]-1)*(patchSizes[-1][1]-1)
+
+                print(patchNames)
+                conn = np.zeros((nCell, 4), 'intc')  # None
+                pts = np.zeros((ptSize, 3), 'd')     # Explicitly
+                                                     # real...even in
+                                                     # complex
+                fileName = self.solverOptions['gridFile']
+
+                self.warp.getpatchesandconnstructured(fileName,np.ravel(pts),np.ravel(conn))
+
+                self.setExternalSurface(patchNames = patchNames, patchSizes = patchSizes,
+                                        conn = conn, pts = pts)
+
+            elif self.meshType.lower()=="unstructuredcgns":
+                
+                npatch = self.warp.getnpatchesunstructured()
+                #print (npatch)
+                patchNames = []
+                patchPointSizes = []
+                patchCellSizes = []
+                ptSize = 0
+                cellSize = 0
+                for i in xrange(npatch):
+                    #tmp = np.zeros(256, 'c')
+                    name = self.warp.getpatchnameunstructured(i)
+                    #print(i,name)
+                    patchNames.append(name.lower().strip())
+                    
+                    nPts, nCells = self.warp.getpatchsizesunstructured(i)
+                    patchPointSizes.append(nPts)
+                    ptSize += patchPointSizes[-1]
+                    patchCellSizes.append(nCells)
+                    cellSize += patchCellSizes[-1]
+                    
+
+
+                #print(patchNames,cellSize,ptSize,patchCellSizes)
+
+                pts = np.zeros((ptSize, 3), 'd')     # Explicitly
+                                                     # real...even in
+                                                     # complex
+                # get the sizes of all of the faces
+                faceSizes = np.zeros((cellSize),'intc') 
+                # sum up the face sizes to get the size of the connectivity array
+                connSize = ptSize
+                conn = np.zeros((connSize), 'intc')  # None                
+                patchPtr = np.zeros((npatch+1), 'intc')  # None                
+
+                # get the points and cell connectivity
+                fileName = self.solverOptions['gridFile']
+
+                self.warp.getpatchdataunstructured(fileName,np.ravel(faceSizes),\
+                                                   np.ravel(conn),np.ravel(patchPtr),\
+                                                   np.ravel(pts))
+             
+                # now call the external routine
+                self.setExternalSurface(patchNames = patchNames, conn = conn, pts = pts,
+                                        faceSizes = faceSizes, patchPtr = patchPtr)
+
+            elif self.meshType.lower() == "openfoam":
+                patchNames, faceSizes, patchPtr, conn, pts = self._computeOFConn()
+
+                # Run the "external" command
+                self.setExternalSurface(patchNames = patchNames, conn = conn, pts = pts,
+                                        faceSizes = faceSizes, patchPtr = patchPtr)
+
+            else:
+                if self.comm.rank==0:
+                    print("Unknown Mesh type: ",self.meshType)
+
+
+        return
+
+
+    def _computeStructureCGNSConn(self):
+
+        if self.warpInitialized is False:
+            if self.comm.rank == 0:
+                print(" -> Info: Using Internal pyWarp Surfaces. If "
+                      "this mesh object is to be used with SUmb, ensure "
+                      " the mesh object is passed to SUmb immediately after "
+                      "creation.")
+            npatch = self.warp.getnpatches()
+            patchNames = []
+            patchSizes = []
+            ptSize = 0
+            for i in xrange(npatch):
+                tmp = numpy.zeros(256, 'c')
+                self.warp.getpatchname(i, tmp)
+                patchNames.append(
+                    ''.join([tmp[j] for j in range(256)]).lower().strip())
+                patchSizes.append(self.warp.getpatchsize(i))
+                ptSize += patchSizes[-1][0]*patchSizes[-1][1]
+
+            conn = None
+            pts = numpy.zeros((ptSize, 3), 'd') #Explicitly
+                                                #real...even in
+                                                #complex
+            self.warp.getpatches(numpy.ravel(pts))
+
+            # Run th "external" command
+            self.setExternalSurface(patchNames, patchSizes, conn, pts)
+            self.warpInitialized = True
+
+        return
+
+    def _computeUnstructuredCGNSConn(self):
+
+        return
+
+    def _computeOFConn(self):
+        
+        '''
+        The user has specified an openfoam mesh. Loop through the mesh data and
+        create the arrays necessary to initialize the warping.
+        '''
+
+        # Finally create the underlying data structure:
+        faceSizes = []
+        faceConn = []
+        pts = []
+        x0 = self.OFData['x0']
+        faces = self.OFData['faces']
+        connCount = 0
+        patchNames = []
+        patchPtr = [0]
+        symNodes = []
+        for bName in self.OFData['boundaries']:
+            bType = self.OFData['boundaries'][bName]['type'].lower()
+            if bType in ['patch', 'wall']:
+                # Apparently openfoam will list boundaries with zero
+                # faces on them:
+                nFace = len(self.OFData['boundaries'][bName]['faces'])
+                if nFace > 0:
+                    for iFace in self.OFData['boundaries'][bName]['faces']:
+                        face = faces[iFace]
+                        nNodes = len(face)
+                        # Pull out the 'len(face)' nodes from x0.
+                        for j in range(nNodes):
+                            pts.append(x0[face[j]])
+                        faceSizes.append(nNodes)
+                        faceConn.extend(range(connCount, connCount + nNodes))
+                        connCount += nNodes
+
+                    patchNames.append(bName.lower())
+                    patchPtr.append(connCount)
+            if bType.lower() == 'symmetry':
+                # Gather up all the sym nodes
+                for iFace in self.OFData['boundaries'][bName]['faces']:
+                    face = faces[iFace]
+                    for j in range(len(face)):
+                        symNodes.append(x0[face[j]])
+
+        # Gather all symmetry nodes:
+        if len(symNodes) == 0:
+            symNodes = np.zeros((0, 3))
+        else:
+            symNodes = np.array(symNodes)
+        
+        allSymNodes = self.comm.allgather(symNodes)
+        allSymNodes = np.vstack(allSymNodes)
+        iSymm = 0
+        if len(allSymNodes > 0):
+            symmSum = np.sum(allSymNodes, axis=0)
+            n = len(symmSum)
+            if symmSum[0] / n < self.solverOptions['symmTol']:
+                iSymm = 1
+            elif symmSum[1] / n < self.solverOptions['symmTol']:
+                iSymm = 2
+            elif symmSum[2] / n < self.solverOptions['symmTol']:
+                iSymm = 3
+            self.warp.gridinput.isymm = iSymm
+
+        # Create the internal structures for volume mesh
+        wallNodes = np.zeros(len(x0), 'intc')
+        self.warp.createcommongrid(x0.T, wallNodes)
+        pts = np.array(pts)
+        # # And run the common routine for setting up the surface
+        # self.warp.initializewarping(np.ravel(pts.real.astype('d')),
+        #                             faceSizes, faceConn)
+        # self.warpInitialized = True
+
+        return patchNames, faceSizes, patchPtr, faceConn, pts
 
     def _setMeshOptions(self):
         """ Private function to set the options currently in
