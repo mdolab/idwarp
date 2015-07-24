@@ -68,6 +68,7 @@ subroutine releaseMemory
         end if
      end do
      deallocate(blocks)
+     deallocate(wallPoints, wallConn)
   end if
   
   if (gridIndicesSet == 1) then

@@ -16,64 +16,37 @@ python module warpustruct ! in
          integer(kind=inttype) dimension(nvollocal),intent(in),depend(nvollocal) :: wallnodes
          integer(kind=inttype), optional,intent(in),check(shape(volnodes,1)==nvollocal),depend(volnodes) :: nvollocal=shape(volnodes,1)
        end subroutine createcommongrid
-     subroutine getnpatchesstructured(npatches) ! in :warpustruct:../IO/patchIO.f90
-            use structuredcgnsgrid
-            use precision
-            use constants
+
+       subroutine getnpatchesstructured(npatches) ! in :warpustruct:../IO/patchIO.f90
             integer(kind=inttype) intent(out) :: npatches
         end subroutine getnpatchesstructured
+
         subroutine getpatchnamestructured(ipatch,patchname) ! in :warpustruct:../IO/patchIO.f90
-            use structuredcgnsgrid
-            use precision
-            use constants
             integer(kind=inttype) intent(in) :: ipatch
             character*32 intent(out) :: patchname
         end subroutine getpatchnamestructured
+
         subroutine getpatchsizestructured(ipatch,patchsize) ! in :warpustruct:../IO/patchIO.f90
-            use structuredcgnsgrid
-            use precision
-            use constants
             integer(kind=inttype) intent(in) :: ipatch
             integer(kind=inttype) dimension(2),intent(out) :: patchsize
         end subroutine getpatchsizestructured
-        subroutine getpatchesandconnstructured(cgns_file,points,ndof,conn,ncell) ! in :warpustruct:../IO/patchIO.F90
-            use structuredcgnsgrid
-            use communication
-            use precision
-            use constants
-            character*(*) intent(in) :: cgns_file
-            real(kind=realtype) dimension(ndof),intent(inout) :: points
-            integer(kind=inttype), optional,intent(in),check(len(points)>=ndof),depend(points) :: ndof=len(points)
-            integer(kind=inttype) dimension(4 * ncell),intent(inout) :: conn
-            integer(kind=inttype), optional,intent(in),check((len(conn))/(4)>=ncell),depend(conn) :: ncell=(len(conn))/(4)
-        end subroutine getpatchesandconnstructured
-    subroutine getnpatchesunstructured(npatches) ! in :warpustruct:../IO/patchIO.F90
-            use unstructuredcgnsgrid
-            use precision
-            use constants
+
+        subroutine getnpatchesunstructured(npatches) ! in :warpustruct:../IO/patchIO.F90
             integer(kind=inttype) intent(out) :: npatches
         end subroutine getnpatchesunstructured
+
         subroutine getpatchnameunstructured(ipatch,patchname) ! in :warpustruct:../IO/patchIO.F90
-            use unstructuredcgnsgrid
-            use precision
-            use constants
             integer(kind=inttype) intent(in) :: ipatch
             character*32 intent(out) :: patchname
         end subroutine getpatchnameunstructured
-     subroutine getpatchsizesunstructured(ipatch,npts,ncells) ! in :warpustruct:../IO/patchIO.F90
-            use unstructuredcgnsgrid
-            use precision
-            use constants
+
+        subroutine getpatchsizesunstructured(ipatch,npts,ncells) ! in :warpustruct:../IO/patchIO.F90
             integer(kind=inttype) intent(in) :: ipatch
             integer(kind=inttype) intent(out) :: npts
             integer(kind=inttype) intent(out) :: ncells
         end subroutine getpatchsizesunstructured
+
        subroutine getpatchdataunstructured(cgns_file,facesizes,nfaces,conn,nconnpts,patchptr,patchsize,points,ndof) ! in :warpustruct:../IO/patchIO.F90
-            use griddata
-            use communication
-            use unstructuredcgnsgrid
-            use precision
-            use gridinput
             character*(*) intent(in) :: cgns_file
             integer(kind=inttype) dimension(nfaces),intent(inout) :: facesizes
             integer(kind=inttype), optional,intent(in),check(len(facesizes)>=nfaces),depend(facesizes) :: nfaces=len(facesizes)
@@ -87,19 +60,9 @@ python module warpustruct ! in
        subroutine readstructuredcgns(cgns_file)
          character*(*) :: cgns_file
        end subroutine readstructuredcgns
-               subroutine readunstructuredcgns(cgns_file) ! in :warpustruct:../IO/readUnstructuredCGNS.f90
-            use griddata
-            use communication
-            use unstructuredcgnsgrid
-            use precision
+       subroutine readunstructuredcgns(cgns_file) ! in :warpustruct:../IO/readUnstructuredCGNS.f90
             character*(*) intent(in) :: cgns_file
         end subroutine readunstructuredcgns
-        ! subroutine writestructuredcgns(cgns_file) ! in :warpustruct:../IO/writeStructuredCGNS.F90
-        !     use griddata
-        !     use communication
-        !     use structuredcgnsgrid
-        !     character*(*) intent(in) :: cgns_file
-        ! end subroutine writestructuredcgns
         ! subroutine writeunstructuredcgnsfile ! in :warpustruct:../IO/writeUnstructuredCGNS.f90
         !     use griddata
         !     use communication
@@ -240,6 +203,11 @@ python module warpustruct ! in
          integer(kind=inttype) :: solvermeshdof
          integer(Kind=inttype) :: commonmeshdof
        end module griddata
+
+       module structuredcgnsgrid
+         real(kind=realtype), dimension(:), allocatable :: wallpoints
+         integer(kind=inttype), dimension(:), allocatable :: wallconn
+       end module structuredcgnsgrid
 
        module kd_tree
          integer(kind=inttype) :: bucket_size
