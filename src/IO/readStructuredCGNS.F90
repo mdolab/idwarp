@@ -13,9 +13,10 @@ subroutine readStructuredCGNS(cgns_file)
   ! Working 
   integer(kind=intType) :: i, j, k, ii, istart, iend, localsize, iProc, iZone, offset
   integer(kind=intType):: ierr, base, nZones, nNodes, dims(9), cg, cursize, coorsize
+  integer(kind=intType):: CellDim, PhysDim
   integer(kind=intType) :: nbases, start(3), tmpSym, nSymm
   character*100 fileName
-  character*32 :: zoneName, bocoName, famName, connectName, donorName
+  character*32 :: zoneName, bocoName, famName, connectName, donorName, basename
   integer(kind=intType) :: npts, nbocos, bocotype, pts(3, 2), famID, boco, iB2b, transform(3)
   integer(kind=intType) :: donorRange(3, 2), nB2b
   integer(kind=intType) :: ptset_type, normalIndex(3), NormalListFlag, datatype, ndataset
@@ -34,13 +35,36 @@ subroutine readStructuredCGNS(cgns_file)
   iSymm = 0
   ! Only do reading on root proc:
   if (myid == 0) then 
+     print *, ' -> Reading structured CGNS File: ', cgns_file
+
      ! Open and get the number of zones:
      call cg_open_f(trim(cgns_file), CG_MODE_READ, cg, ierr)
      if (ierr .eq. CG_ERROR) call cg_error_exit_f
 
-     base = 1
+     call cg_nbases_f(cg, nbases, ierr)
+     if (ierr .eq. CG_ERROR) call cg_error_exit_f
+     
+     if (nbases .gt. 1) then
+        print *, ' ** Warning: pyWarpUstruct only reads the first base in a cgns file'
+     end if
+
+     base = 1_intType
+
+     call cg_base_read_f(cg, base, basename, CellDim, PhysDim, ierr)
+     if (ierr .eq. CG_ERROR) call cg_error_exit_f
+     if (cellDim .ne. 3 .or. PhysDim .ne. 3) then
+        print *, 'The Cells must 3 dimensional'
+        stop
+     end if
+
+     ! !       *** base attribute:  GOTO base node
+     ! call cg_goto_f(cg, base, ierr, 'end')
+     ! if (ier .eq. CG_ERROR) call cg_error_exit_f
+
      call cg_nzones_f(cg, base, nZones, ierr);
      if (ierr .eq. CG_ERROR) call cg_error_exit_f
+     print *, '   -> Number of Zones:', nzones
+     
 
      allocate(blocks(nZones))
      ! Now count up the total number of nodes
@@ -121,7 +145,7 @@ subroutine readStructuredCGNS(cgns_file)
            ! Determine if this is in fact a face-bc
            if ( (pts(1,1) == pts(1,2)) .or. (pts(2,1) == pts(2,2)) .or. (pts(3,1) == pts(3,2))) then 
               call cg_goto_f(cg, base, ierr, "Zone_t", iZone, "ZoneBC_t", 1, "BC_t", boco, "end")
-              if (ierr == 0) then ! Node exits
+              if (ierr == 0) then ! Node exists
                  ! Read family  name if possible
                  call cg_famname_read_f(famName, ierr)
                  !Only if no error:
