@@ -1,9 +1,9 @@
-MODULE_FILES="../modules/communication.f90  ../modules/gridData.f90 ../modules/cgnsData.f90"
+#MODULE_FILES="../modules/communication.f90  ../modules/gridData.F90 ../modules/gridInput.f90 ../modules/kd_tree.F90 ../modules/pointReduce.F90 ../modules/structuredCGNS.F90"
+MODULE_FILES=" ../modules/gridData.F90 ../modules/gridInput.f90" # ../modules/kd_tree.F90"
 
-IO_FILES="../IO/readUnstructuredCGNS.f90 ../IO/setGetVolumeCoordinates.f90 ../IO/writeUnstructuredCGNS.f90 ../IO/createSections.f90"
+#IO_FILES="../IO/createGrid.F90 ../IO/patchIO.f90 ../IO/readStructuredCGNS.F90 ../IO/readUnstructuredCGNS.f90 ../IO/writeStructuredCGNS.F90 ../IO/writeUnstructuredCGNS.f90"
+IO_FILES="../IO/createGrid.F90 ../IO/patchIO.F90 ../IO/readStructuredCGNS.F90  ../IO/readUnstructuredCGNS.f90 ../IO/writeStructuredCGNS.F90 ../IO/writeUnstructuredCGNS.f90"
 
-GEOCALC_FILES="../geoCalcs/getSurfaceElementCenters.f90 ../geoCalcs/getFullUniqueSurfaceNodeList.f90 ../geoCalcs/computeNodalProperties.f90"
+WARP_FILES="../warp/getCommonVolumeCoordinates.F90 ../warp/getdXs.F90 ../warp/getSurfaceCoordinates.F90 ../warp/getVolumeCoordinates.F90 ../warp/initializeWarping.F90 ../warp/setdXs.F90 ../warp/setExternalMeshIndices.F90 ../warp/setSurfaceCoordinates.F90 ../warp/warpDeriv.F90 ../warp/warpMesh.F90"
 
-WARP_FILES="../warp/patchIO.f90 ../warp/updateVolumeCoordinates.f90"
-
-f2py -m warpustruct -h warpustruct.pyf $IO_FILES $MODULE_FILES $GEOCALC_FILES $WARP_FILES
+f2py -m warpustruct -h test.pyf $IO_FILES $MODULE_FILES  $WARP_FILES
