@@ -18,7 +18,6 @@ module gridData
 #include "include/finclude/petscvec.h90"
 #endif
 
-
   ! Volume grid vecs
   Vec Xv, Xv0, dXv, XvLocal
 
@@ -59,10 +58,10 @@ module gridData
   ! Logicals determine what is allocated:
   integer(kind=intTYpe) :: gridIndicesSet = 0
   integer(kind=intType) :: commonGridVecSet = 0
-  integer(kind=intTYpe) ::  initializationSet = 0
+  integer(kind=intTYpe) :: initializationSet = 0
 
   ! Storage for family info read from CGNS
-  character*32, dimension(maxFamilies) :: familyList
+  character(maxCGNSNameLen), dimension(maxFamilies) :: familyList
   integer(kind=intType) :: nwallFamilies
 
   real(kind=realType), dimension(:), allocatable :: d2wall

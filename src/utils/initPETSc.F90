@@ -1,6 +1,6 @@
 subroutine initPETSc(comm)
   ! Simple wrapper for initializing petsc in case it wasn't done in
-  ! python. This also get the comm data. 
+  ! python. This also gets the comm data. 
   use communication
   use gridData
   implicit none

@@ -24,13 +24,13 @@ module constants
   integer(kind=intType), parameter :: maxFamilies = 32
 
   ! Maximum numbers of characters in a string and in a cgns name
-
-  integer(kind=intType), parameter :: maxStringLen   = 256
-  integer(kind=intType), parameter :: maxCGNSNameLen =  32
+  integer(kind=intType), parameter :: maxStringLen   = 512
+  integer(kind=intType), parameter :: maxCGNSNameLen = 32
 
   ! Numerical constants
   real(kind=realType), parameter :: pi    = 3.1415926535897931_realType
-  real(kind=realType), parameter :: phi = 2.1180339887498949 !1+sqrt(5.0)/2
+  real(kind=realType), parameter :: phi = 2.1180339887498949 
+  real(kind=realType), parameter :: eps = 1e-15
 
   ! Floating point parameters.
   real(kind=realType), parameter :: zero  = 0.0_realType

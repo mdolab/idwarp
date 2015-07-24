@@ -149,7 +149,8 @@ python module warpustruct ! in
        end module gridinput
 
        module griddata ! in :warpustruct:../modules/gridData.f90
-         character dimension((32),32),intent(c) :: familylist
+         use constants
+         character dimension(32,32),intent(c) :: familylist
          integer(kind=inttype) :: nwallfamilies
          integer(kind=inttype) :: warpmeshdof
          integer(kind=inttype) :: solvermeshdof
