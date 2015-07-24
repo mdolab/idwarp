@@ -30,5 +30,6 @@ module structuredCGNSGrid
   end type blocktype
 
   type(blockType), dimension(:), allocatable :: blocks
-
+  real(kind=realType), dimension(:), allocatable :: wallPoints
+  integer(Kind=intType), dimension(:), allocatable :: wallConn
 end module structuredCGNSGrid
