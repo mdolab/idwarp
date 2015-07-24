@@ -11,7 +11,7 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
   real(kind=realType), intent(in) :: pts(ndof)
   integer(kind=intType), intent(in) :: ndof
   integer(kind=intType), dimension(nFaceSizesLocal), intent(in) :: faceSizesLocal
-  integer(kind=intTYpe), dimension(nFaceConnLocal), intent(in) :: faceConnLocal
+  integer(kind=intType), dimension(nFaceConnLocal), intent(in) :: faceConnLocal
   integer(kind=intType), intent(in) :: nFaceSizesLocal, nFaceConnLocal
 
   ! Working
