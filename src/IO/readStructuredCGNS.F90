@@ -12,7 +12,7 @@ subroutine readStructuredCGNS(cgns_file)
 
   ! Working 
   integer(kind=intType) :: i, j, k, ii, istart, iend, localsize, iProc, iZone, offset
-  integer(kind=intType):: ierr, base, nZones, nNodes, dims(9), cg, cursize, coorsize
+  integer(kind=intType):: ierr, base, nZones, nNodes, dims(9), cg,  coorsize
   integer(kind=intType):: CellDim, PhysDim
   integer(kind=intType) :: nbases, start(3), tmpSym, nSymm
   character*100 fileName
@@ -29,7 +29,7 @@ subroutine readStructuredCGNS(cgns_file)
 #endif
   integer(kind=intType), dimension(:), allocatable :: wallNodes, localWallNodes
   integer(kind=intType), dimension(:, :), allocatable :: sizes
-
+  integer(kind=intType) :: nWall, nodeCount, nConn, ni, nj
   integer(kind=intType) :: status(MPI_STATUS_SIZE)
 
   iSymm = 0
@@ -56,11 +56,7 @@ subroutine readStructuredCGNS(cgns_file)
         print *, 'The Cells must 3 dimensional'
         stop
      end if
-
-     ! !       *** base attribute:  GOTO base node
-     ! call cg_goto_f(cg, base, ierr, 'end')
-     ! if (ier .eq. CG_ERROR) call cg_error_exit_f
-
+   
      call cg_nzones_f(cg, base, nZones, ierr);
      if (ierr .eq. CG_ERROR) call cg_error_exit_f
      print *, '   -> Number of Zones:', nzones
@@ -82,19 +78,172 @@ subroutine readStructuredCGNS(cgns_file)
      allocate(wallNodes(nNodes))
      wallNodes = 0
 
-     ! Loop back over the nodes and read
-     ii = 0;
+     ! We make two loops over the zones....the first *just* reads the
+     ! BC (and B2B) info and stores it. The second, actually reads the
+     ! nodes. 
+
      familyList(:) = ''
      nWallFamilies = 0
-     offset = 0
-     zoneLoop: do iZone=1,nZones
+     nWall = 0
+     nConn = 0
+     zoneLoop_one: do iZone=1,nZones
         call cg_zone_read_f(cg, base, iZone, zoneName, dims, ierr)
         if (ierr .eq. CG_ERROR) call cg_error_exit_f
         blocks(iZone)%il = dims(1)
         blocks(iZone)%jl = dims(2)
         blocks(iZone)%kl = dims(3)
         blocks(iZone)%name = zoneName
-        curSize = dims(1)*dims(2)*dims(3)
+
+        call cg_nbocos_f(cg, base, iZone, nbocos, ierr)
+        if (ierr .eq. ERROR) call cg_error_exit_f
+        allocate(blocks(iZone)%bocos(nbocos))
+
+        bocoLoop_one: do boco=1, nbocos
+           call cg_boco_info_f(cg, base, iZone, boco, boconame, bocotype, &
+                ptset_type, npts, NormalIndex, NormalListFlag, datatype, &
+                ndataset, ierr)
+           if (ierr .eq. CG_ERROR) call cg_error_exit_f
+           
+           call cg_boco_read_f(cg, base, iZone, boco, pts, data_double, ierr)
+           if (ierr .eq. CG_ERROR) call cg_error_exit_f
+          
+           ! Save the boco info
+           blocks(iZone)%bocos(boco)%name = boconame
+           blocks(iZone)%bocos(boco)%bocoType = bocoType
+           blocks(iZone)%bocos(boco)%ptRange = pts
+           blocks(iZone)%bocos(boco)%family = ""
+
+           ! Determine if this is in fact a face-bc
+           if ( (pts(1,1) == pts(1,2)) .or. (pts(2,1) == pts(2,2)) .or. (pts(3,1) == pts(3,2))) then 
+              call cg_goto_f(cg, base, ierr, "Zone_t", iZone, "ZoneBC_t", 1, "BC_t", boco, "end")
+              if (ierr == 0) then ! Node exists
+                 ! Read family  name if possible
+                 call cg_famname_read_f(famName, ierr)
+                 !Only if no error:
+                 if (ierr .ne. CG_ERROR) then
+                    blocks(iZone)%bocos(boco)%family = famName
+                 end if
+
+                 if (BCTypeName(bocoType) == 'BCWallViscous' .or. &
+                      BCTypeName(bocoType) == 'BCWallInviscid' .or. &
+                      BCTypeName(bocoType) == 'BCWall' .or. &
+                      BCTypeName(bocoType) == 'BCWallViscousHeatFlux' .or. &
+                      BCTypeName(bocoType) == 'BCWallViscousIsothermal') then
+                    call checkInFamilyList(familyList, famName, nwallFamilies, famID)
+                    
+                    if (famID == 0) then
+                       nwallFamilies = nwallFamilies + 1
+                       familyList(nwallFamilies) = famName
+                    end if
+
+                    if (pts(1,1) == pts(1, 2)) then 
+                       nWall = nWall + dims(2)*dims(3)
+                       nConn = nConn + (dims(2)-1)*(dims(3)-1)
+                    else if (pts(2,1) == pts(2, 2)) then 
+                       nWall = nWall + dims(1)*dims(3)
+                       nConn = nConn + (dims(1)-1)*(dims(3)-1)
+                    else if (pts(3,1) == pts(3, 2)) then 
+                       nWall = nWall + dims(1)*dims(2)
+                       nConn = nConn + (dims(1)-1)*(dims(2)-1)
+                    end if
+                 end if
+              end if
+
+              if (BCTypeName(bocoType) == 'BCSymmetryPlane') then 
+                 ! For efficiency, we only load in the points on the 
+                 ! symm plane. 
+
+                 if (pts(1,1) == pts(1, 2)) then 
+                    allocate(&
+                         coorX(pts(2,2)-pts(2,1)+1, pts(3,2)-pts(3,1)+1, 1), &
+                         coorY(pts(2,2)-pts(2,1)+1, pts(3,2)-pts(3,1)+1, 1), &
+                         coorZ(pts(2,2)-pts(2,1)+1, pts(3,2)-pts(3,1)+1, 1))
+                    nSymm = dims(2)*dims(3)
+                 else if(pts(2,1) == pts(2,2)) then
+                    allocate(&
+                         coorX(pts(1,2)-pts(1,1)+1, pts(3,2)-pts(3,1)+1, 1), &
+                         coorY(pts(1,2)-pts(1,1)+1, pts(3,2)-pts(3,1)+1, 1), &
+                         coorZ(pts(1,2)-pts(1,1)+1, pts(3,2)-pts(3,1)+1, 1))
+                    nSymm = dims(1)*dims(3)
+                 else if (pts(3,1) == pts(3, 2)) then 
+                    allocate(&
+                         coorX(pts(1,2)-pts(1,1)+1, pts(2,2)-pts(2,1)+1, 1), &
+                         coorY(pts(1,2)-pts(1,1)+1, pts(2,2)-pts(2,1)+1, 1), &
+                         coorZ(pts(1,2)-pts(1,1)+1, pts(2,2)-pts(2,1)+1, 1))
+                    nSymm = dims(1)*dims(2)
+                 end if
+
+                 call cg_coord_read_f(cg, base, iZone, "CoordinateX", RealDouble, pts(:,1), pts(:,2), coorX, ierr)
+                 if (ierr .eq. CG_ERROR) call cg_error_exit_f
+                 call cg_coord_read_f(cg, base, iZone, "CoordinateY", RealDouble, pts(:,1), pts(:,2), coorY, ierr)
+                 if (ierr .eq. CG_ERROR) call cg_error_exit_f
+                 call cg_coord_read_f(cg, base, iZone, "CoordinateZ", RealDouble, pts(:,1), pts(:,2), coorZ, ierr)
+                 if (ierr .eq. CG_ERROR) call cg_error_exit_f
+
+                 ! Determine what the axis of this symmetry plane
+                 ! is. We look at the two end points of the range
+                 symmSum = zero
+                 symmSum(1) = sum(abs(coorX))
+                 symmSum(2) = sum(abs(coorY))
+                 symmSum(3) = sum(abs(coorZ))
+
+                 if (symmSum(1) / nSymm < symmTol) then 
+                    tmpSym = 1
+                 else if (symmSum(2) / nSymm < symmTol) then 
+                    tmpSym = 2
+                 else if (symmSum(3) / nSymm < symmTol) then
+                    tmpSym = 3
+                 end if
+                 
+                 if (iSymm == 0) then ! Currently un-assigned:
+                    iSymm = tmpSym
+                 end if
+
+                 if (tmpSym /= iSymm) then
+                    print *, 'Error: detected more than 1 symmetry plane direction.'
+                    print *, 'pyWarpUnstruct cannot handle this'
+                    stop
+                 end if
+                 deallocate(coorX, coorY, coorZ)
+              end if
+           end if
+        end do bocoLoop_one
+        
+        ! Also read the B2B info. 
+        call cg_n1to1_f(cg, base, iZone, nB2B, ierr)
+        if (ierr .eq. CG_ERROR) call cg_error_exit_f
+        allocate(blocks(iZone)%B2Bs(nB2B))
+
+        B2BLoop: do iB2B=1,nB2B
+           call cg_1to1_read_f(cg, base, iZone, iB2B, connectName, donorName, pts, &
+                donorRange, transform, ierr)
+           if (ierr .eq. CG_ERROR) call cg_error_exit_f
+
+           ! Save the b2b info
+           blocks(iZone)%b2bs(ib2b)%name = connectName
+           blocks(iZone)%b2bs(ib2b)%donorName = donorName
+           blocks(iZone)%b2bs(ib2b)%ptRange = pts
+           blocks(iZone)%b2bs(ib2b)%donorRange = donorRange
+           blocks(iZone)%b2bs(ib2b)%transform = transform
+        end do B2BLoop
+     end do zoneLoop_one
+
+     ! Allocate space for storage of the surface nodes and the
+     ! connectivity
+     allocate(wallPoints(3*nWall))
+     allocate(wallConn(4*nConn))
+
+     ! Reset the counters here
+     nWall = 0
+     offSet = 0
+     nConn = 0
+     nodeCount = 0
+     ii = 0
+     zoneLoop_two: do iZone=1,nZones
+        dims(1) = blocks(iZone)%il
+        dims(2) = blocks(iZone)%jl
+        dims(3) = blocks(iZone)%kl
+
         start = (/1, 1, 1/)
         allocate(coorX(dims(1), dims(2), dims(3)), &
                  coorY(dims(1), dims(2), dims(3)), &
@@ -124,135 +273,84 @@ subroutine readStructuredCGNS(cgns_file)
            end do
         end do
 
-        call cg_nbocos_f(cg, base, iZone, nbocos, ierr)
-        if (ierr .eq. ERROR) call cg_error_exit_f
-        allocate(blocks(iZone)%bocos(nbocos))
+        bocoLoop_two: do boco=1, size(blocks(iZone)%bocos)
+           bocoType = blocks(iZone)%bocos(boco)%bocoType
+           pts = blocks(iZone)%bocos(boco)%ptRange
+           if (BCTypeName(bocoType) == 'BCWallViscous' .or. &
+                BCTypeName(bocoType) == 'BCWallInviscid' .or. &
+                BCTypeName(bocoType) == 'BCWall' .or. &
+                BCTypeName(bocoType) == 'BCWallViscousHeatFlux' .or. &
+                BCTypeName(bocoType) == 'BCWallViscousIsothermal') then
 
-        bocoLoop: do boco=1, nbocos
-           call cg_boco_info_f(cg, base, iZone, boco, boconame, bocotype, &
-                ptset_type, npts, NormalIndex, NormalListFlag, datatype, ndataset, ierr)
-           if (ierr .eq. CG_ERROR) call cg_error_exit_f
-           
-           call cg_boco_read_f(cg, base, iZone, boco, pts, data_double, ierr)
-           if (ierr .eq. CG_ERROR) call cg_error_exit_f
-          
-           ! Save the boco info
-           blocks(iZone)%bocos(boco)%name = boconame
-           blocks(iZone)%bocos(boco)%bocoType = bocoType
-           blocks(iZone)%bocos(boco)%ptRange = pts
-           blocks(iZone)%bocos(boco)%family = ""
+              ! Flag the wall nodes for walls:
+              do k=pts(3, 1), pts(3, 2)
+                 do j=pts(2, 1), pts(2, 2)
+                    do i=pts(1, 1), pts(1, 2)
+                       ! Wall nodes in global ordering
+                       wallNodes(offset + (k-1)*dims(1)*dims(2) + (j-1)*dims(1) + i) = 1
 
-           ! Determine if this is in fact a face-bc
-           if ( (pts(1,1) == pts(1,2)) .or. (pts(2,1) == pts(2,2)) .or. (pts(3,1) == pts(3,2))) then 
-              call cg_goto_f(cg, base, ierr, "Zone_t", iZone, "ZoneBC_t", 1, "BC_t", boco, "end")
-              if (ierr == 0) then ! Node exists
-                 ! Read family  name if possible
-                 call cg_famname_read_f(famName, ierr)
-                 !Only if no error:
-                 if (ierr .ne. CG_ERROR) then
-                    blocks(iZone)%bocos(boco)%family = famName
-                 end if
-
-                 if (BCTypeName(bocoType) == 'BCWallViscous' .or. &
-                      BCTypeName(bocoType) == 'BCWallInviscid' .or. &
-                      BCTypeName(bocoType) == 'BCWall' .or. &
-                      BCTypeName(bocoType) == 'BCWallViscousHeatFlux' .or. &
-                      BCTypeName(bocoType) == 'BCWallViscousIsothermal') then
-                    call checkInFamilyList(familyList, famName, nwallFamilies, famID)
-                    if (famID == 0) then
-                       nwallFamilies = nwallFamilies + 1
-                       familyList(nwallFamilies) = famName
-                    end if
-
-                    ! Flag the wall nodes:
-                    do k=pts(3, 1), pts(3, 2)
-                       do j=pts(2, 1), pts(2, 2)
-                          do i=pts(1, 1), pts(1, 2)
-                             wallNodes(offset + (k-1)*dims(1)*dims(2) + (j-1)*dims(1) + i) = 1
-                          end do
-                       end do
-                    end do
-                 end if
-              end if
-
-              if (BCTypeName(bocoType) == 'BCSymmetryPlane') then 
-                 ! Determine what the axis of this symmetry plane
-                 ! is. We look at the two end points of the range
-                 symmSum = zero
-                 if (pts(1,1) == pts(1, 2)) then 
-                    symmSum(1) = sum(abs(coorX(pts(1,1), :, :)))
-                    symmSum(2) = sum(abs(coorY(pts(1,1), :, :)))
-                    symmSum(3) = sum(abs(coorZ(pts(1,1), :, :)))
-                    nSymm = dims(2)*dims(3)
-                 else if (pts(2,1) == pts(2, 2)) then 
-                    symmSum(1) = sum(abs(coorX(:, pts(2,1), :)))
-                    symmSum(2) = sum(abs(coorY(:, pts(2,1), :)))
-                    symmSum(3) = sum(abs(coorZ(:, pts(2,1), :)))
-                    nSymm = dims(1)*dims(3)
-                 else if (pts(3,1) == pts(3, 2)) then 
-                    symmSum(1) = sum(abs(coorX(:, :, pts(3,1))))
-                    symmSum(2) = sum(abs(coorY(:, :, pts(3,1))))
-                    symmSum(3) = sum(abs(coorZ(:, :, pts(3,1))))
-                    nSymm = dims(1)*dims(2)
-                 end if
-
-                 if (symmSum(1) / nSymm < symmTol) then 
-                    tmpSym = 1
-                 else if (symmSum(2) / nSymm < symmTol) then 
-                    tmpSym = 2
-                 else if (symmSum(3) / nSymm < symmTol) then
-                    tmpSym = 3
-                 end if
-                 
-                 if (iSymm == 0) then ! Currently assigned:
-                    iSymm = tmpSym
-                 end if
-               
-
-                 ! Hard zero the sym plane in case our mesh is bad
-                 do k=pts(3, 1), pts(3, 2)
-                    do j=pts(2, 1), pts(2, 2)
-                       do i=pts(1, 1), pts(1, 2)
-                          allNodes(isymm, offset + (k-1)*dims(1)*dims(2) + (j-1)*dims(1) + i) = zero
-                       end do
+                       ! List of all wall nodes
+                       wallPoints(3*nWall+1) = coorX(i, j, k)
+                       wallPoints(3*nWall+2) = coorY(i, j, k)
+                       wallPoints(3*nWall+3) = coorZ(i, j, k)
+                       nWall = nWall + 1
                     end do
                  end do
+              end do
 
-                 if (tmpSym /= iSymm) then
-                    print *, 'Error: detected more than 1 symmetry plane direction.'
-                    print *, 'pyWarpUnstruct cannot handle this'
-                    stop
-                 end if
+              ! Determine generic face size
+              if (pts(1,1) == pts(1,2)) then ! iMin/iMax
+                 ni = pts(2,2) - pts(2,1) + 1
+                 nj = pts(3,2) - pts(3,1) + 1
+              else if (pts(2,1) ==pts(2,2)) then !jMin/jMax
+                 ni = pts(1,2) - pts(1,1) + 1
+                 nj = pts(3,2) - pts(3,1) + 1
+              else ! kMin/kMax
+                 ni = pts(1,2) - pts(1,1) + 1
+                 nj = pts(2,2) - pts(2,1) + 1
               end if
+          
+              ! Loop over generic face size...Note we are doing zero
+              ! based ordering!
+              do j=0,nj-2
+                 do i=0,ni-2
+                    wallConn(4*nConn+1) = nodeCount + (j  )*ni + i
+                    wallConn(4*nConn+2) = nodeCount + (j  )*ni + i + 1
+                    wallConn(4*nConn+3) = nodeCount + (j+1)*ni + i + 1
+                    wallConn(4*nConn+4) = nodeCount + (j+1)*ni + i  
+                    nConn = nConn + 1
+                 end do
+              end do
+           
+              nodeCount = nodeCount + ni*nj
            end if
-        end do bocoLoop
+
+           if (BCTypeName(bocoType) == 'BCSymmetryPlane') then 
+              ! Hard zero the sym plane in case our mesh is bad. We
+              ! already know what iSymm is from above.
+              do k=pts(3, 1), pts(3, 2)
+                 do j=pts(2, 1), pts(2, 2)
+                    do i=pts(1, 1), pts(1, 2)
+                       allNodes(isymm, offset + (k-1)*dims(1)*dims(2) + (j-1)*dims(1) + i) = zero
+                    end do
+                 end do
+              end do
+           end if
+        end do bocoLoop_two
+
         offset = offset + dims(1)*dims(2)*dims(3)
-
-        call cg_n1to1_f(cg, base, iZone, nB2B, ierr)
-        if (ierr .eq. CG_ERROR) call cg_error_exit_f
-        allocate(blocks(iZone)%B2Bs(nB2B))
-
-        B2BLoop: do iB2B=1,nB2B
-           call cg_1to1_read_f(cg, base, iZone, iB2B, connectName, donorName, pts, &
-                donorRange, transform, ierr)
-           if (ierr .eq. CG_ERROR) call cg_error_exit_f
-
-           ! Save the b2b info
-           blocks(iZone)%b2bs(ib2b)%name = connectName
-           blocks(iZone)%b2bs(ib2b)%donorName = donorName
-           blocks(iZone)%b2bs(ib2b)%ptRange = pts
-           blocks(iZone)%b2bs(ib2b)%donorRange = donorRange
-           blocks(iZone)%b2bs(ib2b)%transform = transform
-        end do B2BLoop
 
         ! And free the temporary arrays
         deallocate(coorX, coorY, coorZ)
 
-     end do zoneLoop
+     end do zoneLoop_two
 
      call cg_close_f(cg, ierr)
      if (ierr .eq. CG_ERROR) call cg_error_exit_f
      deallocate(sizes)
+  else
+     ! Allocate these to zero so we can just blindly dealloc later
+     allocate(wallPoints(0), wallConn(0))
   end if
 
   ! Communication the symmetry direction to everyone
