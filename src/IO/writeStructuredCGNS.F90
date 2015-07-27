@@ -12,7 +12,7 @@ subroutine writeStructuredCGNS(cgns_file)
   ! Working 
   integer(kind=intType) :: i,ii, jj
   integer(kind=intType):: ierr, base, cg, curSize, nCon, bcOut, boco, ib2b, zoneid
-  integer(kind=intType) :: sizes(9), cordID
+  integer(kind=intType) :: sizes(9), coordID
   real(kind=realType), dimension(:), allocatable :: coorX, coorY, coorZ
   real(kind=realType), pointer, dimension(:) :: xx
 
@@ -31,7 +31,7 @@ subroutine writeStructuredCGNS(cgns_file)
 
      call VecGetArrayF90(XvLocal, xx, ierr)
      call EChk(ierr,__FILE__,__LINE__)
-     
+
      ! Open and get the number of zones:
      call cg_open_f(trim(cgns_file), CG_MODE_WRITE, cg, ierr)
      if (ierr .eq. CG_ERROR) call cg_error_exit_f
@@ -65,13 +65,13 @@ subroutine writeStructuredCGNS(cgns_file)
         if (ierr .eq. CG_ERROR) call cg_error_exit_f
 
         ! Write the grid coordinates
-        call cg_coord_write_f(cg, base, i, realDouble, 'CoordinateX', coorX, cordID, ierr)
+        call cg_coord_write_f(cg, base, i, realDouble, 'CoordinateX', coorX, coordID, ierr)
         if (ierr .eq. CG_ERROR) call cg_error_exit_f
 
-        call cg_coord_write_f(cg, base, i, realDouble, 'CoordinateY', coorY, cordID, ierr)
+        call cg_coord_write_f(cg, base, i, realDouble, 'CoordinateY', coorY, coordID, ierr)
         if (ierr .eq. CG_ERROR) call cg_error_exit_f
 
-        call cg_coord_write_f(cg, base, i, realDouble, 'CoordinateZ', coorZ, cordID, ierr)
+        call cg_coord_write_f(cg, base, i, realDouble, 'CoordinateZ', coorZ, coordID, ierr)
         if (ierr .eq. CG_ERROR) call cg_error_exit_f
         
         deallocate(coorX, coorY, coorZ)
