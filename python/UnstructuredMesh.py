@@ -942,6 +942,8 @@ class USMesh(object):
             self.warp.writestructuredcgns(fileName)
 
         elif self.meshType.lower() == 'unstructuredcgns':
+            # Copy the default and then write
+            shutil.copy(self.solverOptions['gridFile'], fileName)
             self.warp.writeunstructuredcgns(fileName)
 
         elif self.meshType.lower() == 'openfoam':

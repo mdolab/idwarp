@@ -12,7 +12,7 @@ include ${RULES_FILE}
 vpath %.o $(OBJDIR)
 
 FILES_TO_COMPLEXIFY = patchIO.F90\
-	writeUnstructuredCGNS.f90\
+	writeUnstructuredCGNS.F90\
 	createGrid.F90\
 	writeStructuredCGNS.F90\
 
