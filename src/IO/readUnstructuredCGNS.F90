@@ -13,7 +13,7 @@ subroutine readUnstructuredCGNS(cgns_file)
   character*(*),intent(in) :: cgns_file
 
   ! CGNS Variabls
-  integer(kind=intType) :: i, ii, istart, iend, localsize, iProc, iZone, offset
+  integer(kind=intType) :: i, istart, iend, localsize, iProc, iZone
   integer(kind=intType):: ierr, base, dims(3), cg!, cursize, coorsize
   integer(kind=intType):: nNodes, nCells
   integer(kind=intType):: CellDim, PhysDim
@@ -118,10 +118,8 @@ subroutine readUnstructuredCGNS(cgns_file)
      allocate(wallNodes(nNodes))
      wallNodes = 0
 
-     ii = 0
      familyList(:) = ''
      nWallFamilies = 0
-     offset = 0
 
      ! loop over the zones and read the nodes
      zoneLoop: do iZone = 1,nZones
@@ -135,28 +133,27 @@ subroutine readUnstructuredCGNS(cgns_file)
         ! 1 even if C is used. 
 
         call cg_coord_read_f(cg,base,iZone,"CoordinateX",&
-             & realDouble, 1,dims(1), coorX,ierr)
+             & realDouble, 1, dims(1), coorX, ierr)
         if (ierr .eq. CG_ERROR) call cg_error_exit_f
         
         call cg_coord_read_f(cg,base,iZone,"CoordinateY",&
-             & realDouble, 1,dims(1), coorY,ierr)
+             & realDouble, 1, dims(1), coorY, ierr)
         if (ierr .eq. CG_ERROR) call cg_error_exit_f
            
         call cg_coord_read_f(cg,base,iZone,"CoordinateZ",&
-             & realDouble, 1,dims(1), coorZ,ierr)
+             & realDouble, 1, dims(1), coorZ, ierr)
         if (ierr .eq. CG_ERROR) call cg_error_exit_f
 
         ! Now stack all of the zones in one array
         do i=1, dims(1)
-           ii = ii + 1
 #ifdef USE_COMPLEX
-           allNodes(1, ii) = cmplx(coorX(i), 0.0)
-           allNodes(2, ii) = cmplx(coorY(i), 0.0)
-           allNodes(3, ii) = cmplx(coorZ(i), 0.0)
+           allNodes(1, i) = cmplx(coorX(i), 0.0)
+           allNodes(2, i) = cmplx(coorY(i), 0.0)
+           allNodes(3, i) = cmplx(coorZ(i), 0.0)
 #else
-           allNodes(1, ii) = coorX(i)
-           allNodes(2, ii) = coorY(i)
-           allNodes(3, ii) = coorZ(i)
+           allNodes(1, i) = coorX(i)
+           allNodes(2, i) = coorY(i)
+           allNodes(3, i) = coorZ(i)
 #endif
         end do
 
