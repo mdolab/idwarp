@@ -63,11 +63,7 @@ python module warpustruct ! in
        subroutine readunstructuredcgns(cgns_file) ! in :warpustruct:../IO/readUnstructuredCGNS.f90
             character*(*) intent(in) :: cgns_file
         end subroutine readunstructuredcgns
-        ! subroutine writeunstructuredcgnsfile ! in :warpustruct:../IO/writeUnstructuredCGNS.f90
-        !     use griddata
-        !     use communication
-        !     use precision
-        ! end subroutine writeunstructuredcgnsfile
+
        subroutine setexternalmeshindices(ndof_solver,solver_indices)
          integer(kind=inttype) optional,intent(in),check(len(solver_indices)>=ndof_solver),depend(solver_indices) :: ndof_solver=len(solver_indices)
          integer(kind=inttype) dimension(ndof_solver),intent(in) :: solver_indices
@@ -175,6 +171,10 @@ python module warpustruct ! in
        end subroutine verifywarpderiv
 
        subroutine writestructuredcgns(cgns_file)
+         character*(*) :: cgns_file
+       end subroutine writestructuredcgns
+
+       subroutine writeunstructuredcgns(cgns_file)
          character*(*) :: cgns_file
        end subroutine writestructuredcgns
 
