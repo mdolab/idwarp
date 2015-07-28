@@ -1,6 +1,5 @@
 subroutine getdXs(indices, idof, output, ndof)
 
-  use precision 
   use gridData
   implicit none
   

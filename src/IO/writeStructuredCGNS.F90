@@ -1,7 +1,7 @@
 subroutine writeStructuredCGNS(cgns_file)
   use gridData
   use communication
-  use structuredCGNSGrid
+  use CGNSGrid
 
   implicit none
   include 'cgnslib_f.h'
@@ -41,15 +41,15 @@ subroutine writeStructuredCGNS(cgns_file)
 
      ii = 0
      ! Write out the zones:
-     do i=1,size(blocks)
+     do i=1,size(zones)
 
         sizes(:) = 0
-        sizes(1) = blocks(i)%il
-        sizes(2) = blocks(i)%jl
-        sizes(3) = blocks(i)%kl
-        sizes(4) = blocks(i)%il-1
-        sizes(5) = blocks(i)%jl-1
-        sizes(6) = blocks(i)%kl-1
+        sizes(1) = zones(i)%il
+        sizes(2) = zones(i)%jl
+        sizes(3) = zones(i)%kl
+        sizes(4) = zones(i)%il-1
+        sizes(5) = zones(i)%jl-1
+        sizes(6) = zones(i)%kl-1
         curSize = sizes(1)*sizes(2)*sizes(3)
         allocate(coorX(curSize), coorY(curSize), coorZ(curSize))
 
@@ -61,7 +61,7 @@ subroutine writeStructuredCGNS(cgns_file)
         end do
      
         ii = ii + curSize
-        call cg_zone_write_f(cg, base, blocks(i)%name, sizes, Structured, zoneID, ierr)
+        call cg_zone_write_f(cg, base, zones(i)%name, sizes, Structured, zoneID, ierr)
         if (ierr .eq. CG_ERROR) call cg_error_exit_f
 
         ! Write the grid coordinates
@@ -77,30 +77,30 @@ subroutine writeStructuredCGNS(cgns_file)
         deallocate(coorX, coorY, coorZ)
         
         ! Write any boundary conditions
-        do boco=1,size(blocks(i)%bocos)
-           call cg_boco_write_f(cg, base, i, trim(blocks(i)%bocos(boco)%name), &
-                blocks(i)%bocos(boco)%bocoType, PointRange, &
-                2, blocks(i)%bocos(boco)%ptRange, BCout, ierr)
+        do boco=1,size(zones(i)%bocos)
+           call cg_boco_write_f(cg, base, i, trim(zones(i)%bocos(boco)%name), &
+                zones(i)%bocos(boco)%type, PointRange, &
+                2, zones(i)%bocos(boco)%ptRange, BCout, ierr)
            if (ierr .eq. CG_ERROR) call cg_error_exit_f
 
            call cg_goto_f(cg, base, ierr, 'Zone_t', i, "ZoneBC_t", 1, &
                 "BC_t", BCOut, "end")
            if (ierr .eq. CG_ERROR) call cg_error_exit_f
 
-           if (blocks(i)%bocos(boco)%family .ne. "") then 
-              call cg_famname_write_f(blocks(i)%bocos(boco)%family, ierr)
+           if (zones(i)%bocos(boco)%family .ne. "") then 
+              call cg_famname_write_f(zones(i)%bocos(boco)%family, ierr)
               if (ierr .eq. CG_ERROR) call cg_error_exit_f
            end if
         end do
 
         ! Write any b2b conditions
-        do iB2B=1,size(blocks(i)%b2bs)
+        do iB2B=1,size(zones(i)%b2bs)
            call cg_1to1_write_f(cg, base, i, &
-                blocks(i)%b2bs(iB2b)%name, &
-                blocks(i)%b2bs(iB2b)%donorName, &
-                blocks(i)%b2bs(iB2b)%ptRange, &
-                blocks(i)%b2bs(iB2b)%donorRange, &
-                blocks(i)%b2bs(iB2b)%transform, nCon, ierr)
+                zones(i)%b2bs(iB2b)%name, &
+                zones(i)%b2bs(iB2b)%donorName, &
+                zones(i)%b2bs(iB2b)%ptRange, &
+                zones(i)%b2bs(iB2b)%donorRange, &
+                zones(i)%b2bs(iB2b)%transform, nCon, ierr)
            if (ierr .eq. CG_ERROR) call cg_error_exit_f
         end do
      end do

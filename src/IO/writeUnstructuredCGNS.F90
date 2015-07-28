@@ -2,7 +2,7 @@ subroutine writeUnstructuredCGNS(cgns_file)
 
   use precision
   use communication
-  use unstructuredcgnsgrid
+  use CGNSGrid
   use gridData
   implicit none
   include 'cgnslib_f.h'
@@ -18,7 +18,7 @@ subroutine writeUnstructuredCGNS(cgns_file)
   real(kind=realType), dimension(:), allocatable :: coorX, coorY, coorZ
   real(kind=realType), pointer, dimension(:) :: xx
   integer(kind=intType) :: i, j
-
+  
   ! This isn't technically scalable...we will dump the entire grid
   ! onto the root proc and write there. 
   call VecScatterCreateToZero(Xv, XvToLocal, Xvlocal, ierr)
@@ -41,7 +41,7 @@ subroutine writeUnstructuredCGNS(cgns_file)
      base = 1
 
      ! loop over the zones, create and write
-     do iZone=1, nZones
+     do iZone=1, size(zones)
 
         ! Get the number of points and elements
         sizes(1) = zones(iZone)%nVertices

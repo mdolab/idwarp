@@ -3,7 +3,7 @@ subroutine releaseMemory
   use kd_tree
   use gridData
   use constants
-  use structuredCGNSGrid
+  use CGNSGrid
   implicit none
 
   ! Working parameters
@@ -58,16 +58,16 @@ subroutine releaseMemory
   end if
 
   ! Check if we have a structured mesh
-  if (allocated(blocks)) then 
-     do i=1,size(blocks)
-        if (allocated(blocks(i)%bocos)) then 
-           deallocate(blocks(i)%bocos)
+  if (allocated(zones)) then 
+     do i=1,size(zones)
+        if (allocated(zones(i)%bocos)) then 
+           deallocate(zones(i)%bocos)
         end if
-        if (allocated(blocks(i)%B2Bs)) then 
-           deallocate(blocks(i)%B2Bs)
+        if (allocated(zones(i)%B2Bs)) then 
+           deallocate(zones(i)%B2Bs)
         end if
      end do
-     deallocate(blocks)
+     deallocate(zones)
      deallocate(wallPoints, wallConn)
   end if
   
