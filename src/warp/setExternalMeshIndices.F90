@@ -1,8 +1,9 @@
 subroutine setExternalMeshIndices(ndof_solver, solver_indices)
+
   use communication
   use gridData
   implicit none
-#include "include/petscversion.h"
+
   ! Subroutine Arguments
   integer(kind=intType), intent(in)  :: ndof_solver
   integer(kind=intType), intent(in)  :: solver_indices(ndof_solver)

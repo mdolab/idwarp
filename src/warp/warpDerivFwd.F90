@@ -2,8 +2,8 @@ subroutine warpDerivFwd(indices, idof, Xsdot, cDof, Xvdot, meshDOF)
 
   use gridData
   use gridInput
-  use communication
   use kd_tree
+
   implicit none
   
   ! Input Arguments

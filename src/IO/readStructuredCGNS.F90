@@ -2,7 +2,7 @@ subroutine readStructuredCGNS(cgns_file)
   use gridData
   use gridInput
   use communication
-  use structuredCGNSGrid
+  use CGNSGrid
 
   implicit none
   include 'cgnslib_f.h'
@@ -62,7 +62,7 @@ subroutine readStructuredCGNS(cgns_file)
      print *, '   -> Number of Zones:', nzones
      
 
-     allocate(blocks(nZones))
+     allocate(zones(nZones))
      ! Now count up the total number of nodes
      nNodes = 0
      allocate(sizes(3, nZones))
@@ -89,14 +89,14 @@ subroutine readStructuredCGNS(cgns_file)
      zoneLoop_one: do iZone=1,nZones
         call cg_zone_read_f(cg, base, iZone, zoneName, dims, ierr)
         if (ierr .eq. CG_ERROR) call cg_error_exit_f
-        blocks(iZone)%il = dims(1)
-        blocks(iZone)%jl = dims(2)
-        blocks(iZone)%kl = dims(3)
-        blocks(iZone)%name = zoneName
+        zones(iZone)%il = dims(1)
+        zones(iZone)%jl = dims(2)
+        zones(iZone)%kl = dims(3)
+        zones(iZone)%name = zoneName
 
         call cg_nbocos_f(cg, base, iZone, nbocos, ierr)
         if (ierr .eq. ERROR) call cg_error_exit_f
-        allocate(blocks(iZone)%bocos(nbocos))
+        allocate(zones(iZone)%bocos(nbocos))
 
         bocoLoop_one: do boco=1, nbocos
            call cg_boco_info_f(cg, base, iZone, boco, boconame, bocotype, &
@@ -108,10 +108,10 @@ subroutine readStructuredCGNS(cgns_file)
            if (ierr .eq. CG_ERROR) call cg_error_exit_f
           
            ! Save the boco info
-           blocks(iZone)%bocos(boco)%name = boconame
-           blocks(iZone)%bocos(boco)%bocoType = bocoType
-           blocks(iZone)%bocos(boco)%ptRange = pts
-           blocks(iZone)%bocos(boco)%family = ""
+           zones(iZone)%bocos(boco)%name = boconame
+           zones(iZone)%bocos(boco)%type = bocoType
+           zones(iZone)%bocos(boco)%ptRange = pts
+           zones(iZone)%bocos(boco)%family = ""
 
            ! Determine if this is in fact a face-bc
            if ( (pts(1,1) == pts(1,2)) .or. (pts(2,1) == pts(2,2)) .or. (pts(3,1) == pts(3,2))) then 
@@ -121,7 +121,7 @@ subroutine readStructuredCGNS(cgns_file)
                  call cg_famname_read_f(famName, ierr)
                  !Only if no error:
                  if (ierr .ne. CG_ERROR) then
-                    blocks(iZone)%bocos(boco)%family = famName
+                    zones(iZone)%bocos(boco)%family = famName
                  end if
 
                  if (BCTypeName(bocoType) == 'BCWallViscous' .or. &
@@ -209,10 +209,11 @@ subroutine readStructuredCGNS(cgns_file)
            end if
         end do bocoLoop_one
         
-        ! Also read the B2B info. 
+        ! Also read the B2B info -- we don't need them, just so that
+        ! we can re-write them during output.
         call cg_n1to1_f(cg, base, iZone, nB2B, ierr)
         if (ierr .eq. CG_ERROR) call cg_error_exit_f
-        allocate(blocks(iZone)%B2Bs(nB2B))
+        allocate(zones(iZone)%B2Bs(nB2B))
 
         B2BLoop: do iB2B=1,nB2B
            call cg_1to1_read_f(cg, base, iZone, iB2B, connectName, donorName, pts, &
@@ -220,11 +221,11 @@ subroutine readStructuredCGNS(cgns_file)
            if (ierr .eq. CG_ERROR) call cg_error_exit_f
 
            ! Save the b2b info
-           blocks(iZone)%b2bs(ib2b)%name = connectName
-           blocks(iZone)%b2bs(ib2b)%donorName = donorName
-           blocks(iZone)%b2bs(ib2b)%ptRange = pts
-           blocks(iZone)%b2bs(ib2b)%donorRange = donorRange
-           blocks(iZone)%b2bs(ib2b)%transform = transform
+           zones(iZone)%b2bs(ib2b)%name = connectName
+           zones(iZone)%b2bs(ib2b)%donorName = donorName
+           zones(iZone)%b2bs(ib2b)%ptRange = pts
+           zones(iZone)%b2bs(ib2b)%donorRange = donorRange
+           zones(iZone)%b2bs(ib2b)%transform = transform
         end do B2BLoop
      end do zoneLoop_one
 
@@ -240,9 +241,9 @@ subroutine readStructuredCGNS(cgns_file)
      nodeCount = 0
      ii = 0
      zoneLoop_two: do iZone=1,nZones
-        dims(1) = blocks(iZone)%il
-        dims(2) = blocks(iZone)%jl
-        dims(3) = blocks(iZone)%kl
+        dims(1) = zones(iZone)%il
+        dims(2) = zones(iZone)%jl
+        dims(3) = zones(iZone)%kl
 
         start = (/1, 1, 1/)
         allocate(coorX(dims(1), dims(2), dims(3)), &
@@ -273,9 +274,9 @@ subroutine readStructuredCGNS(cgns_file)
            end do
         end do
 
-        bocoLoop_two: do boco=1, size(blocks(iZone)%bocos)
-           bocoType = blocks(iZone)%bocos(boco)%bocoType
-           pts = blocks(iZone)%bocos(boco)%ptRange
+        bocoLoop_two: do boco=1, size(zones(iZone)%bocos)
+           bocoType = zones(iZone)%bocos(boco)%type
+           pts = zones(iZone)%bocos(boco)%ptRange
            if (BCTypeName(bocoType) == 'BCWallViscous' .or. &
                 BCTypeName(bocoType) == 'BCWallInviscid' .or. &
                 BCTypeName(bocoType) == 'BCWall' .or. &
@@ -310,14 +311,13 @@ subroutine readStructuredCGNS(cgns_file)
                  nj = pts(2,2) - pts(2,1) + 1
               end if
           
-              ! Loop over generic face size...Note we are doing zero
-              ! based ordering!
+              ! Loop over generic face size...We are doing 1 based ordering
               do j=0,nj-2
                  do i=0,ni-2
-                    wallConn(4*nConn+1) = nodeCount + (j  )*ni + i
-                    wallConn(4*nConn+2) = nodeCount + (j  )*ni + i + 1
-                    wallConn(4*nConn+3) = nodeCount + (j+1)*ni + i + 1
-                    wallConn(4*nConn+4) = nodeCount + (j+1)*ni + i  
+                    wallConn(4*nConn+1) = nodeCount + (j  )*ni + i + 1
+                    wallConn(4*nConn+2) = nodeCount + (j  )*ni + i + 1 + 1
+                    wallConn(4*nConn+3) = nodeCount + (j+1)*ni + i + 1 + 1
+                    wallConn(4*nConn+4) = nodeCount + (j+1)*ni + i + 1 
                     nConn = nConn + 1
                  end do
               end do

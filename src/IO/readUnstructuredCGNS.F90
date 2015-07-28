@@ -4,7 +4,7 @@ subroutine readUnstructuredCGNS(cgns_file)
   use communication
   use gridData
   use gridInput  
-  use unStructuredCGNSGrid
+  use CGNSGrid
 
   implicit none
   include 'cgnslib_f.h'
@@ -13,23 +13,25 @@ subroutine readUnstructuredCGNS(cgns_file)
   character*(*),intent(in) :: cgns_file
 
   ! CGNS Variabls
-  integer(kind=intType) :: i, istart, iend, localsize, iProc, iZone
+  integer(kind=intType) :: i, j, k, m, l, istart, iend, localsize, iProc, iZone
   integer(kind=intType):: ierr, base, dims(3), cg!, cursize, coorsize
   integer(kind=intType):: nNodes, nCells
   integer(kind=intType):: CellDim, PhysDim
-  integer(kind=intType) :: nbases, start(3)!, tmpSym, nSymm
+  integer(kind=intType) :: nbases, start(3), tmpSym, nSymm
   character*32 :: zoneName, bocoName, famName, connectName, donorName, basename
   character*32 :: secName
 
   integer(kind=intType) :: nbocos, boco, index
-  integer(kind=intType) :: nVertices,nElements
+  integer(kind=intType) :: nVertices,nElements, nzones
   integer(kind=intType) :: zoneType,dataType,sec,type
   integer(kind=intType) :: nCoords,nSections,nElem,nConn
   integer(kind=intType) :: eBeg,eEnd,nBdry, parentFlag
   integer(kind=intType) :: bocoType,ptsettype,nbcelem
   integer(kind=intType) :: normalIndex,normalListFlag
-  integer(kind=intType) :: normDataType,nDataSet
+  integer(kind=intType) :: normDataType,nDataSet, tmpInt(2)
+  integer(kind=intType) :: elementDataSize, curElement, eCount, nPnts
   real(kind=realType), dimension(:), allocatable :: coorX, coorY, coorZ
+  integer(kind=intType), dimension(:), allocatable :: tmpConn
 #ifdef USE_COMPLEX
   complex(kind=realType), dimension(:, :), allocatable :: allNodes, localNodes
 #else
@@ -40,7 +42,12 @@ subroutine readUnstructuredCGNS(cgns_file)
 
   integer(kind=intType) :: status(MPI_STATUS_SIZE)
   integer(kind=intType):: surfSecCounter,volSecCounter, famID
-
+  type(sectionDataType), pointer :: secPtr
+  integer(kind=intType), dimension(:), pointer :: elemConn, elemPtr
+  real(kind=realType), dimension(:,:), pointer :: elemNodes
+  integer(kind=intType) :: nElemNotFound, curElem, curElemSize, localIndex
+  real(kind=realType) :: symmSum(3)
+  logical :: isWall 
   iSymm = 0
   ! ---------------------------------------
   !           Open CGNS File
@@ -60,7 +67,7 @@ subroutine readUnstructuredCGNS(cgns_file)
 
      base = 1_intType
 
-     !       *** base attribute:  GOTO base node
+     !  GOTO base node
      call cg_goto_f(cg, base, ierr, 'end')
      if (ierr .eq. CG_ERROR) call cg_error_exit_f
 
@@ -86,7 +93,7 @@ subroutine readUnstructuredCGNS(cgns_file)
      ! do a check that we have all unstructured zones
      do iZone = 1,nZones
         ! Check the zone type. This should be Unstructured. 
-        call cg_zone_type_f(cg,base, iZone, zoneType,ierr)
+        call cg_zone_type_f(cg,base, iZone, zoneType, ierr)
         if (ierr .eq. ERROR) call cg_error_exit_f
 
         if (zoneType .ne. Unstructured) then
@@ -106,7 +113,7 @@ subroutine readUnstructuredCGNS(cgns_file)
         nElements = dims(2)
         zones(iZone)%nVertices = nVertices
         zones(iZone)%nElements = nElements
-        zones(iZone)%zoneName = zoneName
+        zones(iZone)%name = zoneName
         sizes(:, iZone) = dims(1:3)
         nNodes = nNodes + dims(1)
         nCells = nCells + dims(2)
@@ -118,21 +125,18 @@ subroutine readUnstructuredCGNS(cgns_file)
      allocate(wallNodes(nNodes))
      wallNodes = 0
 
+     ! We can also generate the wall family list
+     nwallFamilies = 0
      familyList(:) = ''
-     nWallFamilies = 0
 
-     ! loop over the zones and read the nodes
+     ! Loop over the zones and read the nodes
      zoneLoop: do iZone = 1,nZones
         call cg_zone_read_f(cg, base, iZone, zoneName, dims, ierr)
         if (ierr .eq. CG_ERROR) call cg_error_exit_f
         allocate(coorX(dims(1)), coorY(dims(1)), coorZ(dims(1)))
 
-        ! Read the x,y,z-coordinates.
-        ! This assumes the coords are in double precision.
-        ! Note that CGNS starts the numbering at 
-        ! 1 even if C is used. 
-
-        call cg_coord_read_f(cg,base,iZone,"CoordinateX",&
+        ! Read the x,y,z-coordinates. Assume double precision
+         call cg_coord_read_f(cg,base,iZone,"CoordinateX",&
              & realDouble, 1, dims(1), coorX, ierr)
         if (ierr .eq. CG_ERROR) call cg_error_exit_f
         
@@ -160,133 +164,372 @@ subroutine readUnstructuredCGNS(cgns_file)
         ! Now loop over the sections in the unstructured file and
         ! figure out the boundary nodes.
 
-        ! Determine the number of sections for this zone. Note that 
-        ! surface elements can be stored in a volume zone, but they 
-        ! are NOT taken into account in the number obtained from 
-        ! cg_zone_read. 
-
+        ! Determine the total number of sections in this zone. This
+        ! will involve surface sections and volume sections. We only
+        ! care about the surface sections
         call cg_nsections_f(cg, base, iZone, nSections, ierr)
         if (ierr .eq. CG_ERROR) call cg_error_exit_f
-        print *, '   -> nSections',nSections
 
-        zones(iZone)%nSections = nSections
+        ! Allocate space for the sections
+        allocate(zones(iZone)%sections(nSections))
 
-        ! allocate the logical to track the section type
-        allocate(zones(iZone)%isVolumeSection(nSections))
-        zones(iZone)%isVolumeSection = .True.
-
-        ! loop over the number of sections and determine which
-        ! sections are volume elements and which are surface elements
-
-        zones(iZone)%nVolSec = 0
-        zones(iZone)%nSurfSec = 0
-
-        do sec=1,nSections
-           ! Determine the element type and set the pointer for the 
-           ! connectivity accordingly. 
+        do sec=1, nSections
+           ! Read the section and determine the element type and store
+           ! some generic information.
            call cg_section_read_f(cg, base, iZone, sec, secName, &
                 type, eBeg, eEnd, nBdry, parentFlag, ierr)
            if (ierr .eq. CG_ERROR) call cg_error_exit_f
 
+           ! Number of elements on this section
+           nElem = eEnd - eBeg + 1
+           zones(iZone)%sections(sec)%nElem = nElem
+           zones(iZone)%sections(sec)%name = secName
+           zones(iZone)%sections(sec)%elemStart = eBeg
+           zones(iZone)%sections(sec)%elemEnd = eEnd   
+
+           ! Currently we can only deal with three and four sided
+           ! surfaces. These can show up type == TRI_3 (all tris),
+           ! type == QUAD_4 or type == MIXED. In the case of mixed we
+           ! need to check each of the types individually. 
            select case (type)
-           case (TETRA_4)
-              zones(iZone)%nVolSec = zones(iZone)%nVolSec+1
-              zones(iZone)%isVolumeSection(sec) = .true.
-           case (PYRA_5)
-              zones(iZone)%nVolSec = zones(iZone)%nVolSec+1
-              zones(iZone)%isVolumeSection(sec) = .true.
-           case (PENTA_6)
-              zones(iZone)%nVolSec = zones(iZone)%nVolSec+1
-              zones(iZone)%isVolumeSection(sec) = .true.
-           case (HEXA_8)
-              zones(iZone)%nVolSec = zones(iZone)%nVolSec+1
-              zones(iZone)%isVolumeSection(sec) = .true.
-           case (TRI_3)
-              zones(iZone)%nSurfSec = zones(iZone)%nSurfSec+1
-              zones(iZone)%isVolumeSection(sec) = .false.
-           case (QUAD_4)
-              zones(iZone)%nSurfSec =  zones(iZone)%nSurfSec+1
-              zones(iZone)%isVolumeSection(sec) = .false.
-           case  default
-              if (myID == 0) then
-                 print *, "Unsupported element encountered....exiting", type
-                 stop
+
+              ! all tris or quads
+           case (TRI_3, QUAD_4)
+              ! Firstly flag this section as a surface
+              zones(iZone)%sections(sec)%isSurface = .True.
+             
+              ! Get the nodes per element "npe" (constant)
+              call cg_npe_f(type, nConn, ierr)
+              if (ierr .eq. CG_ERROR) call cg_error_exit_f
+
+              ! Allocate space for the connectivities and the pointer
+              allocate(zones(iZone)%sections(sec)%elemConn(nConn*nElem))
+              allocate(zones(iZone)%sections(sec)%elemPtr(nElem+1))
+
+              ! This is the actual connectivity real call.
+              call cg_elements_read_f(cg, base, iZone, sec, &
+                   zones(iZone)%sections(sec)%elemConn, NULL, ierr)
+              if (ierr .eq. CG_ERROR) call cg_error_exit_f
+
+              ! Set up the pointer which is simple in this case...it
+              ! is just an arithematic list. 
+              zones(iZone)%sections(sec)%elemPtr(1) = 1
+              do i=2,nElem+1
+                 zones(iZone)%sections(sec)%elemPtr(i) = &
+                      zones(iZone)%sections(sec)%elemPtr(i-1) + nConn
+              end do
+
+           case (MIXED) 
+
+              ! This section *could* be a surface but we don't
+              ! actually know yet. 
+
+              ! First get the number of values we need to read 
+              call cg_ElementDataSize_f(cg, base, iZone, sec, &
+                   ElementDataSize , ierr)
+              if (ierr .eq. CG_ERROR) call cg_error_exit_f
+
+              ! Allocate a temporary for this
+              allocate(tmpConn(ElementDataSize))
+
+              ! Now read the 'connectivity'--- not really, it has the
+              ! connectivity *AND* the element types.
+              call cg_elements_read_f(cg, base, iZone, sec, &
+                   tmpConn, NULL, ierr)
+              if (ierr .eq. CG_ERROR) call cg_error_exit_f
+
+              ! NOW we can figure out if this is actually a surface
+              ! zone. Assume it is is, and flag and stop if not.
+              zones(iZone)%sections(sec)%isSurface = .True.
+              i = 1
+              elementCheckLoop: do while (i <= ElementDataSize)
+                 curElement = tmpConn(i)
+                 select case (curElement)
+                 case (TRI_3, QUAD_4)
+                    ! We're OK...now determine how much we need to
+                    ! increment the counter
+
+                    call cg_npe_f(curElement, nConn, ierr)
+                    if (ierr .eq. CG_ERROR) call cg_error_exit_f
+                    
+                    i = i + nConn + 1 ! The plus 1 is for the element Type
+
+                 case default
+                    ! Not a surface or we can't read it.
+                    zones(iZone)%sections(sec)%isSurface = .False.
+                    exit elementCheckLoop
+                 end select
+              end do elementCheckLoop
+              
+              ! Only continue if we are now sure the section is only
+              ! surfaces
+              if (zones(iZone)%sections(sec)%isSurface) then 
+                               
+                 ! Allocate space for the connectivities and the
+                 ! pointer. It should be save to take this as
+                 ! ElementDataSize - nElem. 
+                 allocate(zones(iZone)%sections(sec)%elemConn(ElementDataSize-nElem))
+                 allocate(zones(iZone)%sections(sec)%elemPtr(nElem+1))
+                 
+                 zones(iZone)%sections(sec)%elemConn = -999999999
+
+                 ! Loop back over the section elements
+                 ! again. Essentially we are taking the information in
+                 ! tmpConn and splitting up into elemConn and elemPtr
+                 i = 1
+                 eCount = 1
+                 zones(iZone)%sections(sec)%elemPtr(eCount) = 1
+                 elementLoop: do while (i <= ElementDataSize)
+                    curElement = tmpConn(i)
+                    select case (curElement)
+                    case (TRI_3, QUAD_4)
+                       ! We're OK...now determine how much we need to
+                       ! increment the counter
+                       
+                       call cg_npe_f(curElement, nConn, ierr)
+                       if (ierr .eq. CG_ERROR) call cg_error_exit_f
+                       
+                       ! iStart is the start of the element in elemPtr
+                       ! iEnd is one more than the end of the element
+                       ! in elemPtr (or the start of the next one)
+
+                       iStart = zones(iZone)%sections(sec)%elemPtr(eCount)
+                       iEnd   = iStart + nConn
+                       zones(iZone)%sections(sec)%elemPtr(eCount + 1) = iEnd
+
+                       ! The connectivity is easy:
+                       zones(iZone)%sections(sec)%elemConn(iStart:iEnd-1) = &
+                            tmpConn(i+1: i+nConn)
+                       
+                       ! Move to the next element
+                       i = i + nConn + 1
+                       eCount = eCount + 1
+                    case default
+                       ! Not a surface or we can't read it.
+                       zones(iZone)%sections(sec)%isSurface = .False.
+                       exit elementLoop
+                    end select
+                 end do elementLoop
               end if
+
+              ! Delete the temporary CGNS connectivity infor
+              deallocate(tmpConn)
+
+           case default
+              ! Flag as not a surface
+              zones(iZone)%sections(sec)%isSurface = .False.
            end select
         end do
 
-        allocate(zones(iZone)%volumeSections(zones(iZone)%nVolSec))
-        allocate(zones(iZone)%surfaceSections(zones(iZone)%nSurfSec))
-
-        ! Loop back over the number of sections and read the element 
-        ! connectivities. As CGNS starts the numbering at 1 the 
-        ! for-loop starts at 1 as well. 
-
-        volSecCounter = 1
-        surfSecCounter = 1
-
-        do sec=1, nSections
-           ! Determine the element type and set the pointer for the 
-           ! connectivity accordingly. 
-           call cg_section_read_f(cg, base, iZone, sec, secName, &
-                type, eBeg, eEnd, nBdry, parentFlag, ierr)
-           if (ierr .eq. CG_ERROR) call cg_error_exit_f
-           nElem = eEnd - eBeg + 1
-
-           ! Get the nodes per element "npe"
-           call cg_npe_f(type, nconn, ierr)
-           if (ierr .eq. CG_ERROR) call cg_error_exit_f
-
-           if (zones(iZone)%isVolumeSection(sec)) then
-              ! this is a group of volume elements
-              zones(iZone)%volumeSections(volSecCounter)%nElem = nElem
-              zones(iZone)%volumeSections(volSecCounter)%secName = secName
-              zones(iZone)%volumeSections(volSecCounter)%elemType = type
-              zones(iZone)%volumeSections(volSecCounter)%nConn = nConn 
-              zones(iZone)%volumeSections(volSecCounter)%elemStart = eBeg
-              zones(iZone)%volumeSections(volSecCounter)%elemEnd = eEnd
-              volSecCounter = volSecCounter+1
-           else
-              ! this is a group of surface elements
-              zones(iZone)%surfaceSections(surfSecCounter)%nElem = nElem
-              zones(iZone)%surfaceSections(surfSecCounter)%secName = secName
-              zones(iZone)%surfaceSections(surfSecCounter)%elemType = type
-              zones(iZone)%surfaceSections(surfSecCounter)%nConn = nConn 
-              zones(iZone)%surfaceSections(surfSecCounter)%elemStart = eBeg
-              zones(iZone)%surfaceSections(surfSecCounter)%elemEnd = eEnd   
-              surfSecCounter = surfSecCounter + 1
+        ! Now below we will be assuming that the elements are ordered
+        ! sequentially between the muliple sections and that there are
+        ! NO gaps. This is required for efficient searching. If this
+        ! *isn't* the case, we will just stop. For future reference,
+        ! we could make a pointer array to the sections that *is*
+        ! sorted to get around this issue and make a compact pointer
+        ! for the elements as well.
+        do sec=1, nSections-1
+           if ( zones(iZone)%sections(sec+1)%elemStart /= &
+                zones(iZone)%sections(sec  )%elemEnd + 1) then 
+              print *,'The section element ranges are not in order. This &
+              cannot be handled.'
+              stop
            end if
         end do
 
-        !determine the number of boundary conditions for this zone. 
+        ! Determine the number of boundary conditions:
         call cg_nbocos_f(cg, base, iZone, nBocos, ierr)
         if (ierr .eq. CG_ERROR) call cg_error_exit_f
 
-        ! Loop over the number of boundary conditions.
-        zones(iZone)%nBocos = nBocos
-        allocate(zones(iZone)%BCInfo(nBocos),STAT=ierr)
+        ! Allocate space for bocos
+        allocate(zones(iZone)%bocos(nBocos))
 
-        bocoLoop: do boco=1,nBocos
+        ! On the first pass we just want to figure out the number of
+        ! *surface* nodes and the size we need for connectivity. This
+        ! is somehwat "dumb" since we are just going to take the
+        ! number of elements * number of nodes per element, which will
+        ! obviously overpredict by a large fraction. That's not a huge
+        ! deal.
+
+        bocoLoop: do boco=1, nBocos
+
            ! Read the info for this boundary condition. 
            call cg_boco_info_f(cg, base, iZone, boco, boconame, bocotype, &
-                ptsettype, nbcElem, NormalIndex, NormalListFlag, datatype, ndataset,&
-                ierr)
+                ptsettype, nPnts, NormalIndex, NormalListFlag, datatype, &
+                ndataset, ierr)
            if (ierr .eq. CG_ERROR) call cg_error_exit_f
 
-           zones(iZone)%BCInfo(boco)%nBCElem = nBCElem
-           zones(iZone)%BCInfo(boco)%BCName =  bocoName
-           zones(iZone)%BCInfo(boco)%BCType = bocoType
-           allocate(zones(iZone)%BCInfo(boco)%BCElements(nBCElem))
+           ! We only allow ElementRange and ElementList...its just too
+           ! hard to figure out what is going on with the point types.
+           if (ptSetType == PointRange .or. ptSetType == pointList) then 
+              print *, "pyWarpUStruct cannot handle boundary conditions & 
+                   defined by 'PointRange' or 'PointList'. Please use &
+                   boundary conditions defined by 'ElementRange' or 'ElementList' &
+                   instead"
+              stop
+           end if
 
-           ! Read the element ID's.
-           call cg_boco_read_f(cg, base, iZone, boco,&
-                zones(iZone)%BCInfo(boco)%BCElements, NULL, ierr)
+           ! Load in the 
+           if (ptSetType == ElementRange) then 
+              ! We have to read off the start and end elements, this
+              ! will always require an array of lenght 2 (tmpInt)
 
-           if (ierr .eq. CG_ERROR) call cg_error_exit_f
+              call cg_boco_read_f(cg, base, iZone, boco, tmpInt, NULL, ierr)
+              if (ierr .eq. CG_ERROR) call cg_error_exit_f
+              nBCElem = tmpInt(2) - tmpInt(1) + 1
+              allocate(zones(iZone)%bocos(boco)%BCElements(nBCElem))
 
-           ! Now that we have the boundary condition info, read the family name
-           ! to associate it with a specific section
+              ! We now need to fill it up trivially
+              do i=1,nBCElem
+                 zones(iZone)%bocos(boco)%BCElements(i) = tmpInt(1) + i - 1
+              end do
+           else if (ptSetType == ElementList) then
 
+              ! nPnts is the actual number of elements we can allocate
+              ! and read directly
+
+              allocate(zones(iZone)%bocos(boco)%BCElements(nPnts))
+              call cg_boco_read_f(cg, base, iZone, boco, &
+                   zones(iZone)%bocos(boco)%BCElements, NULL, ierr)
+              nBCElem = nPnts
+           end if
+           ! Determine if we have a wall:
+           isWall = .False.
+           if (BCTypeName(bocoType) == 'BCWallViscous' .or. &
+                BCTypeName(bocoType) == 'BCWallInviscid' .or. &
+                BCTypeName(bocoType) == 'BCWall' .or. &
+                BCTypeName(bocoType) == 'BCWallViscousHeatFlux' .or. &
+                BCTypeName(bocoType) == 'BCWallViscousIsothermal') then
+              isWall = .True.
+           end if
+
+           ! Now we need to deduce the actual connectivity for this
+           ! boundary condition. This will require querying the
+           ! section info. Since the same BC could reference two
+           ! sections (i think in theory)
+
+           ! On the first pass we find the sectionID and index of the
+           ! element ON THAT SECTION. This require
+
+           ! We will assume at this point that we have at most quads,
+           ! so we can determine the maximum size of elemPr and elemConn
+           allocate(zones(iZone)%bocos(boco)%elemConn(4*nBCElem))
+           allocate(zones(iZone)%bocos(boco)%elemPtr(nBCElem + 1))
+           allocate(zones(iZOne)%bocos(boco)%elemNodes(3, 4*nBCElem))
+
+           ! Set pointers for easier reading
+           elemConn => zones(iZone)%bocos(boco)%elemConn
+           elemPtr  => zones(iZone)%bocos(boco)%elemPtr
+           elemNodes=> zones(iZone)%bocos(boco)%elemNodes
+           elemConn = -1
+           elemPtr = 0
+           elemPtr(1) = 1
+           nElemNotFound = 0
+           k = 1 ! Running index of elemConn, elemNodes
+           l = 1 ! Running index of elemPtr
+
+           do i=1, size(zones(iZone)%bocos(boco)%bcElements)
+              
+              curElem = zones(iZone)%bocos(boco)%bcElements(i)
+              sec = -1
+
+              ! For now do a linear search
+              setionLoop: do j=1,size(zones(iZone)%sections)
+                 if (curElem >= zones(iZone)%sections(j)%elemStart .and. &
+                      curElem <= zones(iZone)%sections(j)%elemEnd) then
+                    sec = j
+                    exit setionLOop
+                 end if
+              end do setionLoop
+
+              if (sec == -1)  then
+                 nElemNotFound = nElemNotFound + 1
+                 ! No element...do not increment the k-counter
+              else
+                 ! Set pointer for easier code reading
+                 secPtr => zones(iZone)%sections(sec)
+
+                 ! localIndex is the index on the section
+                 localIndex = curElem - secPtr%elemStart + 1
+
+                 ! iStart/iEnd are the indices on the section
+                 iStart = secPtr%elemPtr(localIndex)
+                 iEnd   = secPtr%elemPtr(localIndex+1) - 1
+                 
+                 ! Number of nodes on this section. 
+                 curElemSize =  iEnd - iStart + 1
+
+                 ! Since we just blew up the global connectivity, the
+                 ! local connectivity is now easy...it is just
+                 ! 1,2,3,4...etc. elemPtr will determine the type of
+                 ! element (3 or 4 nodes). Now copy the actual nodes
+                 do m=iStart,iEnd
+                    elemNodes(:, k) = allNodes(:, secPtr%elemConn(m))
+                    elemConn(k) = k
+                    k = k + 1
+                 end do
+
+                 ! Update the elemPtr too
+                 elemPtr(l+1) = elemPtr(l) + curElemSize
+                 l = l + 1
+
+                 ! Flag wall nodes if necessary
+                 if (isWall) then 
+                    do m=iStart, iEnd
+                       wallNodes(secPtr%elemConn(m)) = 1
+                    end do
+                 end if
+
+
+              end if
+           end do
+        
+           ! Now we set the *actual* number of nBCElem and nBCNodes
+           zones(iZone)%bocos(boco)%nBCElem = nBCElem - nElemNotFound 
+           zones(iZOne)%bocos(boco)%nBCNodes = k-1
+
+           ! And we can also easily figure out the symmetry plane
+           ! orientation, by looking at the nodes
+
+           if (BCTypeName(bocoType) == 'BCSymmetryPlane') then 
+
+              symmSum = zero              
+              do i=1,zones(iZone)%bocos(boco)%nBCNodes
+                 symmSum(1) = symmSum(1) + zones(iZone)%bocos(boco)%elemNodes(1, i)
+                 symmSum(2) = symmSum(2) + zones(iZone)%bocos(boco)%elemNodes(2, i)
+                 symmSum(3) = symmSum(3) + zones(iZone)%bocos(boco)%elemNodes(3, i)
+              end do
+              nSymm = zones(iZone)%bocos(boco)%nBCNodes
+
+              ! Determine what the axis of this symmetry plane
+              ! is. We look at the two end points of the range
+
+              if (symmSum(1) / nSymm < symmTol) then 
+                 tmpSym = 1
+              else if (symmSum(2) / nSymm < symmTol) then 
+                 tmpSym = 2
+              else if (symmSum(3) / nSymm < symmTol) then
+                 tmpSym = 3
+              end if
+              
+              if (iSymm == 0) then ! Currently un-assigned:
+                 iSymm = tmpSym
+              end if
+              
+              if (tmpSym /= iSymm) then
+                 print *, 'Error: detected more than 1 symmetry plane direction.'
+                 print *, 'pyWarpUnstruct cannot handle this'
+                 stop
+              end if
+           end if
+
+           ! Save the boco name
+           zones(iZone)%bocos(boco)%name =  bocoName
+           zones(iZone)%bocos(boco)%type = bocoType
+           ! By Default no family name
+           zones(iZone)%bocos(boco)%family = ""
+
+           ! Read the family information
            call cg_goto_f(cg, base, ierr, "Zone_t", iZone, "ZoneBC_t", 1, "BC_t",&
                 boco, "end")
            if (ierr .eq. CG_ERROR) call cg_error_exit_f
@@ -294,29 +537,20 @@ subroutine readUnstructuredCGNS(cgns_file)
            if (ierr == 0) then ! Node exists
               call cg_famname_read_f(famName, ierr)
               if (ierr .eq. CG_ERROR) call cg_error_exit_f
-              if (ierr == 0) then
-                 !search for matching section
-                 ! Loop over the number of sections and compare the family
-                 ! name to the section name. If they match, we have found
-                 ! the section that this BC belongs to.
 
-                 volSecCounter = 1
-                 surfSecCounter = 1
-                 do sec=1,nSections
-                    if (.not. zones(iZone)%isVolumeSection(sec)) then
-                       ! we have a surface section
-                       zones(iZone)%BCInfo(boco)%famName = famName
- 
-                      if(zones(iZone)%surfaceSections(surfSecCounter)%secName==&
-                            famName)then
-                          ! this is the correct section
-                          ! Set BCType and Family Name
-                          zones(iZone)%surfaceSections(surfSecCounter)%BCFamily = famName
-                          zones(iZone)%surfaceSections(surfSecCounter)%BCType = bocoType
-                       end if
-                       surfSecCounter = surfSecCounter + 1
-                    end if
-                 end do
+              zones(iZone)%bocos(boco)%family = famName
+           end if
+
+           if (BCTypeName(bocoType) == 'BCWallViscous' .or. &
+                BCTypeName(bocoType) == 'BCWallInviscid' .or. &
+                BCTypeName(bocoType) == 'BCWall' .or. &
+                BCTypeName(bocoType) == 'BCWallViscousHeatFlux' .or. &
+                BCTypeName(bocoType) == 'BCWallViscousIsothermal') then
+              call checkInFamilyList(familyList, famName, nwallFamilies, famID)
+              
+              if (famID == 0) then
+                 nwallFamilies = nwallFamilies + 1
+                 familyList(nwallFamilies) = famName
               end if
            end if
         end do bocoLoop
@@ -325,47 +559,6 @@ subroutine readUnstructuredCGNS(cgns_file)
         deallocate(coorX, coorY, coorZ)
      end do zoneLoop
 
-     ! We can also generate the wall family list
-     nwallFamilies = 0
-     familyList(:) = ''
-
-     do iZone=1, nzones
-        nSections = zones(iZone)%nSections
-        surfSecCounter = 1
-        do sec=1, nSections
-           if (.not. zones(iZone)%isVolumeSection(sec)) then
-              bocoType = zones(iZone)%surfaceSections(surfSecCounter)%BCType
-              FamName = zones(iZone)%surfaceSections(surfSecCounter)%BCFamily
-
-              zones(iZone)%surfaceSections(surfSecCounter)%isWallBC=.False.
-              zones(iZone)%surfaceSections(surfSecCounter)%isBoundaryBC=.False.
-              zones(iZone)%surfaceSections(surfSecCounter)%isSymmBC=.False.
-
-              if (BCTypeName(bocoType) == 'BCWallViscous' .or. &
-                   BCTypeName(bocoType) == 'BCWallInviscid' .or. &
-                   BCTypeName(bocoType) == 'BCWall' .or. &
-                   BCTypeName(bocoType) == 'BCWallViscousHeatFlux' .or. &
-                   BCTypeName(bocoType) == 'BCWallViscousIsothermal') then
-                 zones(iZone)%surfaceSections(surfSecCounter)%isWallBC=.True.
-
-                 !this is a wall family, add to the family list
-                 call checkInFamilyList(familyList, famName, nwallFamilies, famID)
-                 if (famID == 0) then
-                    nwallFamilies = nwallFamilies + 1
-                    familyList(nwallFamilies) = famName
-                 end if
-              elseif(BCTypeName(bocotype) == 'BCFarfield')  then
-                 zones(iZone)%surfaceSections(surfSecCounter)%isBoundaryBC=.True.
-              elseif(BCTypeName(bocotype) == 'BCSymmetryPlane') then
-                 zones(iZone)%surfaceSections(surfSecCounter)%isSymmBC = .True.
-              else
-                 print *,'Unrecongnized boundary Type... exiting: ',BCTypeName(bocotype)
-                 stop
-              end if
-              surfSecCounter = surfSecCounter + 1
-           end if
-        end do
-     end do
      call cg_close_f(cg, ierr)
      if (ierr .eq. CG_ERROR) call cg_error_exit_f
      deallocate(sizes)
