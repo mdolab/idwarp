@@ -1,6 +1,5 @@
 subroutine setdXs(indices, idof, in_vec, ndof)
 
-  use precision 
   use gridData
   implicit none
   

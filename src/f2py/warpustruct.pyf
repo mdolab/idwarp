@@ -17,46 +17,12 @@ python module warpustruct ! in
          integer(kind=inttype), optional,intent(in),check(shape(volnodes,1)==nvollocal),depend(volnodes) :: nvollocal=shape(volnodes,1)
        end subroutine createcommongrid
 
-       subroutine getnpatchesstructured(npatches) ! in :warpustruct:../IO/patchIO.f90
-            integer(kind=inttype) intent(out) :: npatches
-        end subroutine getnpatchesstructured
+       subroutine processstructuredpatches
+       end subroutine processstructuredpatches
 
-        subroutine getpatchnamestructured(ipatch,patchname) ! in :warpustruct:../IO/patchIO.f90
-            integer(kind=inttype) intent(in) :: ipatch
-            character*32 intent(out) :: patchname
-        end subroutine getpatchnamestructured
+       subroutine processunstructuredpatches
+       end subroutine processunstructuredpatches
 
-        subroutine getpatchsizestructured(ipatch,patchsize) ! in :warpustruct:../IO/patchIO.f90
-            integer(kind=inttype) intent(in) :: ipatch
-            integer(kind=inttype) dimension(2),intent(out) :: patchsize
-        end subroutine getpatchsizestructured
-
-        subroutine getnpatchesunstructured(npatches) ! in :warpustruct:../IO/patchIO.F90
-            integer(kind=inttype) intent(out) :: npatches
-        end subroutine getnpatchesunstructured
-
-        subroutine getpatchnameunstructured(ipatch,patchname) ! in :warpustruct:../IO/patchIO.F90
-            integer(kind=inttype) intent(in) :: ipatch
-            character*32 intent(out) :: patchname
-        end subroutine getpatchnameunstructured
-
-        subroutine getpatchsizesunstructured(ipatch,npts,ncells) ! in :warpustruct:../IO/patchIO.F90
-            integer(kind=inttype) intent(in) :: ipatch
-            integer(kind=inttype) intent(out) :: npts
-            integer(kind=inttype) intent(out) :: ncells
-        end subroutine getpatchsizesunstructured
-
-       subroutine getpatchdataunstructured(cgns_file,facesizes,nfaces,conn,nconnpts,patchptr,patchsize,points,ndof) ! in :warpustruct:../IO/patchIO.F90
-            character*(*) intent(in) :: cgns_file
-            integer(kind=inttype) dimension(nfaces),intent(inout) :: facesizes
-            integer(kind=inttype), optional,intent(in),check(len(facesizes)>=nfaces),depend(facesizes) :: nfaces=len(facesizes)
-            integer(kind=inttype) dimension(nconnpts),intent(inout) :: conn
-            integer(kind=inttype), optional,intent(in),check(len(conn)>=nconnpts),depend(conn) :: nconnpts=len(conn)
-            integer(kind=inttype) dimension(patchsize),intent(inout) :: patchptr
-            integer(kind=inttype), optional,intent(in),check(len(patchptr)>=patchsize),depend(patchptr) :: patchsize=len(patchptr)
-            real(kind=realtype) dimension(ndof),intent(inout) :: points
-            integer(kind=inttype), optional,intent(in),check(len(points)>=ndof),depend(points) :: ndof=len(points)
-        end subroutine getpatchdataunstructured
        subroutine readstructuredcgns(cgns_file)
          character*(*) :: cgns_file
        end subroutine readstructuredcgns
@@ -196,7 +162,6 @@ python module warpustruct ! in
        end module gridinput
 
        module griddata ! in :warpustruct:../modules/gridData.f90
-         use constants
          character dimension(32,32),intent(c) :: familylist
          integer(kind=inttype) :: nwallfamilies
          integer(kind=inttype) :: warpmeshdof
@@ -204,10 +169,14 @@ python module warpustruct ! in
          integer(Kind=inttype) :: commonmeshdof
        end module griddata
 
-       module structuredcgnsgrid
+       module cgnsgrid
          real(kind=realtype), dimension(:), allocatable :: wallpoints
          integer(kind=inttype), dimension(:), allocatable :: wallconn
-       end module structuredcgnsgrid
+         integer(kind=inttype), dimension(:,:), allocatable :: wallsizes
+         integer(kind=inttype), dimension(:), allocatable :: wallptr
+         integer(kind=inttype), dimension(:), allocatable :: wallpatchptr
+         character(32), dimension(:), allocatable :: wallnames
+       end module cgnsgrid
 
        module kd_tree
          integer(kind=inttype) :: bucket_size

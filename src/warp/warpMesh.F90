@@ -7,8 +7,8 @@ subroutine warpMesh()
 
   use gridData
   use gridInput
-  use communication
   use kd_tree
+
   implicit none
 
   ! Working parameters

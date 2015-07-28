@@ -25,8 +25,7 @@ FF90_OBJECTS_3 = pointReduce.o\
 FF90_OBJECTS_4 = gridData.o\
 
 FF90_OBJECTS_5 = kd_tree.o\
-		 structuredCGNS.o\
-                 unStructuredCGNS.o\
+		 cgnsGrid.o\
 
 FILES_TO_COMPLEXIFY =	precision.F90\
 			constants.F90\
@@ -34,8 +33,7 @@ FILES_TO_COMPLEXIFY =	precision.F90\
 			communication.f90\
 			gridData.F90\
 			kd_tree.F90\
-			structuredCGNS.F90\
-	                unStructuredCGNS.o\
+			cgnsGrid.F90\
 
 FILES_TO_COPY = complexify.f90\
 		pointReduce.F90\
