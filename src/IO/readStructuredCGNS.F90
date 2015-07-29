@@ -63,6 +63,7 @@ subroutine readStructuredCGNS(cgns_file)
      
 
      allocate(zones(nZones))
+     
      ! Now count up the total number of nodes
      nNodes = 0
      allocate(sizes(3, nZones))
@@ -70,6 +71,10 @@ subroutine readStructuredCGNS(cgns_file)
         call cg_zone_read_f(cg, base, i, zoneName, dims, ierr)
         sizes(:, i) = dims(1:3)
         nNodes = nNodes + dims(1)*dims(2)*dims(3)
+
+        ! Nullify section pointers since we won't have any for structured mesh
+        nullify(zones(i)%sections)
+
      end do
 
      ! Now we know the total number of nodes we can allocate the final
@@ -99,6 +104,12 @@ subroutine readStructuredCGNS(cgns_file)
         allocate(zones(iZone)%bocos(nbocos))
 
         bocoLoop_one: do boco=1, nbocos
+
+           ! Nullify elemPtr, elemConn and elemNodes since we won't have any
+           nullify(zones(iZone)%bocos(boco)%elemPtr, &
+                   zones(iZone)%bocos(boco)%elemConn, &
+                   zones(iZone)%bocos(boco)%elemNodes) 
+
            call cg_boco_info_f(cg, base, iZone, boco, boconame, bocotype, &
                 ptset_type, npts, NormalIndex, NormalListFlag, datatype, &
                 ndataset, ierr)
