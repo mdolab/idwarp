@@ -34,8 +34,10 @@ subroutine readUnstructuredCGNS(cgns_file)
   integer(kind=intType), dimension(:), allocatable :: tmpConn
 #ifdef USE_COMPLEX
   complex(kind=realType), dimension(:, :), allocatable :: allNodes, localNodes
+  complex(kind=realType), dimension(:,:), pointer :: elemNodes
 #else
   real(kind=realType), dimension(:, :), allocatable :: allNodes, localNodes
+  real(kind=realType), dimension(:,:), pointer :: elemNodes
 #endif
   integer(kind=intType), dimension(:), allocatable :: wallNodes, localWallNodes
   integer(kind=intType), dimension(:, :), allocatable :: sizes
@@ -44,7 +46,7 @@ subroutine readUnstructuredCGNS(cgns_file)
   integer(kind=intType):: surfSecCounter,volSecCounter, famID
   type(sectionDataType), pointer :: secPtr
   integer(kind=intType), dimension(:), pointer :: elemConn, elemPtr
-  real(kind=realType), dimension(:,:), pointer :: elemNodes
+
   integer(kind=intType) :: nElemNotFound, curElem, curElemSize, localIndex
   real(kind=realType) :: symmSum(3)
   logical :: isWall 

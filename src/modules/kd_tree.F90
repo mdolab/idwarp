@@ -32,8 +32,7 @@ Module kd_tree
   ! child pointers 
 
   real(kind=realType), parameter, dimension(NERR) :: rstar = &
-       (/two, three, four, five, 7.5_realType, 10.0_realType, 20.0_realType, 40.0_realType, &
-       80.0_realType, 160.0_realType, 320.0_realType, 640.0_realType/)
+       (/two, three, four, five, sevenp5, ten, twenty, forty, eighty, onesixty, threetwenty, sixforty/)
   real(kind=realType),  dimension(NERR-1) :: orstar
 
   Type :: tree_master_record
