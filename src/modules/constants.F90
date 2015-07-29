@@ -40,8 +40,15 @@ module constants
   real(kind=realType), parameter :: four  = 4.0_realType
   real(kind=realType), parameter :: five  = 5.0_realType
   real(kind=realType), parameter :: six   = 6.0_realType
+  real(kind=realType), parameter :: sevenp5 = 7.5_realType
   real(kind=realType), parameter :: eight = 8.0_realType
-  reaL(kind=realType), parameter :: ten   = 10.0_realType
+  real(kind=realType), parameter :: ten   = 10.0_realType
+  real(kind=realType), parameter :: twenty= 20.0_realType
+  real(kind=realType), parameter :: forty = 40.0_realType
+  real(kind=realType), parameter :: eighty= 80.0_realType
+  real(kind=realType), parameter :: onesixty   = 160.0_realType
+  real(kind=realType), parameter :: threetwenty= 320.0_realType
+  real(kind=realType), parameter :: sixforty   = 640.0_realType
 
   real(kind=realType), parameter :: half   = 0.5_realType
   real(kind=realType), parameter :: third  = one/three
