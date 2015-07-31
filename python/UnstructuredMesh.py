@@ -122,7 +122,7 @@ class USMesh(object):
             'symmTol':1e-6,
             'useRotations':True,
             'bucketSize':8,
-            'fileType':'structuredCGNS',
+            'fileType':'cgns',
         }
 
         # Set remaining default values
@@ -145,19 +145,16 @@ class USMesh(object):
 
         # Determine how to read:
         if not self.meshType == None:
-            if self.meshType.lower() == "structuredcgns":
-                self.warp.readstructuredcgns(fileName)
-                self._getCGNSFamilyList()
-
-            elif self.meshType.lower() == "unstructuredcgns":
-                self.warp.readunstructuredcgns(fileName)
+            if self.meshType.lower() == "cgns":
+                # Determine type of CGNS mesh we have:
+                self.warp.readcgns(fileName)
                 self._getCGNSFamilyList()
 
             elif self.meshType.lower() == "openfoam":
                 self._readOFGrid(fileName)
         else:
             raise Error("Invalid input file type. valid options are: "
-                        "structuredCGNS, unstructuredCGNS or OpenFOAM.")
+                        "CGNS" or "OpenFOAM.")
 
         # Add a default family group 'all' which will always be there.
         self.familyGroup = {}
@@ -524,12 +521,13 @@ class USMesh(object):
         """
         self.warp.setexternalmeshindices(ind)
 
-    def setExternalSurface(self, **kwargs):
+    def setExternalSurface(self, patchNames, patchSizes, conn, pts):
         """Included for backwards compatibility with SUmb. This function
         ist *NOT* typically called by the user, but by an external solver."""
-        self._setSurfaceDefinition(**kwargs)
+        self._setSurfaceDefinition(patchNames=patchNames, patchSizes=patchSizes,
+                                   conn=conn, pts=pts)
 
-    def _setSurfaceDefinition(self, **kwargs):
+    def _setSurfaceDefinition(self, *args, **kwargs):
         """This is the master function that determines the definition of the
         surface to be used for the mesh movement. This surface may be
         supplied from an external solver (such as SUmb) or it may be
@@ -852,13 +850,11 @@ class USMesh(object):
             'points' file.
         """
 
-        if self.meshType.lower() == 'structuredcgns':
-            self.warp.writestructuredcgns(fileName)
-
-        elif self.meshType.lower() == 'unstructuredcgns':
+        if self.meshType.lower() == 'cgns':
             # Copy the default and then write
-            shutil.copy(self.solverOptions['gridFile'], fileName)
-            self.warp.writeunstructuredcgns(fileName)
+            if self.comm.rank == 0:
+                shutil.copy(self.solverOptions['gridFile'], fileName)
+            self.warp.writecgns(fileName)
 
         elif self.meshType.lower() == 'openfoam':
             self._writeOpenFOAMVolumePoints()
@@ -1006,49 +1002,50 @@ class USMesh(object):
         """
         if not self.warpInitialized:
             if self.comm.rank == 0:
-                print(" -> Info: Using nternal pyWarpUStruct surfaces. If "
-                      "this mesh object is to be used with SUmb, ensure "
-                      "the mesh object is passed to SUmb immediately after "
-                      "creation.")
+                print(" -> Info: Using internal pyWarpUStruct surfaces. If\n"
+                      "          this mesh object is to be used with SUmb,\n"
+                      "          ensure the mesh object is passed to SUmb\n"
+                      "          immediately after creation.")
             patchSizes = []
             conn = []
             pts = np.zeros(0, self.dtype)
             patchNames = []
             patchPtr = []
             faceSizes = []
-            if self.meshType.lower() == "structuredcgns":
-                if self.comm.rank == 0:
-                    self.warp.processstructuredpatches()
 
-                    # Pull out data and convert to 0-based ordering
-                    patchSizes = self.warp.cgnsgrid.wallsizes.T
-                    conn = self.warp.cgnsgrid.wallconn-1
-                    pts = self.warp.cgnsgrid.wallpoints
-                    patchNames = self._processFortranStringArray(
-                        self.warp.cgnsgrid.wallnames)
+            if self.meshType.lower() == "cgns":
+                if self.warp.cgnsgrid.cgnsstructured:
+                    if self.comm.rank == 0:
+                        self.warp.processstructuredpatches()
+                        # Pull out data and convert to 0-based ordering
+                        patchSizes = self.warp.cgnsgrid.wallsizes.T
+                        conn = self.warp.cgnsgrid.wallconn-1
+                        pts = self.warp.cgnsgrid.wallpoints
+                        patchNames = self._processFortranStringArray(
+                            self.warp.cgnsgrid.wallnames)
+                        
+                    self._setSurfaceDefinition(patchNames=patchNames,
+                                               patchSizes=patchSizes,
+                                               conn=conn, pts=pts)
 
-                self._setSurfaceDefinition(patchNames=patchNames,
-                                           patchSizes=patchSizes,
-                                           conn=conn, pts=pts)
+                else: # unstructured
+                    if self.comm.rank == 0:
+                        self.warp.processunstructuredpatches()
 
-            elif self.meshType.lower() == "unstructuredcgns":
-                if self.comm.rank == 0:
-                    self.warp.processunstructuredpatches()
-
-                    # Pull out data and convert to 0-based ordering
-                    conn = self.warp.cgnsgrid.wallconn-1
-                    pts = self.warp.cgnsgrid.wallpoints
-                    ptr = self.warp.cgnsgrid.wallptr-1
-                    patchNames = self._processFortranStringArray(
-                        self.warp.cgnsgrid.wallnames)
-                    patchPtr = self.warp.cgnsgrid.wallpatchptr-1
-                    faceSizes = ptr[1:-1] - ptr[0:-2]
+                        # Pull out data and convert to 0-based ordering
+                        conn = self.warp.cgnsgrid.wallconn-1
+                        pts = self.warp.cgnsgrid.wallpoints
+                        ptr = self.warp.cgnsgrid.wallptr-1
+                        patchNames = self._processFortranStringArray(
+                            self.warp.cgnsgrid.wallnames)
+                        patchPtr = self.warp.cgnsgrid.wallpatchptr-1
+                        faceSizes = ptr[1:-1] - ptr[0:-2]
 
 
-                self._setSurfaceDefinition(patchNames=patchNames, conn=conn,
-                                        pts=pts, faceSizes=faceSizes,
-                                        patchPtr=patchPtr)
-
+                    self._setSurfaceDefinition(patchNames=patchNames, conn=conn,
+                                               pts=pts, faceSizes=faceSizes,
+                                               patchPtr=patchPtr)
+                    
             elif self.meshType.lower() == "openfoam":
                 patchNames, faceSizes, patchPtr, conn, pts = self._computeOFConn()
 

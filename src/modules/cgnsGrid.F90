@@ -21,15 +21,6 @@ module cgnsGrid
      real(kind=realType), dimension(:,:), pointer :: elemNodes
   end type bctype
 
-  type B2B
-     ! Only for structured grids
-     character(maxCGNSNameLen) :: name
-     character(maxCGNSNameLen) :: donorName
-     integer(kind=intType) :: ptRange(3, 2)
-     integer(kind=intType) :: donorRange(3, 2)
-     integer(kind=intType) :: transform(3)
-  end type B2B
-
   type sectionDataType
      ! Only for unstructured grid
      character(maxCGNSNameLen) :: name
@@ -44,7 +35,6 @@ module cgnsGrid
      integer(kind=intType):: nVertices, nElements
      character(maxCGNSNameLen) :: name
      type(bcType), dimension(:), allocatable :: bocos
-     type(B2B), dimension(:), allocatable :: B2Bs
      type(sectionDataType), dimension(:), pointer :: sections
 
   end type zoneDataType
@@ -60,4 +50,7 @@ module cgnsGrid
   integer(kind=intType), dimension(:), allocatable :: wallPatchPtr
   character(maxCGNSNameLen), dimension(:), allocatable :: wallNames
 
+  ! Flag if it is structured or not
+  logical :: cgnsStructured
+ 
 end module cgnsGrid

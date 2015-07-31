@@ -1,4 +1,4 @@
-subroutine readUnstructuredCGNS(cgns_file)
+subroutine readUnstructuredCGNS(cg)
 
   use precision
   use communication
@@ -10,15 +10,14 @@ subroutine readUnstructuredCGNS(cgns_file)
   include 'cgnslib_f.h'
 
   ! Input Arguments
-  character*(*),intent(in) :: cgns_file
+  integer(kind=intType), intent(in) :: cg
 
-  ! CGNS Variabls
+  ! CGNS Variables
   integer(kind=intType) :: i, j, k, m, l, istart, iend, localsize, iProc, iZone
-  integer(kind=intType):: ierr, base, dims(3), cg!, cursize, coorsize
+  integer(kind=intType):: ierr, base, dims(3)
   integer(kind=intType):: nNodes, nCells
-  integer(kind=intType):: CellDim, PhysDim
   integer(kind=intType) :: nbases, start(3), tmpSym, nSymm
-  character*32 :: zoneName, bocoName, famName, connectName, donorName, basename
+  character*32 :: zoneName, bocoName, famName, connectName, donorName
   character*32 :: secName
 
   integer(kind=intType) :: nbocos, boco, index
@@ -55,39 +54,12 @@ subroutine readUnstructuredCGNS(cgns_file)
   !           Open CGNS File
   ! ---------------------------------------
   if (myID == 0) then
-     print *, ' -> Reading CGNS File: ', cgns_file
-
-     call cg_open_f(cgns_file, CG_MODE_READ, cg, ierr)
-     if (ierr .eq. CG_ERROR) call cg_error_exit_f
-
-     call cg_nbases_f(cg, nbases, ierr)
-     if (ierr .eq. CG_ERROR) call cg_error_exit_f
-
-     if (nbases .gt. 1) then
-        print *, ' ** Warning: pyWarpUstruct only reads the first base in a cgns file'
-     end if
 
      base = 1_intType
-
-     !  GOTO base node
-     call cg_goto_f(cg, base, ierr, 'end')
-     if (ierr .eq. CG_ERROR) call cg_error_exit_f
-
-     ! Check the cell and physical dimensions of the bases. 
-     ! Both should be 3. 
-     call cg_base_read_f(cg,base,baseName,cellDim,physDim,ierr)
-     if (ierr .eq. ERROR) call cg_error_exit_f
-
-     if( cellDim .ne.3 .or. physDim .ne. 3) then
-        print *,' ** Warning:  pyWarpUstruct only accepts 3-d data'
-        stop
-     end if
 
      ! read the number of zones in the file
      call cg_nzones_f(cg, base, nzones, ierr)
      if (ierr .eq. ERROR) call cg_error_exit_f
-
-     print *, '   -> Number of Zones:', nzones
 
      ! allocate the zonal storage
      allocate(zones(nZones))
