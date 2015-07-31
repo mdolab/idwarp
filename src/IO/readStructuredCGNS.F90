@@ -1,4 +1,4 @@
-subroutine readStructuredCGNS(cgns_file)
+subroutine readStructuredCGNS(cg)
   use gridData
   use gridInput
   use communication
@@ -8,17 +8,15 @@ subroutine readStructuredCGNS(cgns_file)
   include 'cgnslib_f.h'
 
   ! Input Arguments
-  character*(*),intent(in) :: cgns_file
+  integer(kind=intType) :: cg
 
   ! Working 
   integer(kind=intType) :: i, j, k, ii, istart, iend, localsize, iProc, iZone, offset
-  integer(kind=intType):: ierr, base, nZones, nNodes, dims(9), cg,  coorsize
-  integer(kind=intType):: CellDim, PhysDim
+  integer(kind=intType):: ierr, base, nZones, nNodes, dims(9),  coorsize
   integer(kind=intType) :: nbases, start(3), tmpSym, nSymm
   character*100 fileName
-  character*32 :: zoneName, bocoName, famName, connectName, donorName, basename
-  integer(kind=intType) :: npts, nbocos, bocotype, pts(3, 2), famID, boco, iB2b, transform(3)
-  integer(kind=intType) :: donorRange(3, 2), nB2b
+  character*32 :: zoneName, bocoName, famName
+  integer(kind=intType) :: npts, nbocos, bocotype, pts(3, 2), famID, boco
   integer(kind=intType) :: ptset_type, normalIndex(3), NormalListFlag, datatype, ndataset
   real(kind=8)   ::  data_double(6), avgNodes, symmSum(3)
   real(kind=realType), dimension(:, :, :), allocatable :: coorX, coorY, coorZ
@@ -31,37 +29,17 @@ subroutine readStructuredCGNS(cgns_file)
   integer(kind=intType), dimension(:, :), allocatable :: sizes
   integer(kind=intType) :: nWall, nodeCount, nConn, ni, nj
   integer(kind=intType) :: status(MPI_STATUS_SIZE)
+  logical :: lowFace
 
   iSymm = 0
   ! Only do reading on root proc:
   if (myid == 0) then 
-     print *, ' -> Reading structured CGNS File: ', cgns_file
 
-     ! Open and get the number of zones:
-     call cg_open_f(trim(cgns_file), CG_MODE_READ, cg, ierr)
-     if (ierr .eq. CG_ERROR) call cg_error_exit_f
-
-     call cg_nbases_f(cg, nbases, ierr)
-     if (ierr .eq. CG_ERROR) call cg_error_exit_f
-     
-     if (nbases .gt. 1) then
-        print *, ' ** Warning: pyWarpUstruct only reads the first base in a cgns file'
-     end if
-
+     ! Always the first base
      base = 1_intType
-
-     call cg_base_read_f(cg, base, basename, CellDim, PhysDim, ierr)
-     if (ierr .eq. CG_ERROR) call cg_error_exit_f
-     if (cellDim .ne. 3 .or. PhysDim .ne. 3) then
-        print *, 'The Cells must 3 dimensional'
-        stop
-     end if
    
      call cg_nzones_f(cg, base, nZones, ierr);
      if (ierr .eq. CG_ERROR) call cg_error_exit_f
-     print *, '   -> Number of Zones:', nzones
-     
-
      allocate(zones(nZones))
      
      ! Now count up the total number of nodes
@@ -74,7 +52,6 @@ subroutine readStructuredCGNS(cgns_file)
 
         ! Nullify section pointers since we won't have any for structured mesh
         nullify(zones(i)%sections)
-
      end do
 
      ! Now we know the total number of nodes we can allocate the final
@@ -84,7 +61,7 @@ subroutine readStructuredCGNS(cgns_file)
      wallNodes = 0
 
      ! We make two loops over the zones....the first *just* reads the
-     ! BC (and B2B) info and stores it. The second, actually reads the
+     ! BC info and stores it. The second, actually reads the
      ! nodes. 
 
      familyList(:) = ''
@@ -219,25 +196,6 @@ subroutine readStructuredCGNS(cgns_file)
               end if
            end if
         end do bocoLoop_one
-        
-        ! Also read the B2B info -- we don't need them, just so that
-        ! we can re-write them during output.
-        call cg_n1to1_f(cg, base, iZone, nB2B, ierr)
-        if (ierr .eq. CG_ERROR) call cg_error_exit_f
-        allocate(zones(iZone)%B2Bs(nB2B))
-
-        B2BLoop: do iB2B=1,nB2B
-           call cg_1to1_read_f(cg, base, iZone, iB2B, connectName, donorName, pts, &
-                donorRange, transform, ierr)
-           if (ierr .eq. CG_ERROR) call cg_error_exit_f
-
-           ! Save the b2b info
-           zones(iZone)%b2bs(ib2b)%name = connectName
-           zones(iZone)%b2bs(ib2b)%donorName = donorName
-           zones(iZone)%b2bs(ib2b)%ptRange = pts
-           zones(iZone)%b2bs(ib2b)%donorRange = donorRange
-           zones(iZone)%b2bs(ib2b)%transform = transform
-        end do B2BLoop
      end do zoneLoop_one
 
      ! Allocate space for storage of the surface nodes and the
@@ -310,29 +268,63 @@ subroutine readStructuredCGNS(cgns_file)
                  end do
               end do
 
+              lowFace = .False.
               ! Determine generic face size
               if (pts(1,1) == pts(1,2)) then ! iMin/iMax
                  ni = pts(2,2) - pts(2,1) + 1
                  nj = pts(3,2) - pts(3,1) + 1
+                 if (pts(1,1) == 1) then 
+                    lowFace = .True.
+                 end if
+
               else if (pts(2,1) ==pts(2,2)) then !jMin/jMax
                  ni = pts(1,2) - pts(1,1) + 1
                  nj = pts(3,2) - pts(3,1) + 1
+                 if (pts(2,1) == 1) then 
+                    lowFace = .True.
+                 end if
+
               else ! kMin/kMax
                  ni = pts(1,2) - pts(1,1) + 1
                  nj = pts(2,2) - pts(2,1) + 1
+
+                 if (pts(3,1) == 1) then 
+                    lowFace = .True.
+                 end if
+
               end if
           
-              ! Loop over generic face size...We are doing 1 based ordering
-              do j=0,nj-2
-                 do i=0,ni-2
-                    wallConn(4*nConn+1) = nodeCount + (j  )*ni + i + 1
-                    wallConn(4*nConn+2) = nodeCount + (j  )*ni + i + 1 + 1
-                    wallConn(4*nConn+3) = nodeCount + (j+1)*ni + i + 1 + 1
-                    wallConn(4*nConn+4) = nodeCount + (j+1)*ni + i + 1 
-                    nConn = nConn + 1
+              ! Loop over generic face size...We are doing 1 based
+              ! ordering. If it is low face normal ordering: 
+              !
+              ! i, j+1 +-----+ i+1, j+1
+              !   n4   |     | n3
+              !        +-----+
+              !       i,j    i+1, j
+              !       n1     n2
+              !
+              ! Otherwise, we flip the ordering to be n1, n4, n3, n2
+              if (lowFace) then 
+                 do j=0,nj-2
+                    do i=0,ni-2
+                       wallConn(4*nConn+1) = nodeCount + (j  )*ni + i + 1     ! n1
+                       wallConn(4*nConn+2) = nodeCount + (j  )*ni + i + 1 + 1 ! n2
+                       wallConn(4*nConn+3) = nodeCount + (j+1)*ni + i + 1 + 1 ! n3
+                       wallConn(4*nConn+4) = nodeCount + (j+1)*ni + i + 1     ! n4
+                       nConn = nConn + 1
+                    end do
                  end do
-              end do
-           
+              else ! Flip the orientation:
+                 do j=0,nj-2
+                    do i=0,ni-2
+                       wallConn(4*nConn+1) = nodeCount + (j  )*ni + i + 1     ! n1
+                       wallConn(4*nConn+2) = nodeCount + (j+1)*ni + i + 1     ! n4
+                       wallConn(4*nConn+3) = nodeCount + (j+1)*ni + i + 1 + 1 ! n3
+                       wallConn(4*nConn+4) = nodeCount + (j  )*ni + i + 1 + 1 ! n2
+                       nConn = nConn + 1
+                    end do
+                 end do
+              end if
               nodeCount = nodeCount + ni*nj
            end if
 
