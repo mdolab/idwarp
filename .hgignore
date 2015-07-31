@@ -21,3 +21,8 @@ src/warp/temp_reverse/*
 *.lay
 *.plt
 *.html
+src_cs/f2py/warpustruct.pyf.autogen
+src/f2py/warpustruct.pyf.autogen
+src/f2py/warpustruct-f2pywrappers2.f90
+src_cs/f2py/warpustruct_cs-f2pywrappers2.f90
+src_cs/f2py/get_f2py.py

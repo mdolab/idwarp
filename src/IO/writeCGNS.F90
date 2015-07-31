@@ -1,4 +1,4 @@
-subroutine writeUnstructuredCGNS(cgns_file)
+subroutine writeCGNS(cgns_file)
 
   use precision
   use communication
@@ -17,7 +17,7 @@ subroutine writeUnstructuredCGNS(cgns_file)
 
   real(kind=realType), dimension(:), allocatable :: coorX, coorY, coorZ
   real(kind=realType), pointer, dimension(:) :: xx
-  integer(kind=intType) :: i, j
+  integer(kind=intType) :: i, j, jj, offset, nNodes
   
   ! This isn't technically scalable...we will dump the entire grid
   ! onto the root proc and write there. 
@@ -40,27 +40,32 @@ subroutine writeUnstructuredCGNS(cgns_file)
      if (ierr .eq. CG_ERROR) call cg_error_exit_f
      base = 1
 
+     offset = 0
      ! loop over the zones, create and write
      do iZone=1, size(zones)
 
-        ! Get the number of points and elements
-        sizes(1) = zones(iZone)%nVertices
-        sizes(2) = zones(iZone)%nElements
-        sizes(3) = 0
+        ! Get the number of points:
+        if (cgnsStructured) then 
+           nNodes = zones(iZone)%il*zones(iZone)%jl*zones(iZone)%kl
+        else
+           nNodes = zones(iZone)%nVertices 
+        end if
 
         ! Allocate arrays for X,Y and Z.Note that we CANNOT just use
         ! matrix notation and stride directly from xx since that will
         ! cause a stack copy to be creater which will make ifort barf,
         ! since they put temps are the stack by default *shakes fist*
-        allocate(coorX(sizes(1)), coorY(sizes(1)), coorZ(sizes(1)))
+        allocate(coorX(nNodes), coorY(nNodes), coorZ(nNodes))
 
         ! Extract the coordinates
-        do j=1,sizes(1)
-           coorX(j) = xx(3*j-2)
-           coorY(j) = xx(3*j-1)
-           coorZ(j) = xx(3*j  )
+        do j=1,nNodes
+           jj = offset + j
+           coorX(j) = xx(3*jj-2)
+           coorY(j) = xx(3*jj-1)
+           coorZ(j) = xx(3*jj  )
         end do
 
+        offset = offset + nNodes
         ! Write the grid coordinates
         call cg_coord_write_f(cg, base, iZone, realDouble, 'CoordinateX', coorX, coordID, ierr)
         if (ierr .eq. CG_ERROR) call cg_error_exit_f
@@ -85,6 +90,6 @@ subroutine writeUnstructuredCGNS(cgns_file)
 
   call VecScatterDestroy(XvToLocal, ierr)
   call EChk(ierr,__FILE__,__LINE__)
-
-end subroutine writeUnstructuredCGNS
+  
+end subroutine writeCGNS
 

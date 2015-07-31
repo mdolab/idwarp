@@ -23,12 +23,9 @@ python module warpustruct ! in
        subroutine processunstructuredpatches
        end subroutine processunstructuredpatches
 
-       subroutine readstructuredcgns(cgns_file)
+       subroutine readcgns(cgns_file)
          character*(*) :: cgns_file
-       end subroutine readstructuredcgns
-       subroutine readunstructuredcgns(cgns_file) ! in :warpustruct:../IO/readUnstructuredCGNS.f90
-            character*(*) intent(in) :: cgns_file
-        end subroutine readunstructuredcgns
+       end subroutine readcgns
 
        subroutine setexternalmeshindices(ndof_solver,solver_indices)
          integer(kind=inttype) optional,intent(in),check(len(solver_indices)>=ndof_solver),depend(solver_indices) :: ndof_solver=len(solver_indices)
@@ -136,13 +133,9 @@ python module warpustruct ! in
          real(kind=realtype), intent(in) :: h
        end subroutine verifywarpderiv
 
-       subroutine writestructuredcgns(cgns_file)
+       subroutine writecgns(cgns_file)
          character*(*) :: cgns_file
-       end subroutine writestructuredcgns
-
-       subroutine writeunstructuredcgns(cgns_file)
-         character*(*) :: cgns_file
-       end subroutine writestructuredcgns
+       end subroutine writecgns
 
        subroutine releasememory
        end subroutine releasememory
@@ -176,6 +169,7 @@ python module warpustruct ! in
          integer(kind=inttype), dimension(:), allocatable :: wallptr
          integer(kind=inttype), dimension(:), allocatable :: wallpatchptr
          character(32), dimension(:), allocatable :: wallnames
+         logical :: cgnsstructured
        end module cgnsgrid
 
        module kd_tree

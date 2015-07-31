@@ -88,11 +88,6 @@ subroutine releaseMemory
            deallocate(zones(i)%bocos)
         end if
         
-        ! Block to blocks are easy to delete
-        if (allocated(zones(i)%B2Bs)) then 
-           deallocate(zones(i)%B2Bs)
-        end if
-
         ! Sections also take more work
         if (associated(zones(i)%sections)) then 
 
