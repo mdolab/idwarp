@@ -1643,7 +1643,7 @@ Contains
     call EChk(ierr,__FILE__,__LINE__)
 
     call computeNodalProperties(tp, .True.) 
-    call determineCorners
+    call determineCorners(tp)
 
     ! Restore all the arrays
     call VecRestoreArrayF90(XsLocal, XsPtr, ierr)
@@ -1727,7 +1727,7 @@ Contains
 
   end subroutine computeNodalProperties
 
-  subroutine determineCorners
+  subroutine determineCorners(tp)
 
     use gridData
     use gridInput
