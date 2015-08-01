@@ -10,9 +10,11 @@ module gridInput
   real(kind=realType):: LdefFact, alpha
   integer(kind=intType)::iSymm
   real(kind=realType) :: symmTol
-  real(Kind=realType) :: errTol
+  real(kind=realType) :: errTol
   logical :: useRotations
   integer(kind=intType) :: evalMode
+  real(kind=realType) :: cornerAngle
+  logical :: zeroCornerRotations
   integer(kind=intTYpe), parameter :: EVAL_EXACT = 0
   integer(kind=intTYpe), parameter :: EVAL_FAST = 1
 end module gridInput
