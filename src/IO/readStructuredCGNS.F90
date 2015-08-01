@@ -27,7 +27,7 @@ subroutine readStructuredCGNS(cg)
 #endif
   integer(kind=intType), dimension(:), allocatable :: wallNodes, localWallNodes
   integer(kind=intType), dimension(:, :), allocatable :: sizes
-  integer(kind=intType) :: nWall, nodeCount, nConn, ni, nj
+  integer(kind=intType) :: nWall, nodeCount, nConn, ni, nj, nx, ny, nz
   integer(kind=intType) :: status(MPI_STATUS_SIZE)
   logical :: lowFace
 
@@ -124,15 +124,20 @@ subroutine readStructuredCGNS(cg)
                        familyList(nwallFamilies) = famName
                     end if
 
+                    ! Actual number of nodes on patch
+                    nx = pts(1, 2) - pts(1, 1) + 1
+                    ny = pts(2, 2) - pts(2, 1) + 1
+                    nz = pts(3, 2) - pts(3, 1) + 1
+                    
                     if (pts(1,1) == pts(1, 2)) then 
-                       nWall = nWall + dims(2)*dims(3)
-                       nConn = nConn + (dims(2)-1)*(dims(3)-1)
+                       nWall = nWall + ny*nz
+                       nConn = nConn + (ny-1)*(nz-1)
                     else if (pts(2,1) == pts(2, 2)) then 
-                       nWall = nWall + dims(1)*dims(3)
-                       nConn = nConn + (dims(1)-1)*(dims(3)-1)
+                       nWall = nWall + nx*nz
+                       nConn = nConn + (nx-1)*(nz-1)
                     else if (pts(3,1) == pts(3, 2)) then 
-                       nWall = nWall + dims(1)*dims(2)
-                       nConn = nConn + (dims(1)-1)*(dims(2)-1)
+                       nWall = nWall + nx*ny
+                       nConn = nConn + (nx-1)*(ny-1)
                     end if
                  end if
               end if
