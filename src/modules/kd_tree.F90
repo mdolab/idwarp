@@ -46,6 +46,7 @@ Module kd_tree
      real(kind=realType) :: Ldef, Ldef0
      real(kind=realType) :: alphaToBExp
      real(kind=realType) , dimension(:), pointer :: Ai
+     logical             , dimension(:), allocatable :: isCorner
      real(kind=realType) , dimension(:, :), pointer :: Bi, Bib 
      real(kind=realType) , dimension(:, :), pointer :: normals, normalsb
      real(kind=realType) , dimension(:, :), pointer :: normals0
@@ -96,6 +97,7 @@ Contains
     call destroy_node(tp%root)
     deallocate(tp%indexes, tp%the_data)
     deallocate(tp%Ai, tp%Bi, tp%Mi)
+    deallocate(tp%isCorner)
     deallocate(tp%normals, tp%normals0)
     deallocate(tp%Xu0, tp%Xu, tp%XuInd)
     deallocate(tp%facePtr, tp%faceConn, tp%nodeToElem)
@@ -1588,7 +1590,8 @@ Contains
 
     ! Allocate Space for the nodal properties:
     allocate(tp%Mi(3, 3, tp%n), tp%Bi(3, tp%n), tp%Ai(tp%n), &
-         tp%normals(3, tp%n), tp%normals0(3, tp%n))
+         tp%normals(3, tp%n), tp%normals0(3, tp%n), &
+         tp%isCorner(tp%n))
 
     ! Run the compute nodal properties to initialize the normal vectors.
     call initNodalProperties(tp)
@@ -1640,6 +1643,7 @@ Contains
     call EChk(ierr,__FILE__,__LINE__)
 
     call computeNodalProperties(tp, .True.) 
+    call determineCorners
 
     ! Restore all the arrays
     call VecRestoreArrayF90(XsLocal, XsPtr, ierr)
@@ -1690,7 +1694,7 @@ Contains
           do kk=1, nPts
              points(:, kk) = tp%Xu(:, tp%faceConn(tp%facePtr(ind-1) + kk))
           end do
-
+          
           call getElementProps(points, nPts, faceArea, faceNormal)
 
           ! For face 'ind' how many nodes are on the element?
@@ -1700,6 +1704,7 @@ Contains
        end do
        tp%normals(:, i) = sumNormal / sumArea
 
+
        if (initialPoint) then
 #ifndef USE_TAPENADE
           tp%normals0(:, i) = tp%normals(:, i)
@@ -1707,7 +1712,7 @@ Contains
 #endif
        else
           ! Now get the rotation Matrix
-          if (useRotations) then 
+          if (useRotations .and. .not. tp%isCorner(i)) then 
              call getRotationMatrix3d(tp%normals0(:, i), tp%normals(:, i), tp%Mi(:, :, i))
           else
              ! Set identity
@@ -1719,71 +1724,57 @@ Contains
           tp%Bi(:, i) = tp%Xu(:, i) - (tp%Mi(:, 1, i)*tp%Xu0(1, i) + tp%Mi(:, 2, i)*tp%Xu0(2, i) + tp%Mi(:, 3, i)*tp%Xu0(3, i))
        end if
     end do
+
   end subroutine computeNodalProperties
+
+  subroutine determineCorners
+
+    use gridData
+    use gridInput
+    use communication
+    implicit none
+
+    ! Subroutine Variables
+    Type (tree_master_record), Pointer :: tp
+
+    ! Working variables
+    real(kind=realType), dimension(3, 20) :: points
+    integer(kind=intType) :: i,  jj, kk, nPts, nElem, ind
+    real(kind=realType) :: dp, faceArea, facenormal(3), threshold
+
+    threshold = cos(cornerAngle*pi/180.0_realType)
+
+    if (.not. zeroCornerRotations) then 
+       ! All points are to be treated the same...no points are corners
+       tp%isCorner(:) = .False.
+    else
+       ! Determine the corner points
+       do i=1, tp%n
+          nElem = tp%nodeToElem(1, i)
+
+          ! Flag is not a corner until we find it. 
+          tp%isCorner(i) = .False.
+
+          do jj=1, nElem 
+             ind = tp%nodeToElem(1+jj, i)
+
+             ! Extract points for this face
+             nPts = tp%facePtr(ind) - tp%facePtr(ind-1)
+             do kk=1, nPts
+                points(:, kk) = tp%Xu(:, tp%faceConn(tp%facePtr(ind-1) + kk))
+             end do
+          
+             call getElementProps(points, nPts, faceArea, faceNormal)
+
+             ! Get the angle between faceNormal and normals0
+             dp = faceNormal(1)*tp%normals0(1, i) + &
+                  faceNormal(2)*tp%normals0(2, i) + &
+                  faceNormal(3)*tp%normals0(3, i)
+             if (abs(dp) < threshold) then 
+                tp%isCorner(i) = .True.
+             end if
+          end do
+       end do
+    end if
+  end subroutine determineCorners
 End Module kd_tree
-
-
-! recursive subroutine computeErrorsNum(tp, np)
-!    ! This routine computes an estimate of the error to be induced in
-!    ! the denomenator at each tree node. Then, when we are evaluating
-!    ! the displacment we can determine if the errors induced by the
-!    ! approximation are acceptable or not.
-
-!    implicit none
-!    Type (tree_master_record), Pointer :: tp
-!    Type (tree_node), Pointer :: np 
-!    real(kind=realType) , dimension(3, 20) :: vpts
-!    real(kind=realType) , dimension(3, 12) :: fpts
-!    real(kind=realType) :: numExact(3, 20), numApprox(3, 20), rr(3), Si(3)
-!    real(kind=realType) :: LdefoDist, LdefODist3, dist, W, r(3), Wi
-!    integer(kind=intType) :: ii, i, j
-
-!    if (np%dnum /= 0) then 
-!       do j=1, NERR
-!          numExact= zero
-!          numApprox = zero
-!          call getSpherePts(np%X, np%radius*tp%rstar(j), vpts, fpts)
-
-!          np%err(j) = zero
-!          do ii=1, 20
-!             ! Compute exact value:
-!             do i=np%l, np%u
-!                rr = vpts(:, ii) - tp%Xu0(:, i)
-!                dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2)
-!                LdefoDist = tp%Ldef/dist
-!                Ldefodist3 = LdefoDist**3
-!                Wi = tp%Ai(i)*(Ldefodist3 + tp%alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
-!                Si(1) = tp%Mi(1, 1, i)*r(1) + tp%Mi(1, 2, i)*r(2) + tp%Mi(1, 3, i)*r(3) + tp%bi(1, i) - r(1)
-!                Si(2) = tp%Mi(2, 1, i)*r(1) + tp%Mi(2, 2, i)*r(2) + tp%Mi(2, 3, i)*r(3) + tp%bi(2, i) - r(2)
-!                Si(3) = tp%Mi(3, 1, i)*r(1) + tp%Mi(3, 2, i)*r(2) + tp%Mi(3, 3, i)*r(3) + tp%bi(3, i) - r(3)
-
-!                numExact(:, ii) = numExact(:, ii) + Wi*Si
-!             end do
-
-!             ! And the approx value:
-!             rr = vpts(:, ii) - np%X
-!             dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2)
-!             LdefoDist = tp%Ldef/dist
-!             Ldefodist3 = LdefoDist**3
-!             Wi = np%Ai*(Ldefodist3 + tp%alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
-!             Si(1) = np%Mi(1, 1)*r(1) + np%Mi(1, 2)*r(2) + np%Mi(1, 3)*r(3) + np%bi(1) - r(1)
-!             Si(2) = np%Mi(2, 1)*r(1) + np%Mi(2, 2)*r(2) + np%Mi(2, 3)*r(3) + np%bi(2) - r(2)
-!             Si(3) = np%Mi(3, 1)*r(1) + np%Mi(3, 2)*r(2) + np%Mi(3, 3)*r(3) + np%bi(3) - r(3)
-
-!             numApprox(:, ii) = numApprox(:, ii) + Wi*Si
-
-!             ! Now set the nodal error:
-!             np%NumErr(j) = np%numErr(j) + &
-!                  (numExact(1, ii) - numApprox(1, ii))**2 + &
-!                  (numExact(2, ii) - numApprox(2, ii))**2 + &
-!                  (numExact(3, ii) - numApprox(3, ii))**2  
-!          end do
-
-!          ! This the RMS Error:
-!          np%numErr(j) = sqrt(np%numErr(j)/20)
-!       end do
-!       ! Now call the children:
-!       call computeErrorsNum(tp, np%left)
-!       call computeErrorsNum(tp, np%right)
-!    end if
-!  end subroutine computeErrorsNum
