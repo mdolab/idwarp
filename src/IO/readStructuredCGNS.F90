@@ -257,7 +257,9 @@ subroutine readStructuredCGNS(cg)
                  do j=pts(2, 1), pts(2, 2)
                     do i=pts(1, 1), pts(1, 2)
                        ! Wall nodes in global ordering
-                       wallNodes(offset + (k-1)*dims(1)*dims(2) + (j-1)*dims(1) + i) = 1
+                       wallNodes(offset + (k-1)*dims(1)*dims(2) + &
+                                          (j-1)*dims(1) + &
+                                          i) = 1
 
                        ! List of all wall nodes
                        wallPoints(3*nWall+1) = coorX(i, j, k)

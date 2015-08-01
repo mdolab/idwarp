@@ -121,6 +121,8 @@ class USMesh(object):
             'evalMode':'fast',
             'symmTol':1e-6,
             'useRotations':True,
+            'zeroCornerRotations':True,
+            'cornerAngle':30.0,
             'bucketSize':8,
             'fileType':'cgns',
         }
@@ -1133,6 +1135,8 @@ class USMesh(object):
         self.warp.gridinput.bexp = o['bExp']
         self.warp.gridinput.symmtol = o['symmTol']
         self.warp.gridinput.userotations = o['useRotations']
+        self.warp.gridinput.zerocornerrotations = o['zeroCornerRotations']
+        self.warp.gridinput.cornerangle = o['cornerAngle']
         self.warp.gridinput.errtol = o['errTol']
         self.warp.kd_tree.bucket_size = o['bucketSize']
         if o['evalMode'].lower() == 'fast':
