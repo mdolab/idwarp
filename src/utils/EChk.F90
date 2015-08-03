@@ -16,11 +16,11 @@ subroutine EChk(ierr, file, line)
   integer(kind=intType),intent(in) :: ierr
   character*(*),intent(in) :: file
   integer(kind=intType),intent(in) :: line
-  integer(kind=intType) :: myid
+  integer(kind=intType) :: myid, jerr
   if (ierr == 0) then
      return ! No error, return immediately
   else
-     call MPI_Comm_rank(petsc_comm_world, myid, ierr)
+     call MPI_Comm_rank(petsc_comm_world, myid, jerr)
      print *,'================================================================='
      write(*,900) "PETSc or MPI Error. Error Code ",ierr,". Detected on Proc ",myid
      write(*,901) "Error at line: ",line," in file: ",file
