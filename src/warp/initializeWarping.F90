@@ -1,5 +1,5 @@
 subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSizesLocal, &
-     nFaceConnLocal)
+     nFaceConnLocal, restartFile)
   
   use gridInput
   use communication
@@ -13,7 +13,7 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
   integer(kind=intType), dimension(nFaceSizesLocal), intent(in) :: faceSizesLocal
   integer(kind=intType), dimension(nFaceConnLocal), intent(in) :: faceConnLocal
   integer(kind=intType), intent(in) :: nFaceSizesLocal, nFaceConnLocal
-
+  character*(*) :: restartFile
   ! Working
   integer(kind=intType) :: nNodesTotal, ierr, iStart, iEnd, iProc
   integer(kind=intType) :: i, j, k, ii, kk, n, ind
@@ -25,10 +25,13 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
   real(kind=realType), dimension(:), allocatable :: denomenator0Copy
   integer(kind=intType), pointer :: indices(:)
   integer(kind=intType), dimension(:), allocatable :: dXsIndices
-  real(kind=realtype) :: costOffset, totalCost, averageCost, c, fact(3, 2)
+  real(kind=realtype) :: costOffset, totalCost, averageCost, c, fact(3, 2), tmp
   integer(kind=intType) :: nVol, curBin, newBin, newDOFProc, totalDOF, nFace, nLoop
   real(Kind=realType) :: dists(1), pt1(3), pt2(3), dx(3)
-  integer(kind=intType) :: resInd(1), surfID
+  integer(kind=intType) :: resInd(1), surfID, stat
+  integer(kind=intType) :: status(MPI_STATUS_SIZE), fileHandle, pointsInFile
+  INTEGER(KIND=MPI_OFFSET_KIND) OFFSET
+  logical :: recompute, loadFile, saveFile, fileExists, localBadFile, globalBadFile
 
   ! ----------------------------------------------------------------------
   !   Step 1: Communicate all points with every other proc
@@ -92,46 +95,257 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
   ! For now we just have a single tree....we may have more in the future. 
   allocate(mytrees(1))
   mytrees(1)%tp => myCreateTree(allNodes, cumNodesProc, faceSizesLocal, faceConnLocal)
-  
-  ! Compute the approximate denomenator:
+
+  ! We now need to generate the Wi estinate and loadbalance. There are
+  ! quite costly and we can save startup time if they are chached by
+  ! the user.
+  !
+  ! There are few different things that can happen here:
+  !
+  ! 1. No restartFile is supplied so we do the Wi estimate and loadbalance 
+  !    as per usual 
+  ! 2. Restart file is supplied but doesn't exist, so we save what we found
+  ! 3. Load balance file name is supplied and exists. Load and check a few
+  !    If they don't match, do regular dry run
+
+
   call VecGetArrayF90(commonGridVec, Xv0Ptr, ierr)
   call EChk(ierr,__FILE__,__LINE__)
 
-  if (myid == 0) then 
-     print *, 'Computing Denomenator Estimate...'
-  end if
-
+  ! Allocate the denomenator estimate and costs. These may be loaded
+  ! from the restart file.
   nVol = size(Xv0Ptr)/3
-  allocate(denomenator0(nVol))
-
-  ! Compute the (approx) denomenator. This needs to be done only once.
+  allocate(denomenator0(nVol), costs(nVol))
   denomenator0 = zero
-  call getLoopFact(nLoop, fact)
-  do kk=1, nLoop
-     wiLoop: do j=1, nVol
-        call getWiEstimate(mytrees(1)%tp, mytrees(1)%tp%root, Xv0Ptr(3*j-2:3*j)*fact(:, kk), &
-        denomenator0(j))
-     end do wiLoop
-  end do
-
-  ! If we want to load balance, which generally should be done, we
-  ! have to do a dry run loop that determines just the number of
-  ! ops that a mesh warp *would* use. This integer is scaled by the
-  ! "brute force" cost, so each individual cost will be less than
-  ! 1.0
-  if (myid == 0) then 
-     print *, 'Load Balancing...'
-  end if
-  allocate(costs(nVol))
   costs = zero
-  do kk=1, nLoop
-     dryRunLoop: do j=1, nVol
-        c = zero
-        call dryRun(mytrees(1)%tp, mytrees(1)%tp%root, Xv0Ptr(3*j-2:3*j)*fact(:, kk), &
-             denomenator0(j), c)
-        costs(j) = costs(j) + c / mytrees(1)%tp%n
-     end do dryRunLoop
-  end do
+
+  ! Get the ownership ranges for common grid vector, we need that to
+  ! determine where to write things. 
+  call VecGetOwnershipRanges(commonGridVec, cumNodesProc, ierr)
+  call EChk(ierr, __FILE__, __LINE__)
+
+  ! Divide that by 3 since that includes the 3 dof per popint
+  cumNodesProc =  cumNodesProc / 3
+
+  if (trim(restartFile) == "") then 
+     loadFile = .False.
+     recompute = .True.
+     saveFile = .False.
+  else
+     ! See if the file exists
+     if (myid == 0) then
+        INQUIRE(FILE=trim(restartFile), EXIST=fileExists)
+     end if
+     
+     call MPI_bcast(fileExists, 1, MPI_LOGICAL, 0, warp_comm_world, ierr)
+     call EChk(ierr, __FILE__, __LINE__)
+
+     ! Save file will be true, when file is given.
+  
+     if (.not. fileExists) then 
+        ! Can't load, file doesn't exist. Recompute. 
+        loadFile = .False.
+        recompute = .True. 
+        saveFile = .True.
+     else
+        ! File exists so we can try to load it. Recompute is still
+        ! false, but may be true if the file turns out to be bad.
+        loadFile = .True.
+        recompute = .False.
+        saveFile = .False.
+     end if
+  end if
+
+  if (loadFile) then 
+      if (myid == 0) then 
+        print *, 'Loading restart file...'
+     end if
+     
+     ! Read from the restartFile. We can do this in parallel.
+     call mpi_file_open(warp_comm_world, trim(restartFile), &
+          MPI_MODE_RDONLY, & 
+          MPI_INFO_NULL, fileHandle, ierr) 
+     call EChk(ierr, __FILE__, __LINE__)
+
+     if (myid == 0) then 
+        ! Write the number of nodes
+        call MPI_file_read(fileHandle, pointsInFile, 1, &
+             MPI_INTEGER4, MPI_STATUS_IGNORE, ierr)
+        call EChk(ierr, __FILE__, __LINE__)
+     end if
+
+     call MPI_bcast(pointsInFile, 1, MPI_INTEGER4, 0, warp_comm_world, ierr)
+     call EChk(ierr, __FILE__, __LINE__)
+
+     if (pointsInFile /= cumNodesProc(nProc)) then 
+        if (myid == 0) then 
+           print *, 'Number of points in restart file are different...'
+        end if
+        
+        ! The file is bad...different number of points. 
+        call mpi_file_close(fileHandle, ierr)
+        call EChk(ierr, __FILE__, __LINE__)
+        
+        ! Use fortran to delete the file, since mpi_file_delete
+        ! doesn't actually work
+        if (myid == 0) then 
+           open(unit=9, iostat=stat, file=trim(restartFile), status='old')
+           if (stat == 0) close(9, status='delete')
+        end if
+
+        ! We must now recompute and save
+        recompute = .True.
+        saveFile = .True.
+     else
+
+        ! Continue to read:
+        offset = cumNodesProc(myid)*8 + 4
+        call mpi_file_seek(fileHandle, offset, MPI_SEEK_SET, ierr)
+        call EChk(ierr, __FILE__, __LINE__)
+        
+        call MPI_file_read(fileHandle, denomenator0, size(denomenator0), &
+             MPI_REAL8, status, ierr)
+        call EChk(ierr, __FILE__, __LINE__)
+
+        offset = cumNodesProc(nProc)*8 + cumNodesProc(myid)*8 + 4
+        call mpi_file_seek(fileHandle, offset, MPI_SEEK_SET, ierr)
+        call EChk(ierr, __FILE__, __LINE__)
+        
+        call MPI_file_read(fileHandle, costs, size(costs), &
+             MPI_REAL8, status, ierr)
+        call EChk(ierr, __FILE__, __LINE__)
+        
+        call mpi_file_close(fileHandle, ierr)
+        call EChk(ierr, __FILE__, __LINE__)
+     
+        ! It is *still* possible that the data is bad. We will check 
+        ! 1/100th of the number of points to see. 
+        
+        if (myid == 0) then 
+           print *, 'Checking restart file...'
+        end if
+
+        localBadFile = .False.
+        call getLoopFact(nLoop, fact)
+
+        ! Note that we've swapped the kk loop inside here. This is
+        ! such that we can get the full estimate immediately and
+        ! verify the correct values
+        wiLoop_check: do j=1, nVol, 100
+           tmp = zero
+           do kk=1, nLoop
+              call getWiEstimate(mytrees(1)%tp, mytrees(1)%tp%root, Xv0Ptr(3*j-2:3*j)*fact(:, kk), &
+                   tmp)
+           end do
+           ! Do a relative check:
+           if (1 - tmp/denomenator0(j) > eps) then 
+              localBadFile = .True.
+              print *,myid, j, tmp, denomenator0(j), eps
+              exit wiLoop_check
+           end if
+        end do wiLoop_check
+        
+        ! Now all reduce to see if anyone thought the file was bad:
+        call mpi_AllReduce(localBadFile, globalBadFile, 1, MPI_LOGICAL, &
+             MPI_LOR, warp_comm_world, ierr)
+        call EChk(ierr, __FILE__, __LINE__)
+
+        ! It was bad-somehow, so we need to recompute anyway.
+        if (globalBadFile) then 
+           recompute = .True.
+           saveFile = .True.
+           if (myid == 0) then 
+              print *, 'Restart file not accurate...'
+           end if
+
+           ! Also toast the file, since it is useless to us
+           if (myid == 0) then 
+              open(unit=9, iostat=stat, file=trim(restartFile), status='old')
+              if (stat == 0) close(9, status='delete')
+           end if
+        end if
+     end if
+  end if
+
+  if (recompute) then 
+     if (myid == 0) then 
+        print *, 'Computing Denomenator Estimate...'
+     end if
+     
+     ! Compute the (approx) denomenator. This needs to be done only once.
+     call getLoopFact(nLoop, fact)
+     do kk=1, nLoop
+        wiLoop: do j=1, nVol
+           call getWiEstimate(mytrees(1)%tp, mytrees(1)%tp%root, Xv0Ptr(3*j-2:3*j)*fact(:, kk), &
+                denomenator0(j))
+        end do wiLoop
+     end do
+     
+     ! For load balacing we have to do a dry run loop that determines
+     ! just the number of ops that a mesh warp *would* use. This
+     ! integer is scaled by the "brute force" cost, so each individual
+     ! cost will be less than 1.0
+     
+     if (myid == 0) then 
+        print *, 'Load Balancing...'
+     end if
+     
+     do kk=1, nLoop
+        dryRunLoop: do j=1, nVol
+           c = zero
+           call dryRun(mytrees(1)%tp, mytrees(1)%tp%root, Xv0Ptr(3*j-2:3*j)*fact(:, kk), &
+                denomenator0(j), c)
+           costs(j) = costs(j) + c / mytrees(1)%tp%n
+        end do dryRunLoop
+     end do
+  end if
+
+  ! Barrier here, otherwise it can look like the saving restart file
+  ! takes all the time, in reality, it is waitigng at the collective
+  ! write.
+  call MPI_barrier(warp_comm_world, ierr)
+  call EChk(ierr, __FILE__, __LINE__)
+
+  ! Save the data to the restartFile if required
+  if (saveFile) then 
+     if (myid == 0) then 
+        print *, 'Saving restart file...'
+     end if
+
+     ! Write to the file. We can do this in parallel. 
+     call mpi_file_open(warp_comm_world, trim(restartFile), &
+          MPI_MODE_WRONLY + MPI_MODE_CREATE, & 
+          MPI_INFO_NULL, fileHandle, ierr) 
+     call EChk(ierr, __FILE__, __LINE__)
+
+     if (myid == 0) then 
+        ! Write the number of nodes
+        call MPI_file_write(fileHandle, cumNodesProc(nProc), 1, &
+             MPI_INTEGER4, MPI_STATUS_IGNORE, ierr)
+        call EChk(ierr, __FILE__, __LINE__)
+     end if
+
+     offset = cumNodesProc(myid)*8 + 4
+     call mpi_file_seek(fileHandle, offset, MPI_SEEK_SET, ierr)
+     call EChk(ierr, __FILE__, __LINE__)
+     
+     call MPI_file_write(fileHandle, denomenator0, size(denomenator0), &
+          MPI_REAL8, MPI_STATUS_IGNORE, ierr)
+     call EChk(ierr, __FILE__, __LINE__)
+
+     offset = cumNodesProc(nProc)*8 + cumNodesProc(myid)*8 + 4
+
+     call mpi_file_seek(fileHandle, offset, MPI_SEEK_SET, ierr)
+     call EChk(ierr, __FILE__, __LINE__)
+
+     call MPI_file_write(fileHandle, costs, size(costs), &
+          MPI_REAL8, MPI_STATUS_IGNORE, ierr)
+     call EChk(ierr, __FILE__, __LINE__)
+
+     call mpi_file_close(fileHandle, ierr)
+     call EChk(ierr, __FILE__, __LINE__)
+  end if
+
   ! Don't forget to restore arrays!
   call VecRestoreArrayF90(commonGridVec, Xv0Ptr, ierr)
   call EChk(ierr,__FILE__,__LINE__)
