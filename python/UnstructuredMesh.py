@@ -123,6 +123,7 @@ class USMesh(object):
             'useRotations':True,
             'zeroCornerRotations':True,
             'cornerAngle':30.0,
+            'restartFile':None,
             'bucketSize':8,
             'fileType':'cgns',
         }
@@ -582,8 +583,15 @@ class USMesh(object):
 
         # Call the fortran initialze warping command with  the
         # coordinates and the patch connectivity given to us.
+        if self.solverOptions['restartFile'] is None:
+            restartFile = ""
+        else:
+            restartFile = self.solverOptions['restartFile']
+        
         self.warp.initializewarping(np.ravel(pts.real.astype('d')),
-                                    self.faceSizes, self.conn)
+                                    self.faceSizes, self.conn, 
+                                    restartFile)
+
         self.warpInitialized = True
 
         # We can now back out the indices that should go along with
