@@ -140,8 +140,6 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
      call MPI_bcast(fileExists, 1, MPI_LOGICAL, 0, warp_comm_world, ierr)
      call EChk(ierr, __FILE__, __LINE__)
 
-     ! Save file will be true, when file is given.
-  
      if (.not. fileExists) then 
         ! Can't load, file doesn't exist. Recompute. 
         loadFile = .False.
