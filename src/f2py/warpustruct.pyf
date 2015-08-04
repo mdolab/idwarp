@@ -150,7 +150,7 @@ python module warpustruct ! in
          real(kind=realtype) :: symmtol
          real(kind=realtype) :: errtol
          logical :: userotations
-         logical :: zeroCornerRotations
+         logical :: zerocornerrotations
          real(kind=realtype) :: cornerangle
          integer(kind=inttype) :: evalmode
          integer(kind=inttype) :: eval_exact = 0
