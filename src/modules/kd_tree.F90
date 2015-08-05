@@ -1118,7 +1118,7 @@ Contains
        IF (.NOT.initialpoint) THEN
           ! Now get the rotation Matrix
           ! Now get the rotation Matrix
-          IF (userotations) THEN
+          IF (userotations .and. .not. tp%iscorner(i)) THEN
              CALL PUSHCONTROL1B(0)
           ELSE
              CALL PUSHCONTROL1B(1)
@@ -1352,7 +1352,7 @@ Contains
        tp%normals(:, i) = sumnormal/sumarea
        IF (.NOT.initialpoint) THEN
           ! Now get the rotation Matrix
-          IF (userotations) THEN
+          IF (userotations .and. .not. tp%iscorner(i)) THEN
              CALL GETROTATIONMATRIX3D_D(tp%normals0(:, i), tp%normals(:, i)&
                   &                              , tp%normalsb(:, i), tp%mi(:, :, i), tp%&
                   &                              mib(:, :, i))
