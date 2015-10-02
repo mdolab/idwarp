@@ -28,17 +28,6 @@ diff_cmd = args.diff_cmd
 nodiff = args.nodiff
 mpiexec= args.mpiexec
 
-# Define the test matrix:
-test_matrix = [
-    [1, 'co'],
-    [1, 'o' ],
-    [1, 'h' ],
-
-    [4, 'co'],
-    [4, 'o' ],
-    [4, 'h' ],
-    
-   
 
 if mode == 'train':
     try:
@@ -47,9 +36,8 @@ if mode == 'train':
         pass
 
     # Run each script
-    for test in test_matrix:
-        os.system('%s -np %d python solve_script.py %s >> %s_reg.ref 2>&1'%(
-                  mpiexec, test[0], test[1], module_name))
+    os.system('%s -np 1 python solve_script.py >> %s_reg.ref 2>&1'%(
+                  mpiexec, module_name))
     # end for
             
     # If we're training, we done (no comparison)
@@ -61,9 +49,8 @@ else:
         pass
 
     # Run each script
-    for test in test_matrix:
-        os.system('%s -np %d python solve_script.py %s >> %s_reg 2>&1'%(
-                mpiexec, test[0], test[1], module_name))
+    os.system('%s -np 1 python solve_script.py  >> %s_reg 2>&1'%(
+                mpiexec, module_name))
     # end for
 
     # Do the comparison (reference file must be first)

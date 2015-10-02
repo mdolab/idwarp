@@ -310,11 +310,8 @@ class USMesh(object):
 
         # ------------- Read the owners file ---------------
         f = open(self.OFData['ownerFile'], 'r')
-        lines = f.readlines()
-        f.close()
-
         # Read Regular Header
-        foamHeader, i, N = self._parseFoamHeader(lines, i=0)
+        foamHeader, N = self._parseFoamHeader2(f)
 
         try:
             fmt = foamHeader['format'].lower()
@@ -326,16 +323,16 @@ class USMesh(object):
         if fmt == 'binary':
             raise Error('Binary Reading is not yet supported.')
         else:
-            for j in range(N):
-                owner[j] = int(lines[j + i])
-
+            owner = np.fromfile(f, dtype='int', count=N, sep=' ')
+            owner = owner.astype('intc')
+ 
+        f.close()
+        
         # ------------- Read the neighbour file ---------------
         f = open(self.OFData['neighbourFile'], 'r')
-        lines = f.readlines()
-        f.close()
 
         # Read Regular Header
-        foamHeader, i, N = self._parseFoamHeader(lines, i=0)
+        foamHeader, N = self._parseFoamHeader2(f)
 
         try:
             fmt = foamHeader['format'].lower()
@@ -346,8 +343,8 @@ class USMesh(object):
         if fmt == 'binary':
             raise Error('Binary Reading is not yet supported.')
         else:
-            for j in range(N):
-                neighbour[j] = int(lines[j + i])
+            neighbour = np.fromfile(f, dtype='int', count=N, sep=' ')
+            neighbour = owner.astype('intc')
 
         self.OFData['owner'] = owner
         self.OFData['neighbour'] = neighbour
@@ -1059,6 +1056,11 @@ class USMesh(object):
             elif self.meshType.lower() == "openfoam":
                 patchNames, faceSizes, patchPtr, conn, pts = self._computeOFConn()
 
+                # Create the internal structures for volume mesh
+                x0 = self.OFData['x0']
+                wallNodes = np.zeros(len(x0), 'intc')
+                self.warp.createcommongrid(x0.T, wallNodes)
+
                 # Run the "external" command
                 self._setSurfaceDefinition(patchNames=patchNames, conn=conn,
                                         pts=pts, faceSizes=faceSizes,
@@ -1126,9 +1128,48 @@ class USMesh(object):
                 iSymm = 3
             self.warp.gridinput.isymm = iSymm
 
-        # Create the internal structures for volume mesh
-        wallNodes = np.zeros(len(x0), 'intc')
-        self.warp.createcommongrid(x0.T, wallNodes)
+     
+        pts = np.array(pts)
+
+        return patchNames, faceSizes, patchPtr, faceConn, pts
+
+    def _computeOFSurfConn(self,groupName='all'):
+
+        '''
+        Find the points and connectivity associated with the given groupName.
+        '''
+
+        groupFamList = self.familyGroup[groupName]['families']
+
+        # Finally create the underlying data structure:
+        faceSizes = []
+        faceConn = []
+        pts = []
+        x0 = self.OFData['x0']
+        faces = self.OFData['faces']
+        connCount = 0
+        patchNames = []
+        patchPtr = [0]
+        symNodes = []
+        for bName in self.OFData['boundaries']:
+            if bName in groupFamList:
+                # This boundary is one that we want
+                nFace = len(self.OFData['boundaries'][bName]['faces'])
+                if nFace > 0:
+                    for iFace in self.OFData['boundaries'][bName]['faces']:
+                        face = faces[iFace]
+                        nNodes = len(face)
+                        # Pull out the 'len(face)' nodes from x0.
+                        for j in range(nNodes):
+                            pts.append(x0[face[j]])
+                        faceSizes.append(nNodes)
+                        faceConn.extend(range(connCount, connCount + nNodes))
+                        connCount += nNodes
+
+                    patchNames.append(bName.lower())
+                    patchPtr.append(connCount)
+
+    
         pts = np.array(pts)
 
         return patchNames, faceSizes, patchPtr, faceConn, pts
@@ -1225,6 +1266,75 @@ class USMesh(object):
                 return foamDict, i+2, N
             i += 1
         raise Error("Could not find the starting data in openFoam file")
+
+    def _parseFoamHeader2(self, f):
+        """Generic function to read the openfoam file header up to the point
+        where it determines the number of subsequent 'stuff' to read
+        
+        Parameters
+        ----------
+        f : file handle
+            file to be parsed
+        
+        Returns
+        -------
+        foamDict : dictionary
+             Dictionary of the data contained in the header
+        i : int 
+             The next line to start at
+        N : int
+             The number of entries to read
+        """
+        keyword = re.compile(r'\s*[a-zA-Z]{1,100}\s*\n')
+
+        blockOpen = False
+        foamDict = {}
+
+        for line in f:
+            res = keyword.match(line)
+            if res:
+                foamData = self._readBlock2(f)
+                break
+
+        # Now we need to match the number followed by an open bracket:
+        numberHeader = re.compile(r'\s*(\d{1,100})\s*\n')
+
+        for line in f:
+            res = numberHeader.match(line)
+            if res:
+                N = int(line[res.start(0):res.end(0)])
+                # We return +2 lines to skip the next '('
+                return foamDict,  N
+
+        raise Error("Could not find the starting data in openFoam file")
+
+
+    def _readBlock2(self, f):
+        """
+        Generic code to read an openFoam type block structure
+        """
+
+        openBracket = re.compile(r'\s*\{\s*\n')
+        closeBracket = re.compile(r'\s*\}\s*\n')
+        data = re.compile(r'\s*([a-zA-Z]*)\s*(.*);\s*\n')
+
+        blockOpen = False
+        blk = {}
+        for line in f:
+            if not blockOpen:
+                res = openBracket.match(line)
+                if res:
+                    blockOpen = True
+              
+            else:
+                res = data.match(line)
+                if res:
+                    blk[res.group(1)] = res.group(2)
+                if closeBracket.match(line):
+                    break
+
+        return blk
+
 
     def _readBlock(self, lines, i):
         """
