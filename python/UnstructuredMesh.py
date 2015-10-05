@@ -1081,7 +1081,8 @@ class USMesh(object):
         connCount = 0
         patchNames = []
         patchPtr = [0]
-        symNodes = []
+#        symNodes = []
+        self.warp.gridinput.isymm = 0
         for bName in self.OFData['boundaries']:
             bType = self.OFData['boundaries'][bName]['type'].lower()
             if bType in ['patch', 'wall']:
@@ -1102,35 +1103,83 @@ class USMesh(object):
                     patchNames.append(bName.lower())
                     patchPtr.append(connCount)
             if bType.lower() == 'symmetry':
+                symNodes = []
+                n = 0
+
                 # Gather up all the sym nodes
                 for iFace in self.OFData['boundaries'][bName]['faces']:
                     face = faces[iFace]
-                    for j in range(len(face)):
+                    for j in range(len(face)):                      
                         symNodes.append(x0[face[j]])
+                        n+=1
+                # find the average coord in each direction
+                symNodes = np.array(symNodes)
+                symmSum = np.sum(symNodes, axis=0)
 
-        # Gather all symmetry nodes:
-        if len(symNodes) == 0:
-            symNodes = np.zeros((0, 3))
-        else:
-            symNodes = np.array(symNodes)
+                symmAvg = symmSum/n
+                symNodes = []
 
-        allSymNodes = self.comm.allgather(symNodes)
-        allSymNodes = np.vstack(allSymNodes)
-        iSymm = 0
-        if len(allSymNodes > 0):
-            symmSum = np.sum(allSymNodes, axis=0)
-            n = len(symmSum)
-            if symmSum[0] / n < self.solverOptions['symmTol']:
-                iSymm = 1
-            elif symmSum[1] / n < self.solverOptions['symmTol']:
-                iSymm = 2
-            elif symmSum[2] / n < self.solverOptions['symmTol']:
-                iSymm = 3
-            self.warp.gridinput.isymm = iSymm
+                # Now repeat for the distance from the average
+                for iFace in self.OFData['boundaries'][bName]['faces']:
+                    face = faces[iFace]
+                    for j in range(len(face)):                      
+                        symNodes.append(abs(x0[face[j]]-symmAvg))
+                # find the average coord in each direction
+                symNodes = np.array(symNodes)
+                symmSum = np.sum(symNodes, axis=0)
 
+                iSymm = 0
+                if symmSum[0] / n < self.solverOptions['symmTol']:
+                    iSymm = 1
+                elif symmSum[1] / n < self.solverOptions['symmTol']:
+                    iSymm = 2
+                elif symmSum[2] / n < self.solverOptions['symmTol']:
+                    iSymm = 3
+
+                if self.warp.gridinput.isymm==0:
+                    self.warp.gridinput.isymm = iSymm
+                else:
+                    if(not (iSymm==self.warp.gridinput.isymm)):
+                        raise Error('Detected more than 1 symmetry plane direction. pyWarpUnstruct cannot handle this')
+
+
+        # Gather the latest iSymm values together and check for consistency
+        iSymm = self.comm.allgather(iSymm)      
+
+        finaliSymm = 0
+        for i in range(len(iSymm)):
+            if iSymm[i]>0:
+                if finaliSymm==0:
+                    finaliSymm = iSymm[i]
+                elif(not(finaliSymm==iSymm[i])):
+                    raise Error('Detected more than 1 symmetry plane direction. pyWarpUnstruct cannot handle this')
+
+        self.warp.gridinput.isymm = finaliSymm             
+        # # Gather all symmetry nodes:
+        # if len(symNodes) == 0:
+        #     symNodes = np.zeros((0, 3))
+        # else:
+        #     symNodes = np.array(symNodes)
+
+        # allSymNodes = self.comm.allgather(symNodes)
+        # allSymNodes = np.vstack(allSymNodes)
+        # iSymm = 0
+        # print('allsymmnodes',allSymNodes)
+        # if len(allSymNodes > 0):
+        #     symmSum = np.sum(allSymNodes, axis=0)
+        #     n = len(symmSum)
+        #     print('SymmSum',symmSum,n)
+        #     if symmSum[0] / n < self.solverOptions['symmTol']:
+        #         iSymm = 1
+        #     elif symmSum[1] / n < self.solverOptions['symmTol']:
+        #         iSymm = 2
+        #     elif symmSum[2] / n < self.solverOptions['symmTol']:
+        #         iSymm = 3
+        #     self.warp.gridinput.isymm = iSymm
+        #     print('iSymm', self.warp.gridinput.isymm ,iSymm)
      
         pts = np.array(pts)
-
+      
         return patchNames, faceSizes, patchPtr, faceConn, pts
 
     def _computeOFSurfConn(self,groupName='all'):
