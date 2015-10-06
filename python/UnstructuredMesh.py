@@ -1082,6 +1082,7 @@ class USMesh(object):
         patchNames = []
         patchPtr = [0]
         self.warp.gridinput.isymm = 0
+        iSymm = 0
         for bName in self.OFData['boundaries']:
             bType = self.OFData['boundaries'][bName]['type'].lower()
             if bType in ['patch', 'wall','slip']:
