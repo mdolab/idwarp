@@ -19,6 +19,12 @@ Contents:
    API
 
 
+Limitations
+===========
+
+* Cannot be used where you have 2 symmetry planes e.g. in a 2D case. Use pywarp instead.
+
+
 
 Indices and tables
 ==================
