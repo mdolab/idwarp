@@ -1169,7 +1169,7 @@ class USMesh(object):
         patchPtr = [0]
         symNodes = []
         for bName in self.OFData['boundaries']:
-            if bName in groupFamList:
+            if bName.lower() in groupFamList:
                 # This boundary is one that we want
                 nFace = len(self.OFData['boundaries'][bName]['faces'])
                 if nFace > 0:
