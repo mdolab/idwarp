@@ -1,0 +1,213 @@
++---------------------------------------+
+|     All pyWarpUstruct Options:        |
++---------------------------------------+
+{'LdefFact': 1.0,
+ 'aExp': 3.0,
+ 'alpha': 0.25,
+ 'bExp': 5.0,
+ 'bucketSize': 8,
+ 'cornerAngle': 30.0,
+ 'errTol': 0.0005,
+ 'evalMode': 'fast',
+ 'fileType': 'openfoam',
+ 'gridFile': '/home/mader/hg/pywarpustruct/python/input_files/ahmedBodyMesh',
+ 'restartFile': None,
+ 'symmTol': 1e-06,
+ 'useRotations': True,
+ 'zeroCornerRotations': True}
+ -> Info: Using internal pyWarpUStruct surfaces. If
+          this mesh object is to be used with SUmb,
+          ensure the mesh object is passed to SUmb
+          immediately after creation.
+#------------------------------#
+ Total Volume Nodes :     21706 
+#------------------------------#
+#--------------------------------#
+ Unique Surface Nodes :      3652 
+#--------------------------------#
+ Computing Denomenator Estimate...
+ Load Balancing...
+ Performing surface matching ...
+ Finished Mesh Initialization.
+Sum of vCoords Inital:
+@value    25205.45183210548 1e-08 1e-08
+Sum of vCoords Warped:
+@value    25344.71768817357 1e-08 1e-08
+Computing Warp Deriv
+Sum of dxs:
+@value    22946.15882458394 1e-08 1e-08
+Verifying Warp Deriv
+ Welcome to verifyWarpDeriv
+ Checking           10  degrees of freedom
+ Doing centered differnce with h:   1.0000000000000001E-009
+ Running AD Version
+DOF:    0 OrigVal:  -2.00000000000     AD: 0.190951371912     FD: 0.190951054284     Err(%):-0.1663401568E-03
+DOF:    1 OrigVal:   0.00000000000     AD: 0.976742616084E-02 FD: 0.976862166400E-02 Err(%): 0.1223894586E-01
+DOF:    2 OrigVal:   0.00000000000     AD: 0.191006401406     FD: 0.191007983294     Err(%): 0.8281824825E-03
+DOF:    3 OrigVal:  -2.00000000000     AD: 0.213093797066     FD: 0.213093473990     Err(%):-0.1516119459E-03
+DOF:    4 OrigVal:   0.00000000000     AD: 0.980692603147E-02 FD: 0.980812530861E-02 Err(%): 0.1222813153E-01
+DOF:    5 OrigVal:  0.166667000000     AD: 0.213158321220     FD: 0.213159900088     Err(%): 0.7406990226E-03
+DOF:    6 OrigVal:  -2.00000000000     AD: 0.230718571737     FD: 0.230718239685     Err(%):-0.1439210588E-03
+DOF:    7 OrigVal:  0.166668000000     AD: 0.371714406678E-01 FD: 0.371726299953E-01 Err(%): 0.3199522240E-02
+DOF:    8 OrigVal:  0.166667000000     AD: 0.230797644524     FD: 0.230799216834     Err(%): 0.6812481868E-03
+DOF:    9 OrigVal:  -2.00000000000     AD: 0.202512889417     FD: 0.202512607280     Err(%):-0.1393184085E-03
+DOF:   10 OrigVal:  0.166807000000     AD: 0.167182328164E-01 FD: 0.167194281461E-01 Err(%): 0.7149601547E-02
++---------------------------------------+
+|     All pyWarpUstruct Options:        |
++---------------------------------------+
+{'LdefFact': 1.0,
+ 'aExp': 3.0,
+ 'alpha': 0.25,
+ 'bExp': 5.0,
+ 'bucketSize': 8,
+ 'cornerAngle': 30.0,
+ 'errTol': 0.0005,
+ 'evalMode': 'fast',
+ 'fileType': 'cgns',
+ 'gridFile': '../input_files/co_mesh.cgns',
+ 'restartFile': None,
+ 'symmTol': 1e-06,
+ 'useRotations': True,
+ 'zeroCornerRotations': True}
+  -> Reading CGNS File: ../input_files/co_mesh.cgns
+    -> Number of Zones:           4
+#------------------------------#
+ Total Volume Nodes :    151900 
+#------------------------------#
+ -> Info: Using internal pyWarpUStruct surfaces. If
+          this mesh object is to be used with SUmb,
+          ensure the mesh object is passed to SUmb
+          immediately after creation.
+#--------------------------------#
+ Unique Surface Nodes :      3881 
+#--------------------------------#
+ Computing Denomenator Estimate...
+ Load Balancing...
+ Performing surface matching ...
+ Finished Mesh Initialization.
+Sum of vCoords Inital:
+@value    498810.0295599474 1e-08 1e-08
+setting surface
+warping mesh
+Sum of vCoords Warped:
+@value    511368.1768990433 1e-08 1e-08
+Computing Warp Deriv
+Sum of dxs:
+@value    205397.5270392297 1e-08 1e-08
+Verifying Warp Deriv
+ Welcome to verifyWarpDeriv
+ Checking            5  degrees of freedom
+ Doing centered differnce with h:   9.9999999999999995E-007
+ Running AD Version
+DOF:    0 OrigVal: -0.233091541304E-04 AD:  17.3055163515     FD:  17.3055154744     Err(%):-0.5067982041E-05
+DOF:    1 OrigVal: -0.277555756156E-16 AD: -407.964544568     FD: -407.964558754     Err(%): 0.3477244672E-05
+DOF:    2 OrigVal:   0.00000000000     AD:-0.489092304903     FD:-0.489092311269     Err(%): 0.1301669257E-05
+DOF:    3 OrigVal:  0.101817780270E-02 AD:  5.32341162601     FD:  5.32340956239     Err(%):-0.3876496504E-04
+DOF:    4 OrigVal: -0.277555756156E-16 AD: -690.636638714     FD: -690.636663858     Err(%): 0.3640713790E-05
+DOF:    5 OrigVal:  0.208297391190E-01 AD:  2.55609396445     FD:  2.55609391921     Err(%):-0.1769589546E-05
++---------------------------------------+
+|     All pyWarpUstruct Options:        |
++---------------------------------------+
+{'LdefFact': 1.0,
+ 'aExp': 3.0,
+ 'alpha': 0.25,
+ 'bExp': 5.0,
+ 'bucketSize': 8,
+ 'cornerAngle': 30.0,
+ 'errTol': 0.0005,
+ 'evalMode': 'fast',
+ 'fileType': 'cgns',
+ 'gridFile': '../input_files/o_mesh.cgns',
+ 'restartFile': None,
+ 'symmTol': 1e-06,
+ 'useRotations': True,
+ 'zeroCornerRotations': True}
+  -> Reading CGNS File: ../input_files/o_mesh.cgns
+    -> Number of Zones:          79
+#------------------------------#
+ Total Volume Nodes :     37615 
+#------------------------------#
+ -> Info: Using internal pyWarpUStruct surfaces. If
+          this mesh object is to be used with SUmb,
+          ensure the mesh object is passed to SUmb
+          immediately after creation.
+#--------------------------------#
+ Unique Surface Nodes :      1239 
+#--------------------------------#
+ Computing Denomenator Estimate...
+ Load Balancing...
+ Performing surface matching ...
+ Finished Mesh Initialization.
+Sum of vCoords Inital:
+@value     613569.889186703 1e-08 1e-08
+setting surface
+warping mesh
+Sum of vCoords Warped:
+@value    626761.2250192533 1e-08 1e-08
+Computing Warp Deriv
+Sum of dxs:
+@value    52696.48824724114 1e-08 1e-08
+Verifying Warp Deriv
+ Welcome to verifyWarpDeriv
+ Checking            5  degrees of freedom
+ Doing centered differnce with h:   9.9999999999999995E-007
+ Running AD Version
+DOF:    0 OrigVal:  0.277372517670E-01 AD:  37.8474245772     FD:  37.8474249244     Err(%): 0.9175039423E-06
+DOF:    1 OrigVal: -0.466645120007E-01 AD:  14.9609442402     FD:  14.9609439617     Err(%):-0.1861651768E-05
+DOF:    2 OrigVal:   0.00000000000     AD: -18.4915590600     FD: -18.4915588837     Err(%):-0.9529976930E-06
+DOF:    3 OrigVal:  0.810425014665E-02 AD:  29.7466604259     FD:  29.7466604583     Err(%): 0.1088430634E-06
+DOF:    4 OrigVal: -0.262209872942E-01 AD: -19.1686683909     FD: -19.1686678322     Err(%):-0.2914690891E-05
+DOF:    5 OrigVal:   0.00000000000     AD: -18.4113885661     FD: -18.4113886039     Err(%): 0.2049174002E-06
++---------------------------------------+
+|     All pyWarpUstruct Options:        |
++---------------------------------------+
+{'LdefFact': 1.0,
+ 'aExp': 3.0,
+ 'alpha': 0.25,
+ 'bExp': 5.0,
+ 'bucketSize': 8,
+ 'cornerAngle': 30.0,
+ 'errTol': 0.0005,
+ 'evalMode': 'fast',
+ 'fileType': 'cgns',
+ 'gridFile': '../input_files/mdo_tutorial_face_bcs.cgns',
+ 'restartFile': None,
+ 'symmTol': 1e-06,
+ 'useRotations': True,
+ 'zeroCornerRotations': True}
+  -> Reading CGNS File: ../input_files/mdo_tutorial_face_bcs.cgns
+    -> Number of Zones:           1
+#------------------------------#
+ Total Volume Nodes :    158457 
+#------------------------------#
+ -> Info: Using internal pyWarpUStruct surfaces. If
+          this mesh object is to be used with SUmb,
+          ensure the mesh object is passed to SUmb
+          immediately after creation.
+#--------------------------------#
+ Unique Surface Nodes :      3881 
+#--------------------------------#
+ Computing Denomenator Estimate...
+ Load Balancing...
+ Performing surface matching ...
+ Finished Mesh Initialization.
+Sum of vCoords Inital:
+@value    3198303.754755381 1e-08 1e-08
+setting surface
+warping mesh
+Sum of vCoords Warped:
+@value    3259590.258251787 1e-08 1e-08
+Computing Warp Deriv
+Sum of dxs:
+@value    205001.5030606059 1e-08 1e-08
+Verifying Warp Deriv
+ Welcome to verifyWarpDeriv
+ Checking            5  degrees of freedom
+ Doing centered differnce with h:   9.9999999999999995E-007
+ Running AD Version
+DOF:    0 OrigVal:  0.344108144756E-10 AD:  38.5043845229     FD:  38.5043855048     Err(%): 0.2550017491E-05
+DOF:    1 OrigVal: -0.236961426481E-06 AD: -561.029459121     FD: -561.029459336     Err(%): 0.3828735163E-07
+DOF:    2 OrigVal:   0.00000000000     AD: -18.4876635131     FD: -18.4876621268     Err(%):-0.7498529086E-05
+DOF:    3 OrigVal:  0.547700767590E-01 AD: -35.1796660655     FD: -35.1796655639     Err(%):-0.1425980070E-05
+DOF:    4 OrigVal: -0.235853510364E-06 AD: -958.679739510     FD: -958.679741178     Err(%): 0.1740413638E-06
+DOF:    5 OrigVal:  0.935098870910E-01 AD:  26.1591974424     FD:  26.1591976683     Err(%): 0.8635514796E-06
