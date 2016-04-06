@@ -80,10 +80,10 @@ warping mesh
 warping mesh
 warping mesh
 Sum of vCoords Warped:
-@value    511368.1768990324 1e-08 1e-08
+@value    511368.1768990324 1e-05 1e-05
 Computing Warp Deriv
 Sum of dxs:
-@value    206415.3130269962 1e-08 1e-08
+@value    206415.3130269962 1e-03 1e-03
 +---------------------------------------+
 |     All pyWarpUstruct Options:        |
 +---------------------------------------+
@@ -132,51 +132,3 @@ Sum of vCoords Warped:
 Computing Warp Deriv
 Sum of dxs:
 @value    49914.01594161269 1e-08 1e-08
-+---------------------------------------+
-|     All pyWarpUstruct Options:        |
-+---------------------------------------+
-{'LdefFact': 1.0,
- 'aExp': 3.0,
- 'alpha': 0.25,
- 'bExp': 5.0,
- 'bucketSize': 8,
- 'cornerAngle': 30.0,
- 'errTol': 0.0005,
- 'evalMode': 'fast',
- 'fileType': 'cgns',
- 'gridFile': '../input_files/mdo_tutorial_face_bcs.cgns',
- 'restartFile': None,
- 'symmTol': 1e-06,
- 'useRotations': True,
- 'zeroCornerRotations': True}
-  -> Reading CGNS File: ../input_files/mdo_tutorial_face_bcs.cgns
-    -> Number of Zones:           1
-#------------------------------#
- Total Volume Nodes :    158457 
-#------------------------------#
- -> Info: Using internal pyWarpUStruct surfaces. If
-          this mesh object is to be used with SUmb,
-          ensure the mesh object is passed to SUmb
-          immediately after creation.
-#--------------------------------#
- Unique Surface Nodes :      3881 
-#--------------------------------#
- Computing Denomenator Estimate...
- Load Balancing...
- Performing surface matching ...
- Finished Mesh Initialization.
-setting surface
-setting surface
-setting surface
-Sum of vCoords Inital:
-@value    3198303.754755338 1e-08 1e-08
-setting surface
-warping mesh
-warping mesh
-warping mesh
-warping mesh
-Sum of vCoords Warped:
-@value    3259590.258251789 1e-08 1e-08
-Computing Warp Deriv
-Sum of dxs:
-@value    204920.5263731472 1e-08 1e-08

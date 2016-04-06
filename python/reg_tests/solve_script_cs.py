@@ -121,7 +121,7 @@ def test1():
         deriv = numpy.imag(vCoords)/h
         deriv = numpy.dot(dXv_warp,deriv)
         val = MPI.COMM_WORLD.reduce(numpy.sum(deriv),op=MPI.SUM)
-        val/=len(coords0)*3
+
         if MPI.COMM_WORLD.rank == 0:
             print('Sum of dxs:')
             reg_write(val,1e-8,1e-8)
@@ -178,7 +178,7 @@ def test2():
     val = MPI.COMM_WORLD.reduce(numpy.sum(vCoords.flatten()),op=MPI.SUM)
     if MPI.COMM_WORLD.rank == 0:
         print('Sum of vCoords Warped:')
-        reg_write(val,1e-8,1e-8)
+        reg_write(val,1e-5,1e-5)
 
     # Create a dXv vector to do test the mesh warping with:
     dXv_warp = numpy.linspace(0,1.0, mesh.warp.griddata.warpmeshdof)
@@ -192,7 +192,7 @@ def test2():
         val = MPI.COMM_WORLD.reduce(numpy.sum(dXs.flatten()),op=MPI.SUM)
         if MPI.COMM_WORLD.rank == 0:
             print('Sum of dxs:')
-            reg_write(val,1e-8,1e-8)
+            reg_write(val,1e-5,1e-5)
     else:
         
         # add a complex perturbation on all surface nodes simultaneously:
@@ -207,7 +207,7 @@ def test2():
         deriv = numpy.imag(vCoords)/h
         deriv = numpy.dot(dXv_warp,deriv)
         val = MPI.COMM_WORLD.reduce(numpy.sum(deriv),op=MPI.SUM)
-        val/=len(coords0)*3
+
         if MPI.COMM_WORLD.rank == 0:
             print('Sum of dxs:')
             reg_write(val,1e-8,1e-8)
@@ -289,7 +289,7 @@ def test3():
         deriv = numpy.imag(vCoords)/h
         deriv = numpy.dot(dXv_warp,deriv)
         val = MPI.COMM_WORLD.reduce(numpy.sum(deriv),op=MPI.SUM)
-        val/=len(coords0)*3
+
         if MPI.COMM_WORLD.rank == 0:
             print('Sum of dxs:')
             reg_write(val,1e-8,1e-8)
@@ -437,7 +437,7 @@ def test5():
         deriv = numpy.imag(vCoords)/h
         deriv = numpy.dot(dXv_warp,deriv)
         val = MPI.COMM_WORLD.reduce(numpy.sum(deriv),op=MPI.SUM)
-        val/=len(coords0)*3
+
         if MPI.COMM_WORLD.rank == 0:
             print('Sum of dxs:')
             reg_write(val,1e-8,1e-8)
@@ -448,12 +448,12 @@ def test5():
 
 
 if __name__ == '__main__':
-    if len(sys.argv) == 1:
+    if len(sys.argv) == 1 or(len(sys.argv) == 2 and 'complex' in sys.argv):
         test1()
         test2()
         test3()
         #test4()
-        test5()
+        #test5()
     else:
         # Run individual ones
         if 'test1' in sys.argv:
