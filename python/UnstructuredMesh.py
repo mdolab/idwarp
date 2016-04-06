@@ -1116,14 +1116,14 @@ class USMesh(object):
                 # find the sum of the coords in each direction
                 symNodes = np.array(symNodes)
                 symmSum = np.sum(symNodes, axis=0)
-             
+
                 iSymm = 0
                 #Check which average coord. direction is 0
-                if symmSum[0] / n < self.solverOptions['symmTol']:
+                if abs(symmSum[0]) / n < self.solverOptions['symmTol']:
                     iSymm = 1
-                elif symmSum[1] / n < self.solverOptions['symmTol']:
+                elif abs(symmSum[1]) / n < self.solverOptions['symmTol']:
                     iSymm = 2
-                elif symmSum[2] / n < self.solverOptions['symmTol']:
+                elif abs(symmSum[2]) / n < self.solverOptions['symmTol']:
                     iSymm = 3
 
                 if self.warp.gridinput.isymm==0:
@@ -1266,7 +1266,7 @@ class USMesh(object):
         while i < imax:
             res = keyword.match(lines[i])
             if res:
-                i, foamData = self._readBlock(lines, i)
+                i, foamDict = self._readBlock(lines, i)
                 break
             else:
                 i += 1

@@ -1,0 +1,164 @@
++---------------------------------------+
+|     All pyWarpUstruct Options:        |
++---------------------------------------+
+{'LdefFact': 1.0,
+ 'aExp': 3.0,
+ 'alpha': 0.25,
+ 'bExp': 5.0,
+ 'bucketSize': 8,
+ 'cornerAngle': 30.0,
+ 'errTol': 0.0005,
+ 'evalMode': 'fast',
+ 'fileType': 'openfoam',
+ 'gridFile': '/home/mader/hg/pywarpustruct/python/input_files/ahmedBodyMesh',
+ 'restartFile': None,
+ 'symmTol': 1e-06,
+ 'useRotations': True,
+ 'zeroCornerRotations': True}
+ -> Info: Using internal pyWarpUStruct surfaces. If
+          this mesh object is to be used with SUmb,
+          ensure the mesh object is passed to SUmb
+          immediately after creation.
+#------------------------------#
+ Total Volume Nodes :     21706 
+#------------------------------#
+#--------------------------------#
+ Unique Surface Nodes :      3652 
+#--------------------------------#
+ Computing Denomenator Estimate...
+ Load Balancing...
+ Performing surface matching ...
+ Finished Mesh Initialization.
+Sum of vCoords Inital:
+@value    25205.45183210548 1e-08 1e-08
+Sum of vCoords Warped:
+@value    25344.71768817357 1e-08 1e-08
+Computing Warp Deriv
+Sum of dxs:
+@value    22946.15882458394 1e-08 1e-08
++---------------------------------------+
+|     All pyWarpUstruct Options:        |
++---------------------------------------+
+{'LdefFact': 1.0,
+ 'aExp': 3.0,
+ 'alpha': 0.25,
+ 'bExp': 5.0,
+ 'bucketSize': 8,
+ 'cornerAngle': 30.0,
+ 'errTol': 0.0005,
+ 'evalMode': 'fast',
+ 'fileType': 'cgns',
+ 'gridFile': '../input_files/co_mesh.cgns',
+ 'restartFile': None,
+ 'symmTol': 1e-06,
+ 'useRotations': True,
+ 'zeroCornerRotations': True}
+  -> Reading CGNS File: ../input_files/co_mesh.cgns
+    -> Number of Zones:           4
+#------------------------------#
+ Total Volume Nodes :    151900 
+#------------------------------#
+ -> Info: Using internal pyWarpUStruct surfaces. If
+          this mesh object is to be used with SUmb,
+          ensure the mesh object is passed to SUmb
+          immediately after creation.
+#--------------------------------#
+ Unique Surface Nodes :      3881 
+#--------------------------------#
+ Computing Denomenator Estimate...
+ Load Balancing...
+ Performing surface matching ...
+ Finished Mesh Initialization.
+Sum of vCoords Inital:
+@value    498810.0295599474 1e-08 1e-08
+setting surface
+warping mesh
+Sum of vCoords Warped:
+@value    511368.1768990433 1e-08 1e-08
+Computing Warp Deriv
+Sum of dxs:
+@value    205397.5270392297 1e-08 1e-08
++---------------------------------------+
+|     All pyWarpUstruct Options:        |
++---------------------------------------+
+{'LdefFact': 1.0,
+ 'aExp': 3.0,
+ 'alpha': 0.25,
+ 'bExp': 5.0,
+ 'bucketSize': 8,
+ 'cornerAngle': 30.0,
+ 'errTol': 0.0005,
+ 'evalMode': 'fast',
+ 'fileType': 'cgns',
+ 'gridFile': '../input_files/o_mesh.cgns',
+ 'restartFile': None,
+ 'symmTol': 1e-06,
+ 'useRotations': True,
+ 'zeroCornerRotations': True}
+  -> Reading CGNS File: ../input_files/o_mesh.cgns
+    -> Number of Zones:          79
+#------------------------------#
+ Total Volume Nodes :     37615 
+#------------------------------#
+ -> Info: Using internal pyWarpUStruct surfaces. If
+          this mesh object is to be used with SUmb,
+          ensure the mesh object is passed to SUmb
+          immediately after creation.
+#--------------------------------#
+ Unique Surface Nodes :      1239 
+#--------------------------------#
+ Computing Denomenator Estimate...
+ Load Balancing...
+ Performing surface matching ...
+ Finished Mesh Initialization.
+Sum of vCoords Inital:
+@value     613569.889186703 1e-08 1e-08
+setting surface
+warping mesh
+Sum of vCoords Warped:
+@value    626761.2250192533 1e-08 1e-08
+Computing Warp Deriv
+Sum of dxs:
+@value    52696.48824724114 1e-08 1e-08
++---------------------------------------+
+|     All pyWarpUstruct Options:        |
++---------------------------------------+
+{'LdefFact': 1.0,
+ 'aExp': 3.0,
+ 'alpha': 0.25,
+ 'bExp': 5.0,
+ 'bucketSize': 8,
+ 'cornerAngle': 30.0,
+ 'errTol': 0.0005,
+ 'evalMode': 'fast',
+ 'fileType': 'cgns',
+ 'gridFile': '../input_files/mdo_tutorial_face_bcs.cgns',
+ 'restartFile': None,
+ 'symmTol': 1e-06,
+ 'useRotations': True,
+ 'zeroCornerRotations': True}
+  -> Reading CGNS File: ../input_files/mdo_tutorial_face_bcs.cgns
+    -> Number of Zones:           1
+#------------------------------#
+ Total Volume Nodes :    158457 
+#------------------------------#
+ -> Info: Using internal pyWarpUStruct surfaces. If
+          this mesh object is to be used with SUmb,
+          ensure the mesh object is passed to SUmb
+          immediately after creation.
+#--------------------------------#
+ Unique Surface Nodes :      3881 
+#--------------------------------#
+ Computing Denomenator Estimate...
+ Load Balancing...
+ Performing surface matching ...
+ Finished Mesh Initialization.
+Sum of vCoords Inital:
+@value    3198303.754755381 1e-08 1e-08
+setting surface
+warping mesh
+Sum of vCoords Warped:
+@value    3259590.258251787 1e-08 1e-08
+Computing Warp Deriv
+Sum of dxs:
+@value    205001.5030606059 1e-08 1e-08

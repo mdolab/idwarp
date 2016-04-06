@@ -133,11 +133,11 @@ subroutine verifyWarpDeriv(dXv_f, ndof_warp, dof_start, dof_end, h)
            err = (FDValue-ADValue(1))/(half*(FDValue+ADValue(1)))*100_realType
         end if
         
-        write(*, 900), 'DOF:', dof, ' AD:', ADValue, ' FD:', &
+        write(*, 900), 'DOF:', dof, ' OrigVal: ',orig_value(1), ' AD:', ADValue, ' FD:', &
              FDValue, ' Err(%):', err
      end if
 
-900  format (A, I5, A, G19.12, A, G19.12, A, G17.10)
+900  format (A, I5, A, G19.12, A, G19.12, A, G19.12, A, G17.10)
   end do
 
   ! Make sure mesh is up to date

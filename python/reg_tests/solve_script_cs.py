@@ -12,7 +12,11 @@ from __future__ import print_function
 import sys,os,copy
 import numpy
 from mdo_regression_helper import *
-from pywarpustruct import USMesh
+if 'complex' in sys.argv:
+    from pywarpustruct import USMesh_C as USMesh
+else:
+    from pywarpustruct import USMesh
+
 from mpi4py import MPI
 
 # First thing we will do is define a complete set of default options
@@ -39,6 +43,8 @@ def printHeader(testName):
         print('+' + '-'*78 + '+')
         print('| Test Name: ' + '%-66s'%testName + '|')
         print('+' + '-'*78 + '+')
+
+h = 1e-40
 
 def test1():
     # Test the Ahmed body openfoam mesh
@@ -89,19 +95,37 @@ def test1():
 
     # Create a dXv vector to do test the mesh warping with:
     dXv_warp = numpy.linspace(0,1.0, mesh.warp.griddata.warpmeshdof)
-    if MPI.COMM_WORLD.rank == 0:
-        print('Computing Warp Deriv')
-    mesh.warpDeriv(dXv_warp,solverVec=False)
-    dXs = mesh.getdXs('body')
 
-    val = MPI.COMM_WORLD.reduce(numpy.sum(dXs.flatten()),op=MPI.SUM)
-    if MPI.COMM_WORLD.rank == 0:
-        print('Sum of dxs:')
-        reg_write(val,1e-8,1e-8)
+    if not 'complex' in sys.argv:
+       
+        if MPI.COMM_WORLD.rank == 0:
+            print('Computing Warp Deriv')
+        mesh.warpDeriv(dXv_warp,solverVec=False)
+        dXs = mesh.getdXs('body')
+            
+        val = MPI.COMM_WORLD.reduce(numpy.sum(dXs.flatten()),op=MPI.SUM)
+        if MPI.COMM_WORLD.rank == 0:
+            print('Sum of dxs:')
+            reg_write(val,1e-8,1e-8)
+    else:
+               
+        # add a complex perturbation on all surface nodes simultaneously:
+        for i in xrange(len(coords0)):
+            new_coords[i,:] += h*1j
+
+        # Reset the newly computed surface coordiantes
+        mesh.setSurfaceCoordinates(new_coords, 'body')
+        mesh.warpMesh()  
+
+        vCoords = mesh.getWarpGrid()
+        deriv = numpy.imag(vCoords)/h
+        deriv = numpy.dot(dXv_warp,deriv)
+        val = MPI.COMM_WORLD.reduce(numpy.sum(deriv),op=MPI.SUM)
+        val/=len(coords0)*3
+        if MPI.COMM_WORLD.rank == 0:
+            print('Sum of dxs:')
+            reg_write(val,1e-8,1e-8)
         
-    if MPI.COMM_WORLD.rank == 0:
-        print('Verifying Warp Deriv')
-    mesh.verifyWarpDeriv(dXv_warp,solverVec=False,dofStart=0,dofEnd=10,h=1e-9)
 
     del mesh
     #os.system('rm -fr *.cgns *.dat')
@@ -158,19 +182,35 @@ def test2():
 
     # Create a dXv vector to do test the mesh warping with:
     dXv_warp = numpy.linspace(0,1.0, mesh.warp.griddata.warpmeshdof)
-    if MPI.COMM_WORLD.rank == 0:
-        print('Computing Warp Deriv')
-    mesh.warpDeriv(dXv_warp,solverVec=False)
-    dXs = mesh.getdXs('full_surface')
 
-    val = MPI.COMM_WORLD.reduce(numpy.sum(dXs.flatten()),op=MPI.SUM)
-    if MPI.COMM_WORLD.rank == 0:
-        print('Sum of dxs:')
-        reg_write(val,1e-8,1e-8)
+    if not 'complex' in sys.argv:
+        if MPI.COMM_WORLD.rank == 0:
+            print('Computing Warp Deriv')
+        mesh.warpDeriv(dXv_warp,solverVec=False)
+        dXs = mesh.getdXs('full_surface')
+            
+        val = MPI.COMM_WORLD.reduce(numpy.sum(dXs.flatten()),op=MPI.SUM)
+        if MPI.COMM_WORLD.rank == 0:
+            print('Sum of dxs:')
+            reg_write(val,1e-8,1e-8)
+    else:
         
-    if MPI.COMM_WORLD.rank == 0:
-        print('Verifying Warp Deriv')
-    mesh.verifyWarpDeriv(dXv_warp,solverVec=False,dofStart=0,dofEnd=5)
+        # add a complex perturbation on all surface nodes simultaneously:
+        for i in xrange(len(coords0)):
+            new_coords[i,:] += h*1j
+
+        # Reset the newly computed surface coordiantes
+        mesh.setSurfaceCoordinates(new_coords, 'full_surface')
+        mesh.warpMesh()  
+
+        vCoords = mesh.getWarpGrid()
+        deriv = numpy.imag(vCoords)/h
+        deriv = numpy.dot(dXv_warp,deriv)
+        val = MPI.COMM_WORLD.reduce(numpy.sum(deriv),op=MPI.SUM)
+        val/=len(coords0)*3
+        if MPI.COMM_WORLD.rank == 0:
+            print('Sum of dxs:')
+            reg_write(val,1e-8,1e-8)
 
     del mesh
     #os.system('rm -fr *.cgns *.dat')
@@ -224,19 +264,35 @@ def test3():
 
     # Create a dXv vector to do test the mesh warping with:
     dXv_warp = numpy.linspace(0,1.0, mesh.warp.griddata.warpmeshdof)
-    if MPI.COMM_WORLD.rank == 0:
-        print('Computing Warp Deriv')
-    mesh.warpDeriv(dXv_warp,solverVec=False)
-    dXs = mesh.getdXs('full_surface')
 
-    val = MPI.COMM_WORLD.reduce(numpy.sum(dXs.flatten()),op=MPI.SUM)
-    if MPI.COMM_WORLD.rank == 0:
-        print('Sum of dxs:')
-        reg_write(val,1e-8,1e-8)
+    if not 'complex' in sys.argv:
+        if MPI.COMM_WORLD.rank == 0:
+            print('Computing Warp Deriv')
+        mesh.warpDeriv(dXv_warp,solverVec=False)
+        dXs = mesh.getdXs('full_surface')
+            
+        val = MPI.COMM_WORLD.reduce(numpy.sum(dXs.flatten()),op=MPI.SUM)
+        if MPI.COMM_WORLD.rank == 0:
+            print('Sum of dxs:')
+            reg_write(val,1e-8,1e-8)
+    else:
         
-    if MPI.COMM_WORLD.rank == 0:
-        print('Verifying Warp Deriv')
-    mesh.verifyWarpDeriv(dXv_warp,solverVec=False,dofStart=0,dofEnd=5)
+        # add a complex perturbation on all surface nodes simultaneously:
+        for i in xrange(len(coords0)):
+            new_coords[i,:] += h*1j
+
+        # Reset the newly computed surface coordiantes
+        mesh.setSurfaceCoordinates(new_coords, 'full_surface')
+        mesh.warpMesh()  
+
+        vCoords = mesh.getWarpGrid()
+        deriv = numpy.imag(vCoords)/h
+        deriv = numpy.dot(dXv_warp,deriv)
+        val = MPI.COMM_WORLD.reduce(numpy.sum(deriv),op=MPI.SUM)
+        val/=len(coords0)*3
+        if MPI.COMM_WORLD.rank == 0:
+            print('Sum of dxs:')
+            reg_write(val,1e-8,1e-8)
 
     del mesh
     #os.system('rm -fr *.cgns *.dat')
@@ -356,88 +412,40 @@ def test5():
 
     # Create a dXv vector to do test the mesh warping with:
     dXv_warp = numpy.linspace(0,1.0, mesh.warp.griddata.warpmeshdof)
-    if MPI.COMM_WORLD.rank == 0:
-        print('Computing Warp Deriv')
-    mesh.warpDeriv(dXv_warp,solverVec=False)
-    dXs = mesh.getdXs('full_surface')
 
-    val = MPI.COMM_WORLD.reduce(numpy.sum(dXs.flatten()),op=MPI.SUM)
-    if MPI.COMM_WORLD.rank == 0:
-        print('Sum of dxs:')
-        reg_write(val,1e-8,1e-8)
+    if not 'complex' in sys.argv:
+        if MPI.COMM_WORLD.rank == 0:
+            print('Computing Warp Deriv')
+        mesh.warpDeriv(dXv_warp,solverVec=False)
+        dXs = mesh.getdXs('full_surface')
+            
+        val = MPI.COMM_WORLD.reduce(numpy.sum(dXs.flatten()),op=MPI.SUM)
+        if MPI.COMM_WORLD.rank == 0:
+            print('Sum of dxs:')
+            reg_write(val,1e-8,1e-8)
+    else:
         
-    if MPI.COMM_WORLD.rank == 0:
-        print('Verifying Warp Deriv')
-    mesh.verifyWarpDeriv(dXv_warp,solverVec=False,dofStart=0,dofEnd=5)
+        # add a complex perturbation on all surface nodes simultaneously:
+        for i in xrange(len(coords0)):
+            new_coords[i,:] += h*1j
+
+        # Reset the newly computed surface coordiantes
+        mesh.setSurfaceCoordinates(new_coords, 'full_surface')
+        mesh.warpMesh()  
+
+        vCoords = mesh.getWarpGrid()
+        deriv = numpy.imag(vCoords)/h
+        deriv = numpy.dot(dXv_warp,deriv)
+        val = MPI.COMM_WORLD.reduce(numpy.sum(deriv),op=MPI.SUM)
+        val/=len(coords0)*3
+        if MPI.COMM_WORLD.rank == 0:
+            print('Sum of dxs:')
+            reg_write(val,1e-8,1e-8)
+
 
     del mesh
     #os.system('rm -fr *.cgns *.dat')
 
-# def test6():
-#     # Test the MDO tutorial h mesh
-#     file_name = '../examples/mdo_tutorial_node_bcs.cgns'
-    
-#     meshOptions = copy.deepcopy(defOpts)
-
-#     meshOptions.update(
-#         {'gridFile':file_name,
-#          'fileType':'cgns'
-#      }
-#     )
-#     # Create warping object
-#     mesh = USMesh(options=meshOptions)
-
-#     # Add family group
-#     mesh.addFamilyGroup('full_surface')
-    
-#     # Extract Surface Coordinates
-#     coords0 = mesh.getSurfaceCoordinates('full_surface')
-
-#     vCoords = mesh.getCommonGrid()
-#     val = MPI.COMM_WORLD.reduce(numpy.sum(vCoords.flatten()),op=MPI.SUM)
-#     if MPI.COMM_WORLD.rank == 0:
-#         print('Sum of vCoords Inital:')
-#         reg_write(val,1e-8,1e-8)
-
-#     new_coords = coords0.copy()
-#     # Do a shearing sweep deflection:
-#     for i in xrange(len(coords0)):
-#         span = coords0[i,2]
-#         new_coords[i,0] += .05*span
-
-#     # Reset the newly computed surface coordiantes
-#     print('setting surface')
-#     mesh.setSurfaceCoordinates(new_coords, 'full_surface')
-#     print('warping mesh')
-#     mesh.warpMesh()
-    
-#     # Get the sum of the warped coordinates
-#     #vCoords = mesh.getSolverGrid()
-#     vCoords = mesh.getWarpGrid()
-
-#     val = MPI.COMM_WORLD.reduce(numpy.sum(vCoords.flatten()),op=MPI.SUM)
-#     if MPI.COMM_WORLD.rank == 0:
-#         print('Sum of vCoords Warped:')
-#         reg_write(val,1e-8,1e-8)
-
-#     # # Create a dXv vector to do test the mesh warping with:
-#     # dXv_warp = numpy.linspace(0,1.0, mesh.warp.griddata.warpmeshdof)
-#     # if MPI.COMM_WORLD.rank == 0:
-#     #     print('Computing Warp Deriv')
-#     # mesh.warpDeriv(dXv_warp,solverVec=False)
-#     # dXs = mesh.getdXs('full_surface')
-
-#     # val = MPI.COMM_WORLD.reduce(numpy.sum(dXs.flatten()),op=MPI.SUM)
-#     # if MPI.COMM_WORLD.rank == 0:
-#     #     print('Sum of dxs:')
-#     #     reg_write(val,1e-8,1e-8)
-        
-#     # if MPI.COMM_WORLD.rank == 0:
-#     #     print('Verifying Warp Deriv')
-#     # mesh.verifyWarpDeriv(dXv_warp,solverVec=False,dofStart=0,dofEnd=5)
-
-#     del mesh
-#     #os.system('rm -fr *.cgns *.dat')
 
 if __name__ == '__main__':
     if len(sys.argv) == 1:
@@ -446,10 +454,6 @@ if __name__ == '__main__':
         test3()
         #test4()
         test5()
-        #test6()
-        # test7()
-        # test8()
-        # test9()
     else:
         # Run individual ones
         if 'test1' in sys.argv:
@@ -462,11 +466,3 @@ if __name__ == '__main__':
         #     test4()
         if 'test5' in sys.argv:
             test5()
-        # if 'test6' in sys.argv:
-        #     test6()
-        # if 'test7' in sys.argv:
-        #     test7()
-        # if 'test8' in sys.argv:
-        #     test8()
-        # if 'test9' in sys.argv:
-        #     test9()

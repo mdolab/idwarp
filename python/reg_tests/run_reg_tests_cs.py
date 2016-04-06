@@ -9,7 +9,7 @@ import os, sys, argparse
 import mdo_regression_helper as reg
 
 # define scripts to run:
-module_name = 'pywarpustruct'
+module_name = 'pywarpustruct_cs'
 
 # Get the optional commandline arguments:
 parser = argparse.ArgumentParser()
@@ -28,21 +28,21 @@ diff_cmd = args.diff_cmd
 nodiff = args.nodiff
 mpiexec= args.mpiexec
 
-
 if mode == 'train':
     try:
         os.remove('%s_reg.ref'%(module_name))
     except OSError:
         pass
 
-    # Run each script
-    os.system('%s -np 1 python solve_script.py >> %s_reg.ref 2>&1'%(
-                  mpiexec, module_name))
+    # Run script: Note that the reference values are actually the
+    # *REAL* values not the CS ones. 
+    os.system('%s -np 1 python solve_script_cs.py >> %s_reg.ref 2>&1'%(
+        mpiexec, module_name))
 
-    # Run each script
-    os.system('%s -np 4 python solve_script.py >> %s_par_reg.ref 2>&1'%(
-                  mpiexec, module_name))
-
+    # Run script in parallel: Note that the reference values are actually the
+    # *REAL* values not the CS ones. 
+    os.system('%s -np 4 python solve_script_cs.py >> %s_par_reg.ref 2>&1'%(
+        mpiexec, module_name))
             
     # If we're training, we done (no comparison)
     sys.exit(0)
@@ -53,18 +53,17 @@ else:
     except OSError:
         pass
 
-    # Run each script
-    os.system('%s -np 1 python solve_script.py  >> %s_reg 2>&1'%(
-                mpiexec, module_name))
+    # Run script
+    os.system('%s -np 1 python solve_script_cs.py complex >> %s_reg 2>&1'%(
+        mpiexec, module_name))
 
-    # Run each script
-    os.system('%s -np 4 python solve_script.py  >> %s_par_reg 2>&1'%(
-                mpiexec, module_name))
+    # Run script
+    os.system('%s -np 4 python solve_script_cs.py complex >> %s_par_reg 2>&1'%(
+        mpiexec, module_name))
 
     # Do the comparison (reference file must be first)
     res = reg.reg_file_comp('%s_reg.ref'%(module_name),'%s_reg'%(module_name))
     res_par = reg.reg_file_comp('%s_par_reg.ref'%(module_name),'%s_par_reg'%(module_name))
-# end if
 
 # Set the proper return codes for the script running this:
 if res == 0: #reg.REG_FILES_MATCH
@@ -75,7 +74,7 @@ elif res == 1: #reg.REG_FILES_DO_NOT_MATCH
         os.system('%s %s_reg.ref %s_reg'%(diff_cmd, module_name, module_name))
 elif res == -1: #reg.REG_ERROR
     print '%s: Error in regression. Missing files.'%(module_name)
-# end if
+
 # Set the proper return codes for the script running this:
 if res_par == 0: #reg.REG_FILES_MATCH
     print '%s: Parallel Success!'%(module_name)
