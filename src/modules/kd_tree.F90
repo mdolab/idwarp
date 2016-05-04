@@ -1,6 +1,6 @@
 Module kd_tree
   use constants
-  use pointReduce
+
   ! K-D tree routines in Fortran 90 by Matt Kennel.
   ! Original program was written in Sather by Steve Omohundro and
   ! Matt Kennel. Only the Euclidean metric works so far.
@@ -1465,7 +1465,7 @@ Contains
 
     ! Now we can point-reduce the nodes:
     allocate(uniquePts(3, size(nodes, 2)), link(size(nodes, 2)))
-    call pointReduceFast(nodes, size(nodes, 2), symmTol, uniquePts, link, tp%n)
+    call pointReduce(nodes, size(nodes, 2), symmTol, uniquePts, link, tp%n)
 
     ! Compute the inverse of the link arrary: this goes from the tree
     ! back to the original "nodes".
@@ -1505,7 +1505,7 @@ Contains
     allocate(tp%Xu0(3, tp%n), tp%Xu(3, tp%n))
     do i=1, tp%n
        tp%Xu0(:, i) = uniquePts(:, tp%indexes(i))
-       tp%Xu(:, i) = tp%Xu(:, i)
+       tp%Xu(:, i) = tp%Xu0(:, i)
     end do
     deallocate(uniquePts)
 
@@ -1581,7 +1581,7 @@ Contains
     tp%Ldef0 = zero
     do i=1, tp%n
        dx = tp%the_data(:, i) - Xcen
-       tp%Ldef0 = max(tp%Ldef0, sqrt(dx(1)**2 + dx(2)**2 + dx(3)))
+       tp%Ldef0 = max(tp%Ldef0, sqrt(dx(1)**2 + dx(2)**2 + dx(3)**2))
     end do
 
     ! Deallocate memory from this routine
