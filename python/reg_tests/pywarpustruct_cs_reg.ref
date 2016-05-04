@@ -10,7 +10,7 @@
  'errTol': 0.0005,
  'evalMode': 'fast',
  'fileType': 'openfoam',
- 'gridFile': '/home/mader/hg/pywarpustruct/python/input_files/ahmedBodyMesh',
+ 'gridFile': '/home/kenway/hg/pywarpustruct/python/input_files/ahmedBodyMesh',
  'restartFile': None,
  'symmTol': 1e-06,
  'useRotations': True,
@@ -32,10 +32,10 @@
 Sum of vCoords Inital:
 @value    25205.45183210548 1e-08 1e-08
 Sum of vCoords Warped:
-@value    25344.71768817357 1e-08 1e-08
+@value    25344.69835707896 1e-08 1e-08
 Computing Warp Deriv
 Sum of dxs:
-@value    22946.15882458394 1e-08 1e-08
+@value    22941.79820152367 1e-08 1e-08
 +---------------------------------------+
 |     All pyWarpUstruct Options:        |
 +---------------------------------------+
@@ -74,10 +74,10 @@ Sum of vCoords Inital:
 setting surface
 warping mesh
 Sum of vCoords Warped:
-@value    511368.1768990433 1e-05 1e-05
+@value    511381.1906853847 1e-05 1e-05
 Computing Warp Deriv
 Sum of dxs:
-@value    205397.5270392297 1e-05 1e-05
+@value    205511.4635450036 1e-05 1e-05
 +---------------------------------------+
 |     All pyWarpUstruct Options:        |
 +---------------------------------------+
@@ -116,7 +116,7 @@ Sum of vCoords Inital:
 setting surface
 warping mesh
 Sum of vCoords Warped:
-@value    626761.2250192533 1e-08 1e-08
+@value    626750.5464078001 1e-08 1e-08
 Computing Warp Deriv
 Sum of dxs:
-@value    52696.48824724114 1e-08 1e-08
+@value    52729.99717107417 1e-08 1e-08

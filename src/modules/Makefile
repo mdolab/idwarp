@@ -18,13 +18,13 @@ FF90_OBJECTS_1 = precision.o\
 
 FF90_OBJECTS_2 = constants.o\
 
-FF90_OBJECTS_3 = pointReduce.o\
-		 gridInput.o\
+FF90_OBJECTS_3 = gridInput.o\
 		 communication.o\
 
 FF90_OBJECTS_4 = gridData.o\
 
 FF90_OBJECTS_5 = kd_tree.o\
+		 kd_tree2.o\
 		 cgnsGrid.o\
 
 FILES_TO_COMPLEXIFY =	precision.F90\
@@ -34,9 +34,10 @@ FILES_TO_COMPLEXIFY =	precision.F90\
 			gridData.F90\
 			kd_tree.F90\
 			cgnsGrid.F90\
+			kd_tree2.f90\
 
 FILES_TO_COPY = complexify.f90\
-		pointReduce.F90\
+
 
 default: all
 

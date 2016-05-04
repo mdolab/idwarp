@@ -16,6 +16,7 @@ FILES_TO_COMPLEXIFY = \
 	vectorUtils.f90\
 	getSpherePts.F90\
 	releaseMemory.F90\
+	pointReduce.F90\
 
 FILES_TO_COPY = EChk.F90\
 
