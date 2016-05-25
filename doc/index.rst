@@ -5,15 +5,15 @@
 
 .. _pyWarpUstruct:
 
-
+=============
 pywarpustruct
 =============
 
-Contents:
+``pywarpustruct`` is a tool for performing mesh manipulation of 3-dimensional
+multi-block meshes. 
 
 .. toctree::
    :maxdepth: 2
-
 
    building
    API
