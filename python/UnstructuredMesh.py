@@ -864,7 +864,7 @@ class USMesh(object):
             self.warp.writecgns(fileName)
 
         elif self.meshType.lower() == 'openfoam':
-            self._writeOpenFOAMVolumePoints()
+            self._writeOpenFOAMVolumePoints(self.getCommonGrid())
 
     def writeOFGridTecplot(self, fileName):
         """
@@ -951,7 +951,7 @@ class USMesh(object):
 
         f.close()
 
-    def _writeOpenFOAMVolumePoints(self):
+    def _writeOpenFOAMVolumePoints(self,nodes):
         '''
         Write the most recent points to a file
         '''
@@ -978,7 +978,7 @@ class USMesh(object):
         f.write('\n')
         f.write('\n')
 
-        nodes = self.getCommonGrid()
+        #nodes = self.getCommonGrid()#can I switch this to get solver grid now?
         nodes = nodes.reshape((len(nodes)/3, 3))
         nPoints = len(nodes)
         f.write('%d\n'% nPoints)
@@ -1147,7 +1147,7 @@ class USMesh(object):
         self.warp.gridinput.isymm = finaliSymm             
      
         pts = np.array(pts)
-      
+        faceConn = np.array(faceConn)
         return patchNames, faceSizes, patchPtr, faceConn, pts
 
     def _computeOFSurfConn(self,groupName='all'):
@@ -1188,8 +1188,101 @@ class USMesh(object):
 
     
         pts = np.array(pts)
+        faceConn = np.array(faceConn)
+        uPts, uFaceConn,links,invLinks = self._pointReduce(pts,faceConn)
+        # now reduce the points to a unique set and figure out the new connectivity
+        # try:
+        #     from scipy.spatial import cKDTree
+        # except:
+        #     raise Error("scipy.spatial "
+        #                 "must be available to use computeOFSurfConn")
 
-        return patchNames, faceSizes, patchPtr, faceConn, pts
+        # # Now make a KD-tree so we can use it to find the unique nodes
+        # tree = cKDTree(pts)
+        # links=np.zeros([pts.shape[0]],dtype='int')
+        # invLinks = []
+        # tol = 0.000001
+        # # Loop over all nodes
+        # counter = 0
+        # for i in xrange(pts.shape[0]):
+        #     if (links[i] == 0):
+        #         # we haven't connected this point to anything yet
+        #         #find the nodes within tol. These are duplicate nodes
+        #         Ind =tree.query_ball_point(pts[i], tol)
+
+        #         # create the inverse link list going from the reduces set to the original
+        #         invLinks.append(Ind)
+
+        #         #points at Ind are connected to this point
+        #         links[Ind]=counter
+        #         counter+=1
+        
+        # # save the number of unique nodes
+        # nUnique = len(invLinks)
+
+        # #now create the unique points and map the connectivity to reduced set
+        # uPts = np.zeros([nUnique,3],dtype=self.dtype)
+        # for i in xrange(nUnique):
+        #     uPts[i,:] = pts[invLinks[i][0]]
+
+        # # the same number of elements still exist, so the connectivity should still be
+        # # the same shape, but we need the indices from link instead
+        # uFaceConn = np.zeros_like(faceConn)
+        # for i in xrange(len(faceConn)):
+        #     uFaceConn[i] = links[faceConn[i]]
+
+                    
+        return patchNames, faceSizes, patchPtr, uFaceConn, uPts,links,invLinks
+
+    def _pointReduce(self,pts,conn):
+        '''
+        take in a set of points and their existing connectivity and return
+        a reduced set of points with connectivity for the reduced point set
+        '''
+
+        pts = np.array(pts)
+        conn = np.array(conn)
+        # now reduce the points to a unique set and figure out the new connectivity
+        try:
+            from scipy.spatial import cKDTree
+        except:
+            raise Error("scipy.spatial "
+                        "must be available to use pointReduce")
+
+        # Now make a KD-tree so we can use it to find the unique nodes
+        tree = cKDTree(pts)
+        links=np.zeros([pts.shape[0]],dtype='int')
+        invLinks = []
+        tol = 0.000001
+        # Loop over all nodes
+        counter = 0
+        for i in xrange(pts.shape[0]):
+            if (links[i] == 0):
+                # we haven't connected this point to anything yet
+                #find the nodes within tol. These are duplicate nodes
+                Ind =tree.query_ball_point(pts[i], tol)
+
+                # create the inverse link list going from the reduced set to the original
+                invLinks.append(Ind)
+
+                #points at Ind are connected to this point
+                links[Ind]=counter
+                counter+=1
+        
+        # save the number of unique nodes
+        nUnique = len(invLinks)
+
+        #now create the unique points and map the connectivity to reduced set
+        uPts = np.zeros([nUnique,3],dtype=self.dtype)
+        for i in xrange(nUnique):
+            uPts[i,:] = pts[invLinks[i][0]]
+
+        # the same number of elements still exist, so the connectivity should still be
+        # the same shape, but we need the indices from link instead
+        uConn = np.zeros_like(conn)
+        for i in xrange(len(conn)):
+            uConn[i] = links[conn[i]]
+        return uPts,uConn,links,invLinks
 
     def _setMeshOptions(self):
         """ Private function to set the options currently in
