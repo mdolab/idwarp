@@ -20,7 +20,7 @@ subroutine pointReduce(pts, N, tol, uniquePts, link, nUnique)
 
   ! Working paramters
   type(kdtree2), pointer :: mytree
-  real(kind=realType) :: tol2, timeb, timea
+  real(kind=realType) :: tol2
   integer(kind=intType) :: nFound, i, j, nAlloc
   type(kdtree2_result), allocatable, dimension(:) :: results
 

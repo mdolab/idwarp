@@ -564,7 +564,7 @@ Contains
     Type (tree_master_record), Pointer :: tp
     Type (tree_node), Pointer :: np
     integer(kind=intType) :: i
-    real(kind=realType) :: Xcen(3), Xmax, dist, dx(3), radius
+    real(kind=realType) :: dist, dx(3), radius
     
     ! Sum up all the children
     np%X = zero
@@ -631,7 +631,6 @@ Contains
     real(kind=realType), intent(in) :: approxDen
 
     ! Working variables
-    real(kind=realType), dimension(3) :: Si
     real(kind=realType) :: dist, err
 
     if (np%dnum == 0) then 
@@ -649,7 +648,7 @@ Contains
           call evalNode(tp, np%right, r, num, den, approxDen)
        else 
           ! Use the first error check:
-          call getError(tp, np, dist, err)
+          call getError(np, dist, err)
           if (err < tp%errTol * approxDen) then
              call evalNodeApprox(tp, np, r, num, den, dist)
           else
@@ -763,7 +762,7 @@ Contains
     real(kind=realType), intent(in), dimension(3) :: r
     real(kind=realType), intent(inout) :: den
     real(kind=realType), dimension(3) :: rr
-    real(kind=realType) :: dist, LdefoDist, LdefoDist3, err
+    real(kind=realType) :: dist, LdefoDist, LdefoDist3
     integer(kind=intType) :: i
     if (np%dnum == 0) then 
        ! Leaf node. Do regular calc:
@@ -820,7 +819,7 @@ Contains
           call dryRun(tp, np%right, r, approxDen, c)
        else 
           ! Use the first error check:
-          call getError(tp, np, dist, err)
+          call getError(np, dist, err)
           if (err < tp%errTol * approxDen) then
              ! This is includes the getError calc
              c = c + 1.1
@@ -885,11 +884,10 @@ Contains
     end if
   end subroutine computeErrors
 
-  subroutine getError(tp, np, dist, err)
+  subroutine getError(np, dist, err)
     ! Simple routine to use the stored errors to estimate what the
     ! error will be for dist 'dist'.
     implicit none
-    Type (tree_master_record), Pointer :: tp
     Type (tree_node), Pointer :: np 
     real(kind=realType), intent(in) :: dist
     real(Kind=realType), intent(out) :: err
@@ -976,7 +974,7 @@ Contains
           call evalNode_b(tp, np%right, r, numb, approxDen, Bib, Mib)
        else 
           ! Use the first error check:
-          call getError(tp, np, dist, err)
+          call getError(np, dist, err)
           if (err < tp%errTol * approxDen) then
              call evalNodeApprox_b(tp, np, numb, r, dist)
           else
@@ -1075,11 +1073,9 @@ Contains
     REAL(kind=realtype), DIMENSION(3, 20) :: points
     REAL(kind=realtype), DIMENSION(3, 20) :: pointsb
     INTEGER(kind=inttype) :: i, j, jj, kk, npts, nelem, ind
-    INTEGER(kind=inttype) :: nptsmax
     REAL(kind=realtype) :: facearea, facenormal(3)
     REAL(kind=realtype) :: faceareab, facenormalb(3)
-    REAL(kind=realtype) :: sumarea, sumnormal(3), si(3), ds(3), smean(3)&
-         &    , da, eta, r(3), dx(3)
+    REAL(kind=realtype) :: sumarea, sumnormal(3), da
     REAL(kind=realtype) :: sumareab, sumnormalb(3), dab
     INTEGER :: ad_to, branch
     ! This performs the copy and mirroring as required
@@ -1201,7 +1197,7 @@ Contains
           call evalNode_d(tp, np%right, r, numd, approxDen)
        else 
           ! Use the first error check:
-          call getError(tp, np, dist, err)
+          call getError(np, dist, err)
           if (err < tp%errTol * approxDen) then
              call evalNodeApprox_d(tp, np, r, numd, dist)
           else
@@ -1262,7 +1258,6 @@ Contains
     implicit none
     Type (tree_master_record), Pointer :: tp
     Type (tree_node), Pointer :: np
-    real(kind=realType) :: ovrN
     integer(kind=intType) :: i 
     if (np%dnum /= 0) then 
        np%Bib = zero
@@ -1299,11 +1294,9 @@ Contains
     REAL(kind=realtype), DIMENSION(3, 20) :: points
     REAL(kind=realtype), DIMENSION(3, 20) :: pointsd
     INTEGER(kind=inttype) :: i, j, jj, kk, npts, nelem, ind
-    INTEGER(kind=inttype), SAVE :: nptsmax=10
     REAL(kind=realtype) :: facearea, facenormal(3)
     REAL(kind=realtype) :: facearead, facenormald(3)
-    REAL(kind=realtype) :: sumarea, sumnormal(3), si(3), ds(3), smean(3)&
-         &   , da, eta, r(3), dx(3)
+    REAL(kind=realtype) :: sumarea, sumnormal(3), da
     REAL(kind=realtype) :: sumaread, sumnormald(3), dad
     tp%xub = 0.0_8
     ! This performs the copy and mirroring as required
@@ -1665,9 +1658,8 @@ Contains
     ! Working variables
     real(kind=realType), dimension(3, 20) :: points
     integer(kind=intType) :: i, j, jj, kk, nPts, nElem, ind
-    integer(kind=intType) :: nPtsMax = 10
     real(kind=realType) :: faceArea, faceNormal(3)
-    real(kind=realType) :: sumArea, sumNormal(3), Si(3), ds(3), sMean(3), da, eta, r(3), dx(3)
+    real(kind=realType) :: sumArea, sumNormal(3), da
 
     ! This performs the copy and mirroring as required
     do i=1, tp%n
