@@ -157,7 +157,7 @@ subroutine readStructuredCGNS(cg)
            call cg_coord_info_f(cg, base, iZone, i, coorDataType(i), coorName(i), ierr)
            if (ierr .eq. CG_ERROR) call cg_error_exit_f
            if (coorDataType(i) /= RealDouble)  then
-              write(*, "(a I4 aI4 a I1 a)")  'Error: Coordinates for base ', &
+              write(*, "((a) (I4) (a) (I4) (a) (I1) (a))")  'Error: Coordinates for base ', &
                    base, ', zone ', iZone, ', coordinate ', i, &
                    ', are are not double precision. All coordiante arrays must be double precision.'
               stop
