@@ -13,21 +13,21 @@ subroutine readUnstructuredCGNS(cg)
   integer(kind=intType), intent(in) :: cg
 
   ! CGNS Variables
-  integer(kind=intType) :: i, j, k, m, l, istart, iend, localsize, iProc, iZone
-  integer(kind=intType):: ierr, base, dims(3)
+  integer(kind=intType) :: i, j, k, m, l, istart, iend, localsize, iProc
+  integer(kind=intType):: ierr, base, dims(3), iZone
   integer(kind=intType):: nNodes, nCells
-  integer(kind=intType) :: nbases, start(3), tmpSym, nSymm
-  character*32 :: zoneName, bocoName, famName, connectName, donorName
+  integer(kind=intType) :: tmpSym, nSymm
+  character*32 :: zoneName, bocoName, famName
   character*32 :: secName
 
-  integer(kind=intType) :: nbocos, boco, index
+  integer(kind=intType) :: nbocos, boco
   integer(kind=intType) :: nVertices,nElements, nzones
   integer(kind=intType) :: zoneType,dataType,sec,type
-  integer(kind=intType) :: nCoords,nSections,nElem,nConn
+  integer(kind=intType) :: nSections,nElem,nConn
   integer(kind=intType) :: eBeg,eEnd,nBdry, parentFlag
   integer(kind=intType) :: bocoType,ptsettype,nbcelem
   integer(kind=intType) :: normalIndex,normalListFlag
-  integer(kind=intType) :: normDataType,nDataSet, tmpInt(2)
+  integer(kind=intType) :: nDataSet, tmpInt(2)
   integer(kind=intType) :: elementDataSize, curElement, eCount, nPnts
   real(kind=realType), dimension(:), allocatable :: coorX, coorY, coorZ
   integer(kind=intType), dimension(:), allocatable :: tmpConn
@@ -38,18 +38,17 @@ subroutine readUnstructuredCGNS(cg)
   real(kind=realType), dimension(:, :), allocatable :: allNodes, localNodes
   real(kind=realType), dimension(:,:), pointer :: elemNodes
 #endif
-  integer(kind=intType), dimension(:), allocatable :: wallNodes, localWallNodes
+  integer(kind=intType), dimension(:), allocatable :: surfaceNodes, localSurfaceNodes
   integer(kind=intType), dimension(:, :), allocatable :: sizes
 
   integer(kind=intType) :: status(MPI_STATUS_SIZE)
-  integer(kind=intType):: surfSecCounter,volSecCounter, famID
   type(sectionDataType), pointer :: secPtr
   integer(kind=intType), dimension(:), pointer :: elemConn, elemPtr
 
   integer(kind=intType) :: nElemNotFound, curElem, curElemSize, localIndex
   real(kind=realType) :: symmSum(3)
-  logical :: isWall 
-  iSymm = 0
+  logical :: isSurface 
+
   ! ---------------------------------------
   !           Open CGNS File
   ! ---------------------------------------
@@ -96,12 +95,8 @@ subroutine readUnstructuredCGNS(cg)
      ! Now we know the total number of nodes we can allocate the final
      ! required space and read them in. 
      allocate(allNodes(3, nNodes))
-     allocate(wallNodes(nNodes))
-     wallNodes = 0
-
-     ! We can also generate the wall family list
-     nwallFamilies = 0
-     familyList(:) = ''
+     allocate(surfaceNodes(nNodes))
+     surfaceNodes = 0
 
      ! Loop over the zones and read the nodes
      zoneLoop: do iZone = 1,nZones
@@ -309,8 +304,7 @@ subroutine readUnstructuredCGNS(cg)
         do sec=1, nSections-1
            if ( zones(iZone)%sections(sec+1)%elemStart /= &
                 zones(iZone)%sections(sec  )%elemEnd + 1) then 
-              print *,'The section element ranges are not in order. This &
-              cannot be handled.'
+              print *,'The section element ranges are not in order. This cannot be handled.'
               stop
            end if
         end do
@@ -340,10 +334,11 @@ subroutine readUnstructuredCGNS(cg)
            ! We only allow ElementRange and ElementList...its just too
            ! hard to figure out what is going on with the point types.
            if (ptSetType == PointRange .or. ptSetType == pointList) then 
-              print *, "pyWarpUStruct cannot handle boundary conditions & 
-                   defined by 'PointRange' or 'PointList'. Please use &
-                   boundary conditions defined by 'ElementRange' or 'ElementList' &
-                   instead"
+              print *, 'pyWarpUStruct cannot handle boundary conditions & 
+                   &defined by "PointRange" or "PointList". Please use &
+                   &boundary conditions defined by "ElementRange" or "ElementList" &
+                   &instead'
+
               stop
            end if
 
@@ -370,15 +365,6 @@ subroutine readUnstructuredCGNS(cg)
               call cg_boco_read_f(cg, base, iZone, boco, &
                    zones(iZone)%bocos(boco)%BCElements, NULL, ierr)
               nBCElem = nPnts
-           end if
-           ! Determine if we have a wall:
-           isWall = .False.
-           if (BCTypeName(bocoType) == 'BCWallViscous' .or. &
-                BCTypeName(bocoType) == 'BCWallInviscid' .or. &
-                BCTypeName(bocoType) == 'BCWall' .or. &
-                BCTypeName(bocoType) == 'BCWallViscousHeatFlux' .or. &
-                BCTypeName(bocoType) == 'BCWallViscousIsothermal') then
-              isWall = .True.
            end if
 
            ! Now we need to deduce the actual connectivity for this
@@ -451,53 +437,16 @@ subroutine readUnstructuredCGNS(cg)
                  elemPtr(l+1) = elemPtr(l) + curElemSize
                  l = l + 1
 
-                 ! Flag wall nodes if necessary
-                 if (isWall) then 
-                    do m=iStart, iEnd
-                       wallNodes(secPtr%elemConn(m)) = 1
-                    end do
-                 end if
+                 ! Flag surface nodes
+                 do m=iStart, iEnd
+                    surfaceNodes(secPtr%elemConn(m)) = 1
+                 end do
               end if
            end do
         
            ! Now we set the *actual* number of nBCElem and nBCNodes
            zones(iZone)%bocos(boco)%nBCElem = nBCElem - nElemNotFound 
            zones(iZOne)%bocos(boco)%nBCNodes = k-1
-
-           ! And we can also easily figure out the symmetry plane
-           ! orientation, by looking at the nodes
-
-           if (BCTypeName(bocoType) == 'BCSymmetryPlane') then 
-
-              symmSum = zero              
-              do i=1,zones(iZone)%bocos(boco)%nBCNodes
-                 symmSum(1) = symmSum(1) + zones(iZone)%bocos(boco)%elemNodes(1, i)
-                 symmSum(2) = symmSum(2) + zones(iZone)%bocos(boco)%elemNodes(2, i)
-                 symmSum(3) = symmSum(3) + zones(iZone)%bocos(boco)%elemNodes(3, i)
-              end do
-              nSymm = zones(iZone)%bocos(boco)%nBCNodes
-
-              ! Determine what the axis of this symmetry plane
-              ! is. We look at the two end points of the range
-
-              if (symmSum(1) / nSymm < symmTol) then 
-                 tmpSym = 1
-              else if (symmSum(2) / nSymm < symmTol) then 
-                 tmpSym = 2
-              else if (symmSum(3) / nSymm < symmTol) then
-                 tmpSym = 3
-              end if
-              
-              if (iSymm == 0) then ! Currently un-assigned:
-                 iSymm = tmpSym
-              end if
-              
-              if (tmpSym /= iSymm) then
-                 print *, 'Error: detected more than 1 symmetry plane direction.'
-                 print *, 'pyWarpUnstruct cannot handle this'
-                 stop
-              end if
-           end if
 
            ! Save the boco name
            zones(iZone)%bocos(boco)%name =  bocoName
@@ -516,19 +465,6 @@ subroutine readUnstructuredCGNS(cg)
 
               zones(iZone)%bocos(boco)%family = famName
            end if
-
-           if (BCTypeName(bocoType) == 'BCWallViscous' .or. &
-                BCTypeName(bocoType) == 'BCWallInviscid' .or. &
-                BCTypeName(bocoType) == 'BCWall' .or. &
-                BCTypeName(bocoType) == 'BCWallViscousHeatFlux' .or. &
-                BCTypeName(bocoType) == 'BCWallViscousIsothermal') then
-              call checkInFamilyList(familyList, famName, nwallFamilies, famID)
-              
-              if (famID == 0) then
-                 nwallFamilies = nwallFamilies + 1
-                 familyList(nwallFamilies) = famName
-              end if
-           end if
         end do bocoLoop
 
         ! And free the temporary arrays
@@ -539,10 +475,6 @@ subroutine readUnstructuredCGNS(cg)
      if (ierr .eq. CG_ERROR) call cg_error_exit_f
      deallocate(sizes)
   end if
-
-  ! Communication the symmetry direction to everyone
-  call MPI_bcast(iSymm, 1, MPI_INTEGER, 0, warp_comm_world, ierr)
-  call EChk(ierr, __FILE__, __LINE__)
 
   ! Communicate the total number of nodes to everyone
   call MPI_bcast(nNodes, 1, MPI_INTEGER, 0, warp_comm_world, ierr)
@@ -557,11 +489,11 @@ subroutine readUnstructuredCGNS(cg)
 
      ! Allocate the local storage for the nodes
      allocate(localNodes(3, localSize))
-     allocate(localWallNodes(localSize))
+     allocate(localSurfaceNodes(localSize))
 
      ! Just copy for the root proc:
      localNodes(:, :) = allNodes(:, 1:localSize)
-     localWallNodes(:) = wallNodes(1:localSize)
+     localSurfaceNodes(:) = surfaceNodes(1:localSize)
 
      ! Loop over the remainer of the procs and send the nodes they need
      do iProc=1, nProc-1
@@ -580,13 +512,13 @@ subroutine readUnstructuredCGNS(cg)
 #endif
         call EChk(ierr, __FILE__, __LINE__)
 
-        ! post the send message for the wall node map.
-        call MPI_Send(wallNodes(iStart), localSize, MPI_INTEGER4, iProc, &
+        ! post the send message for the surface node map.
+        call MPI_Send(surfaceNodes(iStart), localSize, MPI_INTEGER4, iProc, &
              12, warp_comm_world, ierr)
         call EChk(ierr, __FILE__, __LINE__)
      end do
      deallocate(allNodes)
-     deallocate(wallNodes)
+     deallocate(surfaceNodes)
   else
 
      ! compute the incoming node range for this processor
@@ -596,7 +528,7 @@ subroutine readUnstructuredCGNS(cg)
 
      ! allocate the storage for the incoming data
      allocate(localNodes(3, localSize))
-     allocate(localWallNodes(localSize))
+     allocate(localSurfaceNodes(localSize))
 
      ! Post the receive on each processor
 #ifdef USE_COMPLEX
@@ -607,7 +539,7 @@ subroutine readUnstructuredCGNS(cg)
           warp_comm_world, status, ierr)
 #endif
      call EChk(ierr, __FILE__, __LINE__)
-     call MPI_recv(localWallNodes, localSize, MPI_INTEGER4, 0, 12, &
+     call MPI_recv(localSurfaceNodes, localSize, MPI_INTEGER4, 0, 12, &
           warp_comm_world, status, ierr)
      call EChk(ierr, __FILE__, __LINE__)
   end if
@@ -615,8 +547,8 @@ subroutine readUnstructuredCGNS(cg)
   ! All we are doing to do here is to create the Xv vector --- which
   ! is done via a call to createCommonGrid
 
-  call createCommonGrid(localNodes, localWallNodes, size(localNodes, 2))
-  deallocate(localNodes, localWallNodes)
+  call createCommonGrid(localNodes, localSurfaceNodes, size(localNodes, 2))
+  deallocate(localNodes, localSurfaceNodes)
 
 end subroutine readUnstructuredCGNS
 

@@ -25,7 +25,6 @@ FILES_TO_COMPLEXIFY = \
 	warpMesh.F90\
 	warpDeriv.F90\
 	warpDerivFwd.F90\
-	warpDerivSurfOnly.F90\
 
 FILES_TO_COPY = 
 

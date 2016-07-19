@@ -5,8 +5,9 @@ from mpi4py import MPI
 from pywarpustruct import USMesh
 
 options = {
-    'gridFile':'../input_files/co_mesh.cgns',
+    'gridFile':'mdo_tutorial_face_bcs.cgns',
     'fileType':'CGNS',
+    'symmetryPlanes':[[[0,0,0], [0,0,1]]],
     'aExp': 3.0,
     'bExp': 5.0,
     'LdefFact':1.0,
@@ -21,15 +22,7 @@ options = {
 # Create the mesh object
 mesh = USMesh(options=options, comm=MPI.COMM_WORLD)
 
-# First see what families are in the file:
-mesh.printFamilyList()
-
-# Add two family groups: 
-mesh.addFamilyGroup('upper_surface',['wing_up']) 
-mesh.addFamilyGroup('lower_surface',['wing_low'])
-mesh.addFamilyGroup('full_surface',['wing_low','wing_up'])
-
-coords0 = mesh.getSurfaceCoordinates('full_surface')
+coords0 = mesh.getSurfaceCoordinates()
 
 new_coords = coords0.copy()
 for i in xrange(len(coords0)):
@@ -39,7 +32,7 @@ for i in xrange(len(coords0)):
     new_coords[i,2] += .15*span
 
 # Reset the newly computed surface coordiantes
-mesh.setSurfaceCoordinates(new_coords, 'full_surface')
+mesh.setSurfaceCoordinates(new_coords)
 
 # Actually run the mesh warping
 mesh.warpMesh()

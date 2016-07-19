@@ -14,28 +14,24 @@ compile on run::
 
 from the root directory. 
 
-The easiest approach to to try the closest one to your system and
-attempt a build using (for example)::
+Follow the instructions and copy the closest architecture file and
+attempt a build using ::
 
-   make LINUX_INTEL_OPENMPI
+   make
 
 If everything was successful, the following lines will be printed to
 the screen (near the end)::
 
-   Testing if module warp can be imported...
-   Module warp was successfully imported.
+   Testing if module warpustruct can be imported...
+   Module warpustruct was successfully imported.
 
-If you don't see this, it will be necessary to configure the build
-manually. To configure manually, first copy a default configuration
-file from the defaults folder like this (run this in the root
-directory)::
-  
-   cp config/defaults/config.LINUX_INTEL_OPENMPI.mk config
+If you don't see this, it will be necessary modify the configure
+options in the config file. 
 
-Now open ``config/config.LINUX_INTEL_OPENMPI.mk`` which should look like::
+Now open ``config/config.mk`` which should look like::
 
   # ----------------------------------------------------------------------
-  # Config file for Intel ifort  with OpenMPI
+  # Config file for Gfortran  with OpenMPI
   # ----------------------------------------------------------------------
 
   # ------- Define a possible parallel make ------------------------------
@@ -46,26 +42,30 @@ Now open ``config/config.LINUX_INTEL_OPENMPI.mk`` which should look like::
   CC   = mpicc
 
   # ------- Define CGNS Inlcude and linker flags -------------------------
-  CGNS_INCLUDE_FLAGS = -I/usr/local/include
-  CGNS_LINKER_FLAGS = -Wl,-rpath,/usr/local/lib -lcgns
+  CGNS_INCLUDE_FLAGS=-I$(HOME)/packages/cgnslib_3.2.1/src
+  CGNS_LINKER_FLAGS=-L$(HOME)/packages/cgnslib_3.2.1/src -lcgns
 
   # ------- Define Compiler Flags ----------------------------------------
-  FF90_GEN_FLAGS = 
-  CC_GEN_FLAGS   =
+  FF90_GEN_FLAGS = -fPIC
+  CC_GEN_FLAGS   = -fPIC
 
-  FF90_OPT_FLAGS   =  -fPIC -r8 -O2  
-  CC_OPT_FLAGS     = -O2 -fPIC
+  FF90_OPT_FLAGS   =  -fPIC -fdefault-real-8 -O2
+  CC_OPT_FLAGS     = -O2
 
   # ------- Define Linker Flags ------------------------------------------
-  LINKER_FLAGS = -nofor_main
+  LINKER_FLAGS = 
 
   # ------- Define Petsc Info --- Should not need to modify this -----
-  include ${PETSC_DIR}/conf/variables
+  include ${PETSC_DIR}/lib/petsc/conf/variables # PETSc 3.6+
+  #include ${PETSC_DIR}/conf/variables # PETSc 3.5
   PETSC_INCLUDE_FLAGS=${PETSC_CC_INCLUDES} -I$(PETSC_DIR)
   PETSC_LINKER_FLAGS=${PETSC_LIB}
 
+  # Define potentially different python, python-config and f2py executables:
+  PYTHON = python
+  PYTHON-CONFIG = python-config
+  F2PY = f2py
+
 It will most likely be necessary to modify the ``CGNS_INCLUDE_FLAGS``
-and the ``CGNS_LINKER_FLAGS`` variables. It is also necessary to
-``PETSc`` already compiled including support for
-``SuperLU_dist``. After changes to the configuration file, run ``make
-clean`` before attempting a new build. 
+and the ``CGNS_LINKER_FLAGS`` variables. After changes to the
+configuration file, run ``make clean`` before attempting a new build.

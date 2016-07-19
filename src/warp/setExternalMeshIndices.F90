@@ -26,7 +26,7 @@ subroutine setExternalMeshIndices(ndof_solver, solver_indices)
      cumDOFSolverProc(iproc) = cumDOFSolverProc(iproc-1) + DOFSolverProc(iproc)
   end do
 
-  ! Create an 'empty' PETSc vector. This will have an arrary
+  ! Create an 'empty' PETSc vector. This will have an array
   ! vecPlace'd in them for doing the actual scatters.
   call VecCreateMPIWithArray(WARP_COMM_WORLD, 1, ndof_solver, PETSC_DECIDE, &
        PETSC_NULL_SCALAR, solverGridVec, ierr)

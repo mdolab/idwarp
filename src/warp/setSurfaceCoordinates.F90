@@ -1,23 +1,23 @@
-subroutine setSurfaceCoordinates(indices, idof, coordinates, cdof)
+subroutine setSurfaceCoordinates(coordinates, cdof)
   
   use gridData
   implicit none
   
   ! Input Arguments
-  integer(kind=intType) , intent(in) :: idof, cdof
-  integer(kind=intType) , intent(in) :: indices(idof)
+  integer(kind=intType) , intent(in) :: cdof
   real(kind=realType)   , intent(in) :: coordinates(cdof)
   
   ! Local Arguments
-  integer(kind=intType) ::  ierr, istart, iend, ind(idof)
+  integer(kind=intType) ::  ierr, istart, iend, i
  
   call VecGetOwnershipRange(Xs, istart, iend, ierr)
   call EChk(ierr, __FILE__, __LINE__)
-  
-  ind = indices + istart
-  call VecSetValues(Xs, cdof, ind, coordinates, INSERT_VALUES, ierr)
-  call EChk(ierr, __FILE__, __LINE__)
- 
+
+  do i=1, cdof
+     call VecSetValues(Xs, 1, (/iStart+i-1/), coordinates(i), INSERT_VALUES, ierr)
+     call EChk(ierr, __FILE__, __LINE__)
+  end do
+
   ! While we only set local values, we STILL have to call
   ! VecAssemblyBegin/End
   call VecAssemblyBegin(Xs, ierr)

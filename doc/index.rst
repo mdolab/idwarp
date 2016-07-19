@@ -16,6 +16,7 @@ multi-block meshes.
    :maxdepth: 2
 
    building
+   tutorial
    API
 
 

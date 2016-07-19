@@ -1,12 +1,12 @@
 subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSizesLocal, &
      nFaceConnLocal, restartFile)
-  
+
   use gridInput
   use communication
   use kd_tree
   use gridData
   implicit none
- 
+
   ! Input
   real(kind=realType), intent(in) :: pts(ndof)
   integer(kind=intType), intent(in) :: ndof
@@ -16,19 +16,15 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
   character*(*) :: restartFile
   ! Working
   integer(kind=intType) :: nNodesTotal, ierr, iStart, iEnd, iProc
-  integer(kind=intType) :: i, j, k, ii, kk, n, ind
+  integer(kind=intType) :: i, j, ii, kk
   integer(kind=intType), dimension(:), allocatable :: nNodesProc, cumNodesProc
   real(kind=realType),dimension(:,:), allocatable :: allNodes
   real(kind=realType), dimension(:), allocatable :: costs, procEndCosts
   integer(kind=intType), dimension(:), allocatable :: procSplits, procSplitsLocal
-  integer(kind=intType), dimension(:), allocatable :: tempInt
   real(kind=realType), dimension(:), allocatable :: denomenator0Copy
-  integer(kind=intType), pointer :: indices(:)
-  integer(kind=intType), dimension(:), allocatable :: dXsIndices
-  real(kind=realtype) :: costOffset, totalCost, averageCost, c, fact(3, 2), tmp
-  integer(kind=intType) :: nVol, curBin, newBin, newDOFProc, totalDOF, nFace, nLoop
-  real(Kind=realType) :: dists(1), pt1(3), pt2(3), dx(3)
-  integer(kind=intType) :: resInd(1), surfID, stat
+  real(kind=realtype) :: costOffset, totalCost, averageCost, c, tmp, r(3)
+  integer(kind=intType) :: nVol, curBin, newBin, newDOFProc, totalDOF
+  integer(kind=intType) :: stat
   integer(kind=intType) :: status(MPI_STATUS_SIZE), fileHandle, pointsInFile
   INTEGER(KIND=MPI_OFFSET_KIND) OFFSET
   logical :: recompute, loadFile, saveFile, fileExists, localBadFile, globalBadFile
@@ -38,7 +34,7 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
   ! ----------------------------------------------------------------------
   allocate(nNodesProc(nProc), cumNodesProc(0:nProc))
   nNodesProc(:) = 0_intType
-  
+
   call mpi_allgather(ndof/3, 1, MPI_INTEGER, nNodesProc, 1, mpi_integer4, &
        warp_comm_world, ierr)
   call EChk(ierr, __FILE__, __LINE__)
@@ -108,7 +104,6 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
   ! 3. Load balance file name is supplied and exists. Load and check a few
   !    If they don't match, do regular dry run
 
-
   call VecGetArrayF90(commonGridVec, Xv0Ptr, ierr)
   call EChk(ierr,__FILE__,__LINE__)
 
@@ -136,7 +131,7 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
      if (myid == 0) then
         INQUIRE(FILE=trim(restartFile), EXIST=fileExists)
      end if
-     
+
      call MPI_bcast(fileExists, 1, MPI_LOGICAL, 0, warp_comm_world, ierr)
      call EChk(ierr, __FILE__, __LINE__)
 
@@ -155,10 +150,10 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
   end if
 
   if (loadFile) then 
-      if (myid == 0) then 
+     if (myid == 0) then 
         print *, 'Loading restart file...'
      end if
-     
+
      ! Read from the restartFile. We can do this in parallel.
      call mpi_file_open(warp_comm_world, trim(restartFile), &
           MPI_MODE_RDONLY, & 
@@ -179,11 +174,11 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
         if (myid == 0) then 
            print *, 'Number of points in restart file are different...'
         end if
-        
+
         ! The file is bad...different number of points. 
         call mpi_file_close(fileHandle, ierr)
         call EChk(ierr, __FILE__, __LINE__)
-        
+
         ! Use fortran to delete the file, since mpi_file_delete
         ! doesn't actually work
         if (myid == 0) then 
@@ -200,7 +195,7 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
         offset = cumNodesProc(myid)*8 + 4
         call mpi_file_seek(fileHandle, offset, MPI_SEEK_SET, ierr)
         call EChk(ierr, __FILE__, __LINE__)
-        
+
         call MPI_file_read(fileHandle, denomenator0, size(denomenator0), &
              MPI_REAL8, status, ierr)
         call EChk(ierr, __FILE__, __LINE__)
@@ -208,23 +203,22 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
         offset = cumNodesProc(nProc)*8 + cumNodesProc(myid)*8 + 4
         call mpi_file_seek(fileHandle, offset, MPI_SEEK_SET, ierr)
         call EChk(ierr, __FILE__, __LINE__)
-        
+
         call MPI_file_read(fileHandle, costs, size(costs), &
              MPI_REAL8, status, ierr)
         call EChk(ierr, __FILE__, __LINE__)
-        
+
         call mpi_file_close(fileHandle, ierr)
         call EChk(ierr, __FILE__, __LINE__)
-     
+
         ! It is *still* possible that the data is bad. We will check 
         ! 1/100th of the number of points to see. 
-        
+
         if (myid == 0) then 
            print *, 'Checking restart file...'
         end if
 
         localBadFile = .False.
-        call getLoopFact(nLoop, fact)
 
         ! Note that we've swapped the kk loop inside here. This is
         ! such that we can get the full estimate immediately and
@@ -232,8 +226,8 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
         wiLoop_check: do j=1, nVol, 100
            tmp = zero
            do kk=1, nLoop
-              call getWiEstimate(mytrees(1)%tp, mytrees(1)%tp%root, Xv0Ptr(3*j-2:3*j)*fact(:, kk), &
-                   tmp)
+              call getMirrorPt(Xv0Ptr(3*j-2:3*j), r, kk)
+              call getWiEstimate(mytrees(1)%tp, mytrees(1)%tp%root, r, tmp)
            end do
            ! Do a relative check:
            if (1 - tmp/denomenator0(j) > eps) then 
@@ -242,7 +236,7 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
               exit wiLoop_check
            end if
         end do wiLoop_check
-        
+
         ! Now all reduce to see if anyone thought the file was bad:
         call mpi_AllReduce(localBadFile, globalBadFile, 1, MPI_LOGICAL, &
              MPI_LOR, warp_comm_world, ierr)
@@ -269,30 +263,30 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
      if (myid == 0) then 
         print *, 'Computing Denomenator Estimate...'
      end if
-     
+
      ! Compute the (approx) denomenator. This needs to be done only once.
-     call getLoopFact(nLoop, fact)
      do kk=1, nLoop
         wiLoop: do j=1, nVol
-           call getWiEstimate(mytrees(1)%tp, mytrees(1)%tp%root, Xv0Ptr(3*j-2:3*j)*fact(:, kk), &
+           call getMirrorPt(Xv0Ptr(3*j-2:3*j), r, kk)
+           call getWiEstimate(mytrees(1)%tp, mytrees(1)%tp%root, r, &
                 denomenator0(j))
         end do wiLoop
      end do
-     
+
      ! For load balacing we have to do a dry run loop that determines
      ! just the number of ops that a mesh warp *would* use. This
      ! integer is scaled by the "brute force" cost, so each individual
      ! cost will be less than 1.0
-     
+
      if (myid == 0) then 
         print *, 'Load Balancing...'
      end if
-     
+
      do kk=1, nLoop
         dryRunLoop: do j=1, nVol
            c = zero
-           call dryRun(mytrees(1)%tp, mytrees(1)%tp%root, Xv0Ptr(3*j-2:3*j)*fact(:, kk), &
-                denomenator0(j), c)
+           call getMirrorPt(Xv0Ptr(3*j-2:3*j), r, kk)
+           call dryRun(mytrees(1)%tp, mytrees(1)%tp%root, r, denomenator0(j), c)
            costs(j) = costs(j) + c / mytrees(1)%tp%n
         end do dryRunLoop
      end do
@@ -326,7 +320,7 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
      offset = cumNodesProc(myid)*8 + 4
      call mpi_file_seek(fileHandle, offset, MPI_SEEK_SET, ierr)
      call EChk(ierr, __FILE__, __LINE__)
-     
+
      call MPI_file_write(fileHandle, denomenator0, size(denomenator0), &
           MPI_REAL8, MPI_STATUS_IGNORE, ierr)
      call EChk(ierr, __FILE__, __LINE__)
@@ -352,14 +346,14 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
   do j=2,nVol
      costs(j) = costs(j) + costs(j-1)
   end do
-  
+
   ! Now, we gather up the value at the *end* of each of the costs
   ! array and send to everyone
   allocate(procEndCosts(nProc))
   call mpi_allgather(costs(nVol), 1, MPI_REAL8, procEndCosts, 1, MPI_REAL8, &
        warp_comm_world, ierr)
   call EChk(ierr, __FILE__, __LINE__)
-  
+
   ! Now each proc can "correct" for the cumulative costs by using
   ! the intermediate sums from the other processors
   costOffset = zero
@@ -369,7 +363,7 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
 
   ! Now just vector sum the costs array
   costs = costs + costOffset
-  
+
   ! We now have a distributed "costs" array that in cumulative
   ! format has the costs of mesh warping. First thing we will do
   ! make sure all procs know the *precise* total cost. Broadcast
@@ -380,12 +374,12 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
 
   ! And the average cost:
   averageCost = totalCost / nProc
-  
+
   ! Next we loop over our own cost array to determine the indicies
   ! in *global* ordering where the "breaks" should be. 
   call vecGetOwnershipRange(commonGridVec, iStart, iEnd, ierr)
   call EChk(ierr, __FILE__, __LINE__)
-  
+
   call vecGetSize(commonGridVec, totalDOF, ierr)
   call EChk(ierr, __FILE__, __LINE__)
   allocate(procSplits(0:nProc), procSplitsLocal(0:nProc))
@@ -410,11 +404,11 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
   ! Convert Proc Splits to DOF Format
   procSplits = procSplits * 3
   newDOFProc = procSplits(myid+1) - procSplits(myid)
-  
+
   ! Now create the final vectors we need:
   call VecCreate(warp_comm_world, Xv, ierr)
   call EChk(ierr,__FILE__,__LINE__)
-     
+
   ! Set to be be blocked
   call VecSetBlockSize(Xv, 3, ierr)
   call EChk(ierr,__FILE__,__LINE__)
@@ -422,42 +416,42 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
   ! Type and size
   call VecSetType(Xv, "mpi", ierr)
   call EChk(ierr,__FILE__,__LINE__)
-  
+
   call VecSetSizes(Xv, newDOFProc, PETSC_DECIDE, ierr)
   call EChk(ierr,__FILE__,__LINE__)
   call VecGetSize(Xv, i, ierr)
 
   call VecDuplicate(Xv, Xv0, ierr)
   call EChk(ierr,__FILE__,__LINE__)
-  
+
   call VecDuplicate(Xv, dXv, ierr)
   call EChk(ierr,__FILE__,__LINE__)
-  
+
   ! Now we know the break-points of the splits, we can create a vec
   ! scatter that converts between the "common" and "warping"
   ! ordering (the repartitioned) ordering. 
   call ISCreateStride(warp_comm_world, newDOFProc, procSplits(myid), 1, IS1, ierr)
   call EChk(ierr, __FILE__, __LINE__)  
-  
+
   call ISCreateStride (warp_comm_world, newDOFProc, procSplits(myid), 1, IS2, ierr)
   call EChk(ierr, __FILE__, __LINE__)
-     
+
   call VecScatterCreate(commonGridVec, IS1, Xv, IS2, common_to_warp, ierr)
   call EChk(ierr, __FILE__, __LINE__)
-  
+
   call ISDestroy(IS1, ierr)
   call EChk(ierr, __FILE__, __LINE__)
-  
+
   call ISDestroy(IS2, ierr)
   call EChk(ierr, __FILE__, __LINE__)
-  
+
   ! We have to now scatter our nominal grid nodes in
   ! "commonGridVec" to our final ordering. This uses warp_to_common
   ! in REVERSE:
   call VecScatterBegin(common_to_warp, commonGridVec, Xv, &
        INSERT_VALUES, SCATTER_FORWARD, ierr)
   call EChk(ierr, __FILE__, __LINE__)
-  
+
   call VecScatterEnd  (common_to_warp, commonGridVec, Xv, &
        INSERT_VALUES, SCATTER_FORWARD, ierr)
   call EChk(ierr, __FILE__, __LINE__)
@@ -472,40 +466,40 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
   ! gridVec. So we dump it into a temporary vector, which *is* the
   ! right size and the copy after
 
- ! We can now also allocate the final space for the denomenator
+  ! We can now also allocate the final space for the denomenator
   allocate(numerator(3, newDOFProc/3))
   allocate(denomenator(newDOFProc/3))
   allocate(denomenator0Copy(nVol*3))
   do i=1,nVol
      denomenator0Copy(3*i-2) = denomenator0(i)
   end do
-  
+
   ! Clear the current denomenator0 and make the right size.
   deallocate(denomenator0)
   allocate(denomenator0(newDOFProc/3))
 
   call VecPlaceArray(commonGridVec, denomenator0Copy, ierr)
   call EChk(ierr, __FILE__, __LINE__)
-  
+
   call VecPlaceArray(Xv, numerator, ierr)
   call EChk(ierr, __FILE__, __LINE__)
-  
+
   ! Actual scatter
   call VecScatterBegin(common_to_warp, commonGridVec, Xv, &
        INSERT_VALUES, SCATTER_FORWARD, ierr)
   call EChk(ierr, __FILE__, __LINE__)
-  
+
   call VecScatterEnd  (common_to_warp, commonGridVec, Xv, &
        INSERT_VALUES, SCATTER_FORWARD, ierr)
   call EChk(ierr, __FILE__, __LINE__)
-  
+
   ! And reset the arrays
   call VecResetArray(commonGridVec, ierr)
   call EChk(ierr, __FILE__, __LINE__)
-  
+
   call VecResetArray(Xv, ierr)
   call EChk(ierr, __FILE__, __LINE__)
-  
+
   ! Copy denomenator0 out of 'numerator'
   do i=1,newDOFProc/3
      denomenator0(i) = numerator(1, i)
@@ -517,91 +511,6 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
   deallocate(nNodesProc, cumNodesProc, allNodes)
   deallocate(costs, procEndCosts, procSplits, procSplitsLocal, denomenator0Copy)
 
-  ! --------------- We may need this at some point.... -------------
-  ! if (myid == 0) then 
-  !    print *, 'Computing wall distance ...'
-  ! end if
-  ! allocate(d2wall(newDOFProc/3))
-  ! call VecGetArrayF90(Xv0, Xv0Ptr, ierr)
-  ! call EChk(ierr,__FILE__,__LINE__)
-
-  ! do j=1,warpMeshDOF/3
-  !    call n_nearest_to(mytrees(1)%tp, Xv0Ptr(3*j-2:3*j), 1, resInd, dists)
-  !    d2wall(j) = dists(1)
-  ! end do
-  ! call VecRestoreArrayF90(Xv0, Xv0Ptr, ierr)
-  ! call EChk(ierr,__FILE__,__LINE__)
-  ! -------------------------------------------------------------------
-
-  ! ------------ This is optional -----------
-
-  ! We could perform a test warp to get the "exact" denomenator that
-  ! will result from an actual warp. This most likely isn't necessary
-  ! however.
-
-  ! if (myid == 0) then
-  !    print *, 'Performing Test Warp ...'
-  ! end if
-  ! call warpMesh()
-
-  ! ! Copy in the real denomenator
-  ! denomenator0 = denomenator
-  ! -------------------------------------------
-
-  ! One last thing...we need to compute a mapping from the volume
-  ! nodes that happen to be on the surface to the actual surface
-  ! nodes. This is required for the fake mesh warp derivatives. We we
-  ! don't have any addiitonal information we will use the tree do to a
-  ! spatial search. This should be reasonably fast since we only are
-  ! checking volume nodes we *know* are already on the surface. This
-  ! is similar to what is done in pyWarp. 
-
-  if (myid == 0) then 
-     print *, 'Performing surface matching ...'
-  end if
-  allocate(dXsIndices(size(wallIndices)))
-
-  ! We happen to know that all of the indices in wallNodesInXv are
-  ! local...so we can use VecGetValues()
-  call VecGetOwnershipRange(CommonGridVec, istart, iend, ierr)
-  call EChk(ierr, __FILE__, __LINE__)
-
-  do i=1, size(wallIndices)/3
-     call VecGetValues(CommonGridVec, 3, wallIndices(3*i-2:3*i), pt1, ierr)
-     call EChk(ierr, __FILE__, __LINE__)
-
-     ! Now search for that node:
-     surfID = pt_in_tree(mytrees(1)%tp, pt1)
-     if (surfID /= 0) then 
-        dXsIndices(3*i-2) = (mytrees(1)%tp%invLink(surfID)-1)*3
-        dXsIndices(3*i-1) = (mytrees(1)%tp%invLink(surfID)-1)*3 + 1
-        dXsIndices(3*i  ) = (mytrees(1)%tp%invLink(surfID)-1)*3 + 2
-     else
-        print *,'Error: Could not find a surface node. Are you actually using the same mesh??'
-        print *, 'The Bad point is:', pt1
-        stop
-     end if
-  end do
-
-  call ISCreateGeneral(warp_comm_world, size(wallIndices), wallIndices, &
-       PETSC_COPY_VALUES, IS1, ierr)
-  call EChk(ierr,__FILE__,__LINE__)
-
-  ! Now create the scatter:
-  call ISCreateGeneral(warp_comm_world, size(dXsIndices), dXsIndices, &
-       PETSC_COPY_VALUES, IS2, ierr)
-
-  call VecScatterCreate(commonGridVec, IS1, dXs, IS2, common_to_dxs, ierr)
-  call EChk(ierr, __FILE__, __LINE__)
-
-  call ISDestroy(IS1, ierr)
-  call EChk(ierr, __FILE__, __LINE__)
-
-  call ISDestroy(IS2, ierr)
-  call EChk(ierr, __FILE__, __LINE__)
-
-  deallocate(dXsIndices)
-
   if (myid == 0) then 
      print *, 'Finished Mesh Initialization.'
   end if
@@ -609,19 +518,155 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
 
 end subroutine initializeWarping
 
-subroutine getLoopFact(nLoop, fact)
+
+subroutine setSymmetryPlanes(pts, normals, n)
+
   use constants
-  use gridInput
+  use gridData
+
+  ! Set the symmetry plane information. 
+
+  real(kind=realType), dimension(3, n), intent(in) :: pts, normals
+  integer(kind=intType), intent(in) :: n
+
+  real(kind=realType) :: ptstar(3), r(3)
+  integer(kind=intType) :: kk
+  ! Loops have be applied recursively so for each symmetry plane, we
+  ! multiply the number of iterations by 2. 
+  nLoop = 2**(n)
+
+  allocate(symmPts(3, n), symmNormals(3, n))
+  symmPts = pts
+  symmNormals = normals
+
+end subroutine setSymmetryPlanes
+
+subroutine getMirrorPt(pt, r, kk)
+
+  use gridData
+
+  ! Compute the point reflected point based on the symmetry plane loop
+  ! index. We support up to 6 symmetry planes
+
+  ! Input/Output
+  real(kind=realType), intent(in) :: pt(3)
+  real(kind=realType), intent(out) :: r(3)
+  integer(kind=intType), intent(in) ::kk
+
+  ! Working
+  real(kind=realType) :: d(3), n(3), dp
+
+  ! Set the input variable to the out
+  r = pt
+
+  ! This is the slick implementation. See below for logically expanded
+  ! form. 
+
+  do j=1, size(symmPts, 2)
+     if (mod(kk-1, 2**j) >= 2**(j-1)) then 
+        ! Need to mirror about the jth plane
+        d = r - symmPts(:, j)
+        n = symmNormals(:, j)
+        dp = d(1)*n(1) + d(2)*n(2) + d(3)*n(3)
+        r = r - 2*n*dp
+     end if
+  end do
+
+  ! An explicit implementation would look something like the
+  ! following:
+  ! if (mod(kk-1, 2) >= 1) then
+  !    call mirror(r, symmPts(:, 1), symmNormals(:, 1))
+  ! end if
+
+  ! if (mod(kk-1, 4) >= 2) then 
+  !    call mirror(r, symmPts(:, 2), symmNormals(:, 2))
+  ! end if
+
+  ! if (mod(kk-1, 8) >= 4) then 
+  !    call mirror(r, symmPts(:, 3), symmNormals(:, 3))
+  ! end if
+
+
+end subroutine getMirrorPt
+
+
+subroutine getMirrorNumerator(num, kk)
+
+  ! Mirror the numerator as per necessary based on the loop index
+  use gridData
+
+  ! Input/Output
+  real(kind=realType), intent(inout) :: num(3)
+  integer(kind=intType), intent(in) :: kk
+
+  ! Working
+  real(kind=realType) ::  n(3), dp
+
+  do j=1, size(symmPts, 2)
+     if (mod(kk-1, 2**j) >= 2**(j-1)) then 
+        ! Need to mirror about the jth plane
+        n = symmNormals(:, j)
+        dp = num(1)*n(1) + num(2)*n(2) + num(3)*n(3)
+        num = num - two*dp*n
+     end if
+  end do
+
+end subroutine getMirrorNumerator
+
+#ifndef USE_COMPLEX
+subroutine getMirrorNumerator_b(numb, kk)
+
+  use gridData
   implicit none
-  integer(kind=intType), intent(out) :: nLoop
-  real(kind=realType), intent(out), dimension(3, 2) :: fact
 
-  nLoop = 1
-  fact = one
-  if (iSymm > 0) then 
-     nLoop = 2
-     fact(iSymm, 2) = -one
-  end if
+  ! Input/Output
+  real(kind=realType), intent(inout) :: numb(3)
+  integer(kind=intType), intent(in) :: kk
 
-end subroutine getLoopFact
+  ! Working
+  real(kind=realType) ::  n(3), dp, dpb
+  integer(kind=intType) :: branch, j
 
+  DO j=1, size(symmPts, 2)
+     IF (MOD(kk - 1, 2**j) .GE. 2**(j-1)) THEN
+        CALL PUSHCONTROL1B(1)
+     ELSE
+        CALL PUSHCONTROL1B(0)
+     END IF
+  END DO
+  DO j=size(symmPts, 2),1,-1
+     CALL POPCONTROL1B(branch)
+     IF (branch .NE. 0) THEN
+        n = symmnormals(:, j)
+        dpb = -SUM(n*two*numb)
+        numb(1) = numb(1) + n(1)*dpb
+        numb(2) = numb(2) + n(2)*dpb
+        numb(3) = numb(3) + n(3)*dpb
+     END IF
+  END DO
+end subroutine getMirrorNumerator_b
+#endif
+subroutine getMirrorNumerator_d(numd, kk)
+
+  use gridData
+
+  implicit none
+
+  ! Input/Output
+  real(kind=realType), intent(inout) :: numd(3)
+  integer(kind=intType), intent(in) :: kk
+
+  ! Working
+  real(kind=realType) ::  n(3), dpd
+  integer(kind=intType) :: j
+
+  do j=1, size(symmPts, 2)
+     if (mod(kk-1, 2**j) >= 2**(j-1)) then 
+        ! Need to mirror about the jth plane
+        n = symmnormals(:, j)
+        dpd = n(1)*numd(1) + n(2)*numd(2) + n(3)*numd(3)
+        numd = numd - two*n*dpd
+     END IF
+  END DO
+  
+end subroutine getMirrorNumerator_d

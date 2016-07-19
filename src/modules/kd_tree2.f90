@@ -6,7 +6,7 @@
 !
 
 module kdtree2_priority_queue_module
-  use precision
+  use constants
   !
   ! maintain a priority queue (PQ) of data, pairs of 'priority/payload', 
   ! implemented with a binary heap.  This is the type, and the 'dis' field

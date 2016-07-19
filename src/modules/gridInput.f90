@@ -8,7 +8,6 @@ module gridInput
   save
   real(kind=realType) :: aExp, bExp
   real(kind=realType):: LdefFact, alpha
-  integer(kind=intType)::iSymm
   real(kind=realType) :: symmTol
   real(kind=realType) :: errTol
   logical :: useRotations

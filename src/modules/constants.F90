@@ -21,7 +21,7 @@ module constants
   save
 
   ! Maximum number of families
-  integer(kind=intType), parameter :: maxFamilies = 32
+  integer(kind=intType), parameter :: maxFamilies = 128
 
   ! Maximum numbers of characters in a string and in a cgns name
   integer(kind=intType), parameter :: maxStringLen   = 512

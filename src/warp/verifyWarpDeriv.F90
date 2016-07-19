@@ -116,8 +116,6 @@ subroutine verifyWarpDeriv(dXv_f, ndof_warp, dof_start, dof_end, h)
      ! Now sum up which is the same as taking the dot-product with
      ! a set of ones
 
-990  format (I4, I4, I4, I4, F10.5)
-
      value = dot_product(dxv_f, deriv)
 
      call MPI_allReduce (value, FDValue, 1, MPI_REAL8, MPI_SUM, &

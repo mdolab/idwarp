@@ -1,4 +1,4 @@
-subroutine warpDerivFwd(indices, idof, Xsdot, cDof, Xvdot, meshDOF)
+subroutine warpDerivFwd(Xsdot, cDof, Xvdot, meshDOF)
 
   use gridData
   use gridInput
@@ -7,18 +7,16 @@ subroutine warpDerivFwd(indices, idof, Xsdot, cDof, Xvdot, meshDOF)
   implicit none
   
   ! Input Arguments
-  integer(kind=intType) , intent(in) :: idof, cdof, meshDOF
-  integer(kind=intType) , intent(in) :: indices(idof)
+  integer(kind=intType) , intent(in) :: cdof, meshDOF
   real(kind=realType)   , intent(in) :: xsdot(cdof)
   
   ! Output Arguments
   real(kind=realType), intent(inout), dimension(meshDOF) :: XvDot
 #ifndef USE_COMPLEX
   ! Working Data
-  integer(kind=intType) :: i, j, kk, istart, iend, ierr, isize, nVol, nLoop
-  integer(kind=intType) :: ind(idof)
-  real(kind=realType), dimension(3) :: r, rr, numd
-  real(kind=realType) :: fact(3, 2), oden
+  integer(kind=intType) :: i, j, kk, istart, iend, ierr, nVol
+  real(kind=realType), dimension(3) :: r, numd
+  real(kind=realType) :: oden
 
   ! Dump our Xsdot into the dXs array
   call VecZeroEntries(dXs, ierr)
@@ -27,10 +25,11 @@ subroutine warpDerivFwd(indices, idof, Xsdot, cDof, Xvdot, meshDOF)
   call VecGetOwnershipRange(dXs, istart, iend, ierr)
   call EChk(ierr, __FILE__, __LINE__)
   
-  ind = indices + istart
-  call VecSetValues(dXs, cdof, ind, XsDot, INSERT_VALUES, ierr)
-  call EChk(ierr, __FILE__, __LINE__)
- 
+  do i=1, cdof
+     call VecSetValues(Xs, 1, (/iStart+i-1/), XsDot(i), INSERT_VALUES, ierr)
+     call EChk(ierr, __FILE__, __LINE__)
+  end do
+
   ! While we only set local values, we STILL have to call
   ! VecAssemblyBegin/End
   call VecAssemblyBegin(dXs, ierr)
@@ -66,14 +65,10 @@ subroutine warpDerivFwd(indices, idof, Xsdot, cDof, Xvdot, meshDOF)
   mytrees(1)%tp%errTol = errTol
   call setData_d(mytrees(1)%tp, mytrees(1)%tp%root)
 
-  call getLoopFact(nLoop, fact)
-
   numerator = zero
   do kk=1, nLoop
      volLoop: do j=1, nVol
-        r(1) = Xv0Ptr(3*j-2)*fact(1, kk)
-        r(2) = Xv0Ptr(3*j-1)*fact(2, kk)
-        r(3) = Xv0Ptr(3*j  )*fact(3, kk)
+        call getMirrorPt(Xv0Ptr(3*j-2:3*j), r, kk)
 
         numd = zero
         if (evalMode == EVAL_EXACT) then 
@@ -82,10 +77,13 @@ subroutine warpDerivFwd(indices, idof, Xsdot, cDof, Xvdot, meshDOF)
            call evalNode_d(mytrees(1)%tp, mytrees(1)%tp%root, r, numd, &
                 denomenator0(j))
         end if
+
+        call getMirrorNumerator_d(numd, kk)
+
         ! Sum the *derivatives* into numerator
-        numerator(1, j) = numerator(1, j) + numd(1)*fact(1, kk)
-        numerator(2, j) = numerator(2, j) + numd(2)*fact(2, kk)
-        numerator(3, j) = numerator(3, j) + numd(3)*fact(3, kk)
+        numerator(1, j) = numerator(1, j) + numd(1)
+        numerator(2, j) = numerator(2, j) + numd(2)
+        numerator(3, j) = numerator(3, j) + numd(3)
 
      end do volLoop
   end do

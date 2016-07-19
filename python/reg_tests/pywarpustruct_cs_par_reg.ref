@@ -12,30 +12,41 @@
  'fileType': 'openfoam',
  'gridFile': '/home/kenway/hg/pywarpustruct/python/input_files/ahmedBodyMesh',
  'restartFile': None,
+ 'specifiedSurfaces': None,
  'symmTol': 1e-06,
+ 'symmetryPlanes': [[[0, 0, 0], [0, 1, 0]]],
+ 'symmetrySurfaces': None,
  'useRotations': True,
  'zeroCornerRotations': True}
- -> Info: Using internal pyWarpUStruct surfaces. If
-          this mesh object is to be used with SUmb,
-          ensure the mesh object is passed to SUmb
-          immediately after creation.
+
++------------------------------------------------------------------------------+
+| pyWarpUstruct Warning: Using internally generated pyWarpUStruct surfaces. If |
+| this mesh object is to be used with an external solver, ensure the mesh      |
+| object is passed to the solver immediatedly after it is created. The         |
+| external solver must then call 'setExternalMeshIndices()' and                |
+| 'setSurfaceDefinition()' routines.                                           |
++------------------------------------------------------------------------------+
+
 #------------------------------#
  Total Volume Nodes :     22915 
 #------------------------------#
++-------------------- Symmetry Planes -------------------+
+|           Point                        Normal          |
+| (  0.000   0.000   0.000)    (  0.000   1.000   0.000) |
++--------------------------------------------------------+
 #--------------------------------#
  Unique Surface Nodes :      3652 
 #--------------------------------#
  Computing Denomenator Estimate...
  Load Balancing...
- Performing surface matching ...
  Finished Mesh Initialization.
 Sum of vCoords Inital:
 @value    26501.10515260559 1e-08 1e-08
 Sum of vCoords Warped:
-@value    26648.93602795847 1e-08 1e-08
+@value    26623.70025366551 1e-08 1e-08
 Computing Warp Deriv
 Sum of dxs:
-@value      23201.524264085 1e-08 1e-08
+@value    19708.05059361646 1e-08 1e-08
 +---------------------------------------+
 |     All pyWarpUstruct Options:        |
 +---------------------------------------+
@@ -50,7 +61,10 @@ Sum of dxs:
  'fileType': 'cgns',
  'gridFile': '../input_files/co_mesh.cgns',
  'restartFile': None,
+ 'specifiedSurfaces': None,
  'symmTol': 1e-06,
+ 'symmetryPlanes': None,
+ 'symmetrySurfaces': None,
  'useRotations': True,
  'zeroCornerRotations': True}
   -> Reading CGNS File: ../input_files/co_mesh.cgns
@@ -58,16 +72,24 @@ Sum of dxs:
 #------------------------------#
  Total Volume Nodes :    151900 
 #------------------------------#
- -> Info: Using internal pyWarpUStruct surfaces. If
-          this mesh object is to be used with SUmb,
-          ensure the mesh object is passed to SUmb
-          immediately after creation.
+
++------------------------------------------------------------------------------+
+| pyWarpUstruct Warning: Using internally generated pyWarpUStruct surfaces. If |
+| this mesh object is to be used with an external solver, ensure the mesh      |
+| object is passed to the solver immediatedly after it is created. The         |
+| external solver must then call 'setExternalMeshIndices()' and                |
+| 'setSurfaceDefinition()' routines.                                           |
++------------------------------------------------------------------------------+
+
++-------------------- Symmetry Planes -------------------+
+|           Point                        Normal          |
+| (  0.000  -0.000  -0.000)    ( -0.000   0.000   1.000) |
++--------------------------------------------------------+
 #--------------------------------#
  Unique Surface Nodes :      3881 
 #--------------------------------#
  Computing Denomenator Estimate...
  Load Balancing...
- Performing surface matching ...
  Finished Mesh Initialization.
 setting surface
 setting surface
@@ -98,7 +120,10 @@ Sum of dxs:
  'fileType': 'cgns',
  'gridFile': '../input_files/o_mesh.cgns',
  'restartFile': None,
+ 'specifiedSurfaces': None,
  'symmTol': 1e-06,
+ 'symmetryPlanes': None,
+ 'symmetrySurfaces': None,
  'useRotations': True,
  'zeroCornerRotations': True}
   -> Reading CGNS File: ../input_files/o_mesh.cgns
@@ -106,16 +131,24 @@ Sum of dxs:
 #------------------------------#
  Total Volume Nodes :     37615 
 #------------------------------#
- -> Info: Using internal pyWarpUStruct surfaces. If
-          this mesh object is to be used with SUmb,
-          ensure the mesh object is passed to SUmb
-          immediately after creation.
+
++------------------------------------------------------------------------------+
+| pyWarpUstruct Warning: Using internally generated pyWarpUStruct surfaces. If |
+| this mesh object is to be used with an external solver, ensure the mesh      |
+| object is passed to the solver immediatedly after it is created. The         |
+| external solver must then call 'setExternalMeshIndices()' and                |
+| 'setSurfaceDefinition()' routines.                                           |
++------------------------------------------------------------------------------+
+
++-------------------- Symmetry Planes -------------------+
+|           Point                        Normal          |
+| (  0.000  -0.000  -0.000)    ( -0.000   0.000   1.000) |
++--------------------------------------------------------+
 #--------------------------------#
  Unique Surface Nodes :      1239 
 #--------------------------------#
  Computing Denomenator Estimate...
  Load Balancing...
- Performing surface matching ...
  Finished Mesh Initialization.
 setting surface
 setting surface
@@ -131,4 +164,4 @@ Sum of vCoords Warped:
 @value    626750.5464077911 1e-08 1e-08
 Computing Warp Deriv
 Sum of dxs:
-@value    50186.39773166193 1e-08 1e-08
+@value    50186.39773166196 1e-08 1e-08
