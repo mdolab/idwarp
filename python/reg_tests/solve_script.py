@@ -224,7 +224,7 @@ def test3():
         print('Verifying Warp Deriv')
     mesh.verifyWarpDeriv(dXv_warp,solverVec=False,dofStart=0,dofEnd=5)
 
-def test5():
+def test4():
     # Test the MDO tutorial h mesh
     file_name = '../input_files/mdo_tutorial_face_bcs.cgns'
 
@@ -285,11 +285,74 @@ def test5():
         print('Verifying Warp Deriv')
     mesh.verifyWarpDeriv(dXv_warp,solverVec=False,dofStart=0,dofEnd=5)
 
+
+def test5():
+    # Test the MDO tutorial h mesh
+    file_name = '../input_files/symm_block.cgns'
+
+    meshOptions = copy.deepcopy(defOpts)
+
+    meshOptions.update(
+        {'gridFile':file_name,
+         'fileType':'cgns',
+     }
+    )
+    # Create warping object
+    mesh = USMesh(options=meshOptions)
+
+    # Extract Surface Coordinates
+    coords0 = mesh.getSurfaceCoordinates()
+
+    vCoords = mesh.getCommonGrid()
+    val = MPI.COMM_WORLD.reduce(numpy.sum(vCoords.flatten()),op=MPI.SUM)
+    if MPI.COMM_WORLD.rank == 0:
+        print('Sum of vCoords Inital:')
+        reg_write(val,1e-8,1e-8)
+
+    new_coords = coords0.copy()
+
+    for i in xrange(len(coords0)):
+        new_coords[i,0] *= 1.1
+        new_coords[i,1] *= 1.2
+        new_coords[i,1] *= 1.3
+
+    # Reset the newly computed surface coordiantes
+    print('setting surface')
+    mesh.setSurfaceCoordinates(new_coords)
+    print('warping mesh')
+    mesh.warpMesh()
+    
+    # Get the sum of the warped coordinates
+    #vCoords = mesh.getSolverGrid()
+    vCoords = mesh.getWarpGrid()
+
+    val = MPI.COMM_WORLD.reduce(numpy.sum(vCoords.flatten()),op=MPI.SUM)
+    if MPI.COMM_WORLD.rank == 0:
+        print('Sum of vCoords Warped:')
+        reg_write(val,1e-8,1e-8)
+
+    # Create a dXv vector to do test the mesh warping with:
+    dXv_warp = numpy.linspace(0,1.0, mesh.warp.griddata.warpmeshdof)
+    if MPI.COMM_WORLD.rank == 0:
+        print('Computing Warp Deriv')
+    mesh.warpDeriv(dXv_warp,solverVec=False)
+    dXs = mesh.getdXs()
+
+    val = MPI.COMM_WORLD.reduce(numpy.sum(dXs.flatten()),op=MPI.SUM)
+    if MPI.COMM_WORLD.rank == 0:
+        print('Sum of dxs:')
+        reg_write(val,1e-8,1e-8)
+        
+    if MPI.COMM_WORLD.rank == 0:
+        print('Verifying Warp Deriv')
+    mesh.verifyWarpDeriv(dXv_warp,solverVec=False,dofStart=0,dofEnd=5, h=1e-10)
+
 if __name__ == '__main__':
     if len(sys.argv) == 1:
         test1()
         test2()
         test3()
+        test4()
         test5()
     else:
         # Run individual ones
@@ -299,5 +362,7 @@ if __name__ == '__main__':
             test2()
         if 'test3' in sys.argv:
             test3()
+        if 'test4' in sys.argv:
+            test4()
         if 'test5' in sys.argv:
             test5()
