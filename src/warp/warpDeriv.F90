@@ -15,12 +15,12 @@ subroutine warpDeriv(dXv_f, ndof_warp)
   real(kind=realType), intent(in) :: dXv_f(ndof_warp)
 #ifndef USE_COMPLEX
   ! Working Data
-  integer(kind=intType) :: i, j, kk, istart, iend, ierr, isize, nVol, nLoop
+  integer(kind=intType) :: j, kk, istart, iend, ierr, isize, nVol
   real(kind=realType), dimension(:), allocatable :: dxsSummed
   real(kind=realType), pointer, dimension(:, :) :: Bib
   real(kind=realType), pointer, dimension(:, :, :) :: Mib
-  real(kind=realType), dimension(3) :: r, rr, num, numb
-  real(kind=realType) :: fact(3, 2), oden
+  real(kind=realType), dimension(3) :: r, numb
+  real(kind=realType) :: oden
   ! Scatter Xs into our local vector  
   call VecScatterBegin(XsToXsLocal, Xs, XsLocal, INSERT_VALUES, SCATTER_FORWARD, ierr)
   call EChk(ierr,__FILE__,__LINE__)
@@ -67,18 +67,17 @@ subroutine warpDeriv(dXv_f, ndof_warp)
   ! Extract pointers for easier reading:
   Bib => mytrees(1)%tp%Bib
   Mib => mytrees(1)%tp%Mib
-  call getLoopFact(nLoop, fact)
+
   do kk=1, nLoop
      do j=1, nvol
-        r(1) = xv0ptr(3*j-2)*fact(1, kk)
-        r(2) = xv0ptr(3*j-1)*fact(2, kk)
-        r(3) = xv0ptr(3*j  )*fact(3, kk)
+        call getMirrorPt(Xv0Ptr(3*j-2:3*j), r, kk)
 
         ! Numerator derivative
         oden = one/denomenator(j)
-        numb(1) = xvptrb(3*j-2)*oden*fact(1, kk)
-        numb(2) = xvptrb(3*j-1)*oden*fact(2, kk)
-        numb(3) = xvptrb(3*j  )*oden*fact(3, kk)
+        
+        numb = xvptrb(3*j-2:3*j)*oden
+        call getMirrorNumerator_b(numb, kk)
+
         if (evalMode == EVAL_EXACT) then 
            call evalNodeExact_b(mytrees(1)%tp, mytrees(1)%tp%root, r, numb, Bib, Mib)
         else           

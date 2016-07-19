@@ -42,15 +42,20 @@ module cgnsGrid
   ! List of the zones
   type(zoneDataType), dimension(:), allocatable :: zones
 
-  ! Deduced information of the wall surfaces
-  real(kind=realType), dimension(:), allocatable :: wallPoints
-  integer(kind=intType), dimension(:), allocatable :: wallConn
-  integer(kind=intType), dimension(:, :), allocatable :: wallSizes
-  integer(kind=intType), dimension(:), allocatable :: wallPtr
-  integer(kind=intType), dimension(:), allocatable :: wallPatchPtr
-  character(maxCGNSNameLen), dimension(:), allocatable :: wallNames
+  ! Deduced information of the surfaces
+  real(kind=realType), dimension(:), allocatable :: surfacePoints
+  logical, dimension(:), allocatable :: surfaceIsWall
+  logical, dimension(:), allocatable :: surfaceIsSymm
+  integer(kind=intType), dimension(:), allocatable :: surfaceConn
+  integer(kind=intType), dimension(:, :), allocatable :: surfaceSizes
+  integer(kind=intType), dimension(:), allocatable :: surfacePtr
+  integer(kind=intType), dimension(:), allocatable :: surfacePatchPtr
+  character(maxCGNSNameLen), dimension(:), allocatable :: surfaceNames
 
   ! Flag if it is structured or not
   logical :: cgnsStructured
+
+  ! List of default names for surfaces if not provided
+  character(maxCGNSNameLen), dimension(25) :: defaultFamName
  
 end module cgnsGrid

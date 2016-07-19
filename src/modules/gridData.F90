@@ -60,12 +60,13 @@ module gridData
   integer(kind=intType) :: commonGridVecSet = 0
   integer(kind=intTYpe) :: initializationSet = 0
 
-  ! Storage for family info read from CGNS
-  character(maxCGNSNameLen), dimension(maxFamilies) :: familyList
-  integer(kind=intType) :: nwallFamilies
-
   real(kind=realType), dimension(:), allocatable :: d2wall
   real(kind=realType), dimension(:), allocatable :: denomenator, denomenator0
   real(kind=realType), dimension(:, :), allocatable :: numerator
-  integer(kind=intType), dimension(:), allocatable :: wallIndices
+  integer(kind=intType), dimension(:), allocatable :: surfaceIndices
+
+  ! Symmetry Information
+  integer(kind=intType) :: nLoop
+  real(kind=realType), dimension(:, :), allocatable :: symmPts, symmNormals
+
 end module gridData

@@ -12,12 +12,11 @@ subroutine writeCGNS(cgns_file)
     
   ! CGNS Variabls
   integer(kind=intType) :: cg, base
-  character*32 :: zoneName, bocoName, famName, connectName, donorName, baseName
-  integer(kind=intType) :: iZone, zone, sizes(3), coordID, ierr
+  integer(kind=intType) :: iZone, coordID, ierr
 
   real(kind=realType), dimension(:), allocatable :: coorX, coorY, coorZ
   real(kind=realType), pointer, dimension(:) :: xx
-  integer(kind=intType) :: i, j, jj, offset, nNodes
+  integer(kind=intType) :: j, jj, offset, nNodes
   
   ! This isn't technically scalable...we will dump the entire grid
   ! onto the root proc and write there. 

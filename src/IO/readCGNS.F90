@@ -12,9 +12,35 @@ subroutine readCGNS(cgns_file)
 
   ! Working
   integer(kind=intType) :: cg, ierr, i
-  integer(kind=intType):: CellDim, PhysDim, nZones, base, iZone, nbases
+  integer(kind=intType):: CellDim, PhysDim, nZones, base, nbases
   integer(kind=intType) :: nstructured, nunstructured, zoneType
   character*32 :: baseName
+
+  ! Set the default family names
+  defaultFamName(BCAxisymmetricWedge) = 'axi'
+  defaultFamName(BCDegenerateLine) = 'degenerate'
+  defaultFamName(BCDegeneratePoint) ='degenerate'
+  defaultFamName(BCDirichlet) = 'dirichlet'
+  defaultFamName(BCExtrapolate) = 'extrap'
+  defaultFamName(BCFarfield) = 'far'
+  defaultFamName(BCGeneral) = 'general'
+  defaultFamName(BCInflow) = 'inflow'
+  defaultFamName(BCInflowSubsonic) = 'inflow'
+  defaultFamName(BCInflowSupersonic) = 'inflow'
+  defaultFamName(BCNeumann) = 'neumann'
+  defaultFamName(BCOutflow) = 'outflow'
+  defaultFamName(BCOutflowSubsonic) = 'outflow'
+  defaultFamName(BCOutflowSupersonic)  ='outflow'
+  defaultFamName(BCSymmetryPlane) = 'sym'
+  defaultFamName(BCSymmetryPolar) = 'sympolar'
+  defaultFamName(BCTunnelInflow) = 'inflow'
+  defaultFamName(BCTunnelOutflow) = 'outflow'
+  defaultFamName(BCWall) = 'wall'
+  defaultFamName(BCWallInviscid) = 'wall'
+  defaultFamName(BCWallViscous) = 'wall'
+  defaultFamName(BCWallViscousHeatFlux) = 'wall'
+  defaultFamName(BCWallViscousIsothermal) = 'wall'
+  defaultFamName(FamilySpecified) = 'wall'
 
   ! Do the I/O that is common to both types of grids
 
@@ -75,8 +101,8 @@ subroutine readCGNS(cgns_file)
      call readUnstructuredCGNS(cg)
   else
      print *, "Error reading CGNS file. There are either no zones *OR* &
-          there are mixed structured and unstructured zones that &
-          cannot currently be handled."
+          &there are mixed structured and unstructured zones that &
+          &cannot currently be handled."
      stop
   end if
 end subroutine readCGNS

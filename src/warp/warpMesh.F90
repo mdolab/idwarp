@@ -12,10 +12,9 @@ subroutine warpMesh()
   implicit none
 
   ! Working parameters
-  real(kind=realType) :: den
+  real(kind=realType) :: den, oden
   real(kind=realType), dimension(3) :: r, num
-  integer(kind=intType) :: nVol, ierr, j, kk, ii, nLoop
-  real(kind=realType) :: fact(3, 2), oden
+  integer(kind=intType) :: nVol, ierr, j, kk
 
   ! Scatter Xs into our local vector  
   call VecScatterBegin(XsToXsLocal, Xs, XsLocal, INSERT_VALUES, SCATTER_FORWARD, ierr)
@@ -41,15 +40,12 @@ subroutine warpMesh()
   mytrees(1)%tp%alphaToBexp = alpha**bExp
   mytrees(1)%tp%errTol = errTol
   call setData(mytrees(1)%tp, mytrees(1)%tp%root)
-  call getLoopFact(nLoop, fact)
+
   denomenator = zero
   numerator = zero
   do kk=1, nLoop
      volLoop: do j=1, nVol
-        r(1) = Xv0Ptr(3*j-2)*fact(1, kk)
-        r(2) = Xv0Ptr(3*j-1)*fact(2, kk)
-        r(3) = Xv0Ptr(3*j)*fact(3, kk)
-
+        call getMirrorPt(Xv0Ptr(3*j-2:3*j), r, kk)
         num = zero
         den = zero 
         if (evalMode == EVAL_EXACT) then 
@@ -58,9 +54,10 @@ subroutine warpMesh()
            call evalNode(mytrees(1)%tp, mytrees(1)%tp%root, r, num, den, denomenator0(j))
         end if
 
-        numerator(1, j) = numerator(1, j) + num(1)*fact(1, kk)
-        numerator(2, j) = numerator(2, j) + num(2)*fact(2, kk)
-        numerator(3, j) = numerator(3, j) + num(3)*fact(3, kk)
+        call getMirrorNumerator(num, kk)
+        numerator(1, j) = numerator(1, j) + num(1)
+        numerator(2, j) = numerator(2, j) + num(2)
+        numerator(3, j) = numerator(3, j) + num(3)
         denomenator(j) = denomenator(j) + den
      end do volLoop
   end do

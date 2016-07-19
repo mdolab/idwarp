@@ -14,7 +14,7 @@ subroutine releaseMemory
      call VecDestroy(commonGridVec, ierr)
      call EChk(ierr,__FILE__,__LINE__)
 
-     deallocate(wallIndices)
+     deallocate(surfaceIndices)
      commonGridVecSet = 0
   end if
   
@@ -110,33 +110,49 @@ subroutine releaseMemory
      ! Delete zone array itself
      deallocate(zones)
 
-     ! Delete the wall-stuff in the cgns grid if necessary
-     if (allocated(wallPoints)) then 
-        deallocate(wallPoints)
+     ! Delete the surface-stuff in the cgns grid if necessary
+     if (allocated(surfacePoints)) then 
+        deallocate(surfacePoints)
      end if
 
-     if (allocated(wallConn)) then 
-        deallocate(wallConn)
+     if (allocated(surfaceConn)) then 
+        deallocate(surfaceConn)
      end if
 
-     if (allocated(wallSizes)) then 
-        deallocate(wallSizes)
+     if (allocated(surfaceSizes)) then 
+        deallocate(surfaceSizes)
      end if
 
-     if (allocated(wallPtr)) then 
-        deallocate(wallPtr)
+     if (allocated(surfacePtr)) then 
+        deallocate(surfacePtr)
      end if
 
-     if (allocated(wallPatchPtr)) then 
-        deallocate(wallPatchPtr)
+     if (allocated(surfacePatchPtr)) then 
+        deallocate(surfacePatchPtr)
      end if
 
-     if (allocated(wallNames)) then 
-        deallocate(wallNames)
+     if (allocated(surfaceNames)) then 
+        deallocate(surfaceNames)
+     end if
+
+     if (allocated(surfaceIsWall)) then 
+        deallocate(surfaceIsWall)
+     end if
+
+     if (allocated(surfaceIsSymm)) then 
+        deallocate(surfaceIsSymm)
      end if
 
   end if ! Using CGNS grid
 
+  if (allocated(symmPts)) then 
+     deallocate(symmPts)
+  end if
+  
+  if (allocated(symmNormals)) then 
+     deallocate(symmNormals)
+  end if
+  
   if (gridIndicesSet == 1) then
      call VecDestroy(solverGridVec, ierr)
      call EChk(ierr,__FILE__,__LINE__)

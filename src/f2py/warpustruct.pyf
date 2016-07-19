@@ -11,9 +11,9 @@ python module warpustruct ! in
          integer(kind=inttype) :: comm
        end subroutine initpetsc
 
-       subroutine createcommongrid(volnodes,wallnodes,nvollocal) ! in :test:createGrid.F90
+       subroutine createcommongrid(volnodes,surfacenodes,nvollocal) ! in :test:createGrid.F90
          real(kind=realtype) dimension(3,nvollocal),intent(in) :: volnodes
-         integer(kind=inttype) dimension(nvollocal),intent(in),depend(nvollocal) :: wallnodes
+         integer(kind=inttype) dimension(nvollocal),intent(in),depend(nvollocal) :: surfacenodes
          integer(kind=inttype), optional,intent(in),check(shape(volnodes,1)==nvollocal),depend(volnodes) :: nvollocal=shape(volnodes,1)
        end subroutine createcommongrid
 
@@ -22,6 +22,9 @@ python module warpustruct ! in
 
        subroutine processunstructuredpatches
        end subroutine processunstructuredpatches
+
+       subroutine deallocatepatchio
+       end subroutine deallocatepatchio
 
        subroutine readcgns(cgns_file)
          character*(*) :: cgns_file
@@ -36,21 +39,11 @@ python module warpustruct ! in
          real(kind=realtype) dimension(ndof),intent(out),depend(ndof) :: gridnodes
          integer(kind=inttype) intent(in) :: ndof
        end subroutine getvolumecoordinates
-       
-       subroutine setvolumecoordinates(gridnodes,ndof) ! in getVolumeCoordinates.F90
-         real(kind=realtype) dimension(ndof),intent(in) :: gridnodes
-         integer(kind=inttype), optional,intent(in),check(len(gridnodes)>=ndof),depend(gridnodes) :: ndof=len(gridnodes)
-       end subroutine setvolumecoordinates
 
        subroutine getcommonvolumecoordinates(gridnodes,ndof) ! in getCommonvolumeCoordinates.F90
          real(kind=realtype) dimension(ndof),intent(out),depend(ndof) :: gridnodes
          integer(kind=inttype) intent(in) :: ndof
        end subroutine getcommonvolumecoordinates
-       
-       subroutine setcommonvolumecoordinates(gridnodes,ndof) ! in getCommonvolumeCoordinates.F90
-         real(kind=realtype) dimension(ndof),intent(in) :: gridnodes
-         integer(kind=inttype), optional,intent(in),check(len(gridnodes)>=ndof),depend(gridnodes) :: ndof=len(gridnodes)
-       end subroutine setcommonvolumecoordinates
        
        subroutine initializewarping(pts,ndof,facesizeslocal,faceconnlocal,nfacesizeslocal,nfaceconnlocal,restartfile) ! in :test:initializeWarping.F90
          real(kind=realtype) dimension(ndof),intent(in) :: pts
@@ -62,19 +55,21 @@ python module warpustruct ! in
          character*(*) :: restartfile
        end subroutine initializewarping
 
+       subroutine setsymmetryplanes(pts,normals,n) ! in :test:initializeWarping.F90
+         real(kind=realtype) dimension(3,n),intent(in) :: pts
+         real(kind=realtype) dimension(3,n),intent(in),depend(n) :: normals
+         integer(kind=inttype), optional,intent(in),check(shape(pts,1)==n),depend(pts) :: n=shape(pts,1)
+       end subroutine setsymmetryplanes
+
        subroutine warpmesh()
        end subroutine warpmesh
 
-       subroutine setsurfacecoordinates(indices,idof,coordinates, cdof) ! in :test:setSurfaceCoordinatesLocal.f90
-         integer(kind=inttype) dimension(idof),intent(in) :: indices
-         integer(kind=inttype) optional,intent(in),check(len(indices)>=idof),depend(indices) :: idof=len(indices)
+       subroutine setsurfacecoordinates(coordinates, cdof) ! in :test:setSurfaceCoordinatesLocal.f90
          real(kind=realtype) dimension(cdof),intent(in) :: coordinates
          integer(kind=inttype) optional,intent(in),check(len(coordinates)>=cdof),depend(coordinates) :: cdof=len(coordinates)
        end subroutine setsurfacecoordinates
      
-       subroutine getsurfacecoordinates(indices,idof,coordinates,cdof) ! in :test:getSurfaceCoordinates.F90
-         integer(kind=inttype) dimension(idof),intent(in) :: indices
-         integer(kind=inttype) optional,intent(in),check(len(indices)>=idof),depend(indices) :: idof=len(indices)
+       subroutine getsurfacecoordinates(coordinates,cdof) ! in :test:getSurfaceCoordinates.F90
          real(kind=realtype) dimension(cdof),intent(inout) :: coordinates
          integer(kind=inttype) optional,intent(in),check(len(coordinates)>=cdof),depend(coordinates) :: cdof=len(coordinates)
        end subroutine getsurfacecoordinates
@@ -98,34 +93,18 @@ python module warpustruct ! in
          integer(kind=inttype) optional,check(len(dxv_f)>=ndof_warp),depend(dxv_f) :: ndof_warp=len(dxv_f)
        end subroutine warpderiv
 
-       subroutine warpderivfwd(indices,idof,xsdot,cdof,outvec,warpmeshdof) ! in :test:warpMeshd.F90
-         integer(kind=inttype) dimension(idof),intent(in) :: indices
-         integer(kind=inttype), optional,intent(in),check(len(indices)>=idof),depend(indices) :: idof=len(indices)
+       subroutine warpderivfwd(xsdot,cdof,outvec,warpmeshdof) ! in :test:warpMeshd.F90
          real(kind=realtype) dimension(cdof),intent(in) :: xsdot
          integer(kind=inttype), optional,intent(in),check(len(xsdot)>=cdof),depend(xsdot) :: cdof=len(xsdot)
          real(kind=realtype) dimension(warpmeshdof),intent(inout) :: outvec
          integer(kind=inttype), optional,intent(in),check(len(outvec)>=warpmeshdof),depend(outvec) :: warpmeshdof=len(outvec)
        end subroutine warpderivfwd
 
-       subroutine warpderivsurfonly(dxv_f,ndof)
-         real(kind=realtype) dimension(ndof) :: dxv_f
-         integer(kind=inttype) optional,check(len(dxv_f)>=ndof),depend(dxv_f) :: ndof=len(dxv_f)
-       end subroutine warpderivsurfonly
-
-       subroutine getdxs(indices,idof,output,ndof) ! in :test:getdXs.F90
-         integer(kind=inttype) dimension(idof),intent(in) :: indices
-         integer(kind=inttype) optional,intent(in),check(len(indices)>=idof),depend(indices) :: idof=len(indices)
+       subroutine getdxs(output,ndof) ! in :test:getdXs.F90
          real(kind=realtype) dimension(ndof),intent(inout) :: output
          integer(kind=inttype) optional,intent(in),check(len(output)>=ndof),depend(output) :: ndof=len(output)
        end subroutine getdxs
        
-       subroutine setdxs(indices,idof,in_vec,ndof) ! in :test:setdXs.F90
-         integer(kind=inttype) dimension(idof),intent(in) :: indices
-         integer(kind=inttype) optional,intent(in),check(len(indices)>=idof),depend(indices) :: idof=len(indices)
-         real(kind=realtype) dimension(ndof),intent(in) :: in_vec
-         integer(kind=inttype) optional,intent(in),check(len(in_vec)>=ndof),depend(in_vec) :: ndof=len(in_vec)
-       end subroutine setdxs
-
        subroutine verifywarpderiv(dxv_f,ndof_warp,dof_start,dof_end,h) ! in :test:warpDeriv.F90
          real(kind=realtype) dimension(ndof_warp) :: dxv_f
          integer(kind=inttype) optional,check(len(dxv_f)>=ndof_warp),depend(dxv_f) :: ndof_warp=len(dxv_f)
@@ -141,10 +120,20 @@ python module warpustruct ! in
        subroutine releasememory
        end subroutine releasememory
 
+        subroutine averagenormal(pts,conn,facesizes,npts,nconn,nfacesizes,avgnorm) ! in :test:patchIO.F90
+          real(kind=realtype) dimension(npts),intent(in) :: pts
+          integer(kind=inttype) dimension(nconn),intent(in) :: conn
+          integer(kind=inttype) dimension(nfacesizes),intent(in) :: facesizes
+          integer(kind=inttype), optional,intent(in),check(len(pts)>=npts),depend(pts) :: npts=len(pts)
+          integer(kind=inttype), optional,intent(in),check(len(conn)>=nconn),depend(conn) :: nconn=len(conn)
+          integer(kind=inttype), optional,intent(in),check(len(facesizes)>=nfacesizes),depend(facesizes) :: nfacesizes=len(facesizes)
+          real(kind=realtype) dimension(3),intent(out) :: avgnorm
+        end subroutine averagenormal
+
        module gridinput
+         use constants
          real(kind=realtype) :: aexp
          real(kind=realtype) :: bexp
-         integer(kind=inttype) :: isymm
          real(kind=realtype) :: alpha
          real(kind=realtype) :: ldeffact
          real(kind=realtype) :: symmtol
@@ -158,20 +147,21 @@ python module warpustruct ! in
        end module gridinput
 
        module griddata ! in :warpustruct:../modules/gridData.f90
-         character dimension(32,32),intent(c) :: familylist
-         integer(kind=inttype) :: nwallfamilies
+         use constants
          integer(kind=inttype) :: warpmeshdof
          integer(kind=inttype) :: solvermeshdof
          integer(Kind=inttype) :: commonmeshdof
        end module griddata
 
        module cgnsgrid
-         real(kind=realtype), dimension(:), allocatable :: wallpoints
-         integer(kind=inttype), dimension(:), allocatable :: wallconn
-         integer(kind=inttype), dimension(:,:), allocatable :: wallsizes
-         integer(kind=inttype), dimension(:), allocatable :: wallptr
-         integer(kind=inttype), dimension(:), allocatable :: wallpatchptr
-         character(32), dimension(:), allocatable :: wallnames
+         real(kind=realtype), dimension(:), allocatable :: surfacepoints
+         integer(kind=inttype), dimension(:), allocatable :: surfaceconn
+         logical, dimension(:), allocatable :: surfaceiswall
+         logical, dimension(:), allocatable :: surfaceissymm
+         integer(kind=inttype), dimension(:,:), allocatable :: surfacesizes
+         integer(kind=inttype), dimension(:), allocatable :: surfaceptr
+         integer(kind=inttype), dimension(:), allocatable :: surfacepatchptr
+         character(32), dimension(:), allocatable :: surfacenames
          logical :: cgnsstructured
        end module cgnsgrid
 

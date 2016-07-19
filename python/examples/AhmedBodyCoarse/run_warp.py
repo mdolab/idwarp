@@ -9,6 +9,8 @@ gcomm = MPI.COMM_WORLD
 
 meshOptions = {
     'gridFile':os.getcwd(),
+    'fileType':'openFoam',
+    'symmetryPlanes':[[[0,0,0], [0,1,0]]],
     'aExp':3,
     'bExp':5,
     'alpha':1.0,
@@ -16,16 +18,8 @@ meshOptions = {
 }
 
 mesh = USMesh(options=meshOptions, comm=gcomm)
-mesh.writeOFGridTecplot('test.dat')
 
-# First see what families are in the file:
-mesh.printFamilyList()
-
-# Add two family groups: 
-mesh.addFamilyGroup('body', ['wall']) 
-mesh.addFamilyGroup('ground', ['lowerwall'])
-
-coords0 = mesh.getSurfaceCoordinates('all')
+coords0 = mesh.getSurfaceCoordinates()
 
 # setup FFD
 FFDFile = './FFD/globalFFD.fmt'
@@ -213,11 +207,11 @@ xDV = DVGeo.getValues()
 # xDV['angleVars'][3] = 0.12
 
 DVGeo.setDesignVars(xDV)
-mesh.setSurfaceCoordinates(DVGeo.update(ptSetName),'all')
+mesh.setSurfaceCoordinates(DVGeo.update(ptSetName))
 mesh.warpMesh()
 DVGeo.writeTecplot('warpedFFD.dat')
-mesh.writeOFGridTecplot('warped.dat')
-mesh.writeOpenFOAMVolumePoints()
+#mesh.writeOFGridTecplot('warped.dat')
+mesh.writeGrid()
 
 # # Repeat ================
 # #xDV['length'][2] = 1.25#2.0#1.05
@@ -234,7 +228,7 @@ mesh.writeOpenFOAMVolumePoints()
 # #     print 'x',coords0[i,:],coords[i,:]
 # # # print DVGeo.update(ptSetName)
 # #sys.exit(0)
-# mesh.setSurfaceCoordinates(DVGeo.update(ptSetName),'all')
+# mesh.setSurfaceCoordinates(DVGeo.update(ptSetName))
 # DVGeo.writeTecplot('warpedFFD2.dat')
 
 # mesh.warpMesh()

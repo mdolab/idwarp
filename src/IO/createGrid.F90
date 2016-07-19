@@ -1,4 +1,4 @@
-subroutine createCommonGrid(volNodes, wallNodes, nVolLocal)
+subroutine createCommonGrid(volNodes, surfaceNodes, nVolLocal)
 
   ! This routine create a few arrys that are the size of the "common"
   ! grid...that is the ordering that is given in the original grid
@@ -13,11 +13,11 @@ subroutine createCommonGrid(volNodes, wallNodes, nVolLocal)
 
   ! Subroutine variables
   real(kind=realType), dimension(3, nVolLocal), intent(in) :: volNodes
-  integer(kind=intType), dimension(nVolLocal), intent(in) :: wallNodes
+  integer(kind=intType), dimension(nVolLocal), intent(in) :: surfaceNodes
   integer(kind=intType), intent(in) :: nVolLocal
 
   ! Working variables
-  integer(kind=intType) :: i, j, nVol, ierr, nWall
+  integer(kind=intType) :: i, j, nVol, ierr, nSurface
   integer(kind=intType), dimension(:), allocatable :: volNodesProc
 
   ! Gather the displacements
@@ -70,17 +70,17 @@ subroutine createCommonGrid(volNodes, wallNodes, nVolLocal)
   call VecAssemblyEnd(commonGridVec, ierr)
   call EChk(ierr,__FILE__,__LINE__)
 
-  ! Create the indices that selects just the wall nodes from the volume nodes
-  nWall = sum(wallNodes)
-  allocate(wallIndices(nWall*3))
+  ! Create the indices that selects just the surface nodes from the volume nodes
+  nSurface = sum(surfaceNodes)
+  allocate(surfaceIndices(nSurface*3))
   ! Offset indices by the volnodesProc
-  wallIndices = volNodesProc(myid)*3
+  surfaceIndices = volNodesProc(myid)*3
   j = 0
   do i=1, nVolLocal
-     if (wallNodes(i) == 1) then
-        wallIndices(3*j + 1) = wallIndices(3*j + 1) + 3*(i-1)
-        wallIndices(3*j + 2) = wallIndices(3*j + 2) + 3*(i-1)+1
-        wallIndices(3*j + 3) = wallIndices(3*j + 3) + 3*(i-1)+2
+     if (surfaceNodes(i) == 1) then
+        surfaceIndices(3*j + 1) = surfaceIndices(3*j + 1) + 3*(i-1)
+        surfaceIndices(3*j + 2) = surfaceIndices(3*j + 2) + 3*(i-1)+1
+        surfaceIndices(3*j + 3) = surfaceIndices(3*j + 3) + 3*(i-1)+2
         j = j + 1
      end if
   end do
