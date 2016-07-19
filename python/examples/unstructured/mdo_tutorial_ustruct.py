@@ -5,7 +5,7 @@ from mpi4py import MPI
 from pywarpustruct import USMesh
 
 options = {
-    'gridFile':'mdo_tutorial_face_bcs.cgns',
+    'gridFile':'../../input_files/mdo_tutorial_face_bcs.cgns',
     'fileType':'CGNS',
     'symmetryPlanes':[[[0,0,0], [0,0,1]]],
     'aExp': 3.0,
