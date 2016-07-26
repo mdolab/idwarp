@@ -155,10 +155,7 @@ class USMesh(object):
         # Initialize various bits of stored information
         self.OFData = {}
         self.warpInitialized = False
-        self.patchSizes = None
-        self.patchNames = None
         self.faceSizes = None
-        self.conn = None
         self.meshType = None
         fileName = self.solverOptions['gridFile']
         self.meshType = self.solverOptions['fileType']
@@ -207,33 +204,22 @@ class USMesh(object):
 
         self.warp.setsurfacecoordinates(np.ravel(coordinates))
 
-    def setExternalMeshIndices(self, ind, zeroBased=True):
+    def setExternalMeshIndices(self, ind):
         """
         Set the indicies defining the transformation of an external
         solver grid to the original CGNS grid. This is required to use
-        USMesh functions that involve the word "Solver" and warpDeriv
+        USMesh functions that involve the word "Solver" and warpDeriv. 
+        The indices must be zero-based. 
 
         Parameters
         ----------
         ind : numpy integer array
             The list of indicies this processor needs from the common mesh file
-        zeroBased : logical
-            Flag if the indices are zero-based or not. 
         """
-
-        # Indices need to be zero-based for PETSc.
-        if notZeroBased:
-            ind -= 1
 
         self.warp.setexternalmeshindices(ind)
 
-    def setExternalSurface(self, patchNames, patchSizes, conn, pts):
-        """Included for backwards compatibility with SUmb. This function
-        ist *NOT* typically called by the user, but by an external solver."""
-        self.setSurfaceDefinition(patchNames=patchNames, patchSizes=patchSizes,
-                                   conn=conn, pts=pts)
-
-    def setSurfaceDefinition(self, *args, **kwargs):
+    def setSurfaceDefinition(self, pts, conn, faceSizes=None):
         """This is the master function that determines the definition of the
         surface to be used for the mesh movement. This surface may be
         supplied from an external solver (such as SUmb) or it may be
@@ -241,37 +227,21 @@ class USMesh(object):
 
         Parameters
         ----------
-        patchName : list of strings, length nPatch
-            The names of each patch
-        patchSizes : array size (nPatch, 2)
-            The size of sizes of the patches
+        pts : array, size (M, 3)
+            Nodes on this processor
         conn : int array, size (N, 4)
             Connectivity of the nodes on this processor
-        pts : array, size (M, 3)
-        Nodes on this processor.
+        faceSizes : int Array size (N)
+            If given, treat the conn array as a flat list with the faceSizes giving
+            connectivity offset for each element. 
         """
 
-        keys = set(kwargs.keys())
-        if set(('patchNames', 'patchSizes', 'conn', 'pts')) <= keys:
+        conn = np.array(conn).flatten()
 
-            # This is the call patten for a structured mesh
-            self.patchNames = kwargs['patchNames']
-            self.patchSizes = kwargs['patchSizes']
-            self.conn = np.array(kwargs['conn']).flatten()
-            pts = kwargs['pts']
-
+        if faceSizes is None: 
             # Since this is structured, faceSizes are all 4
-            self.faceSizes = 4*np.ones(len(self.conn)/4, 'intc')
-
-        elif set(('patchNames', 'conn', 'pts', 'faceSizes')) <= keys:
-            # this is the unstructured format
-            self.patchNames = kwargs['patchNames']
-            self.conn = np.array(kwargs['conn']).flatten()
-            pts = kwargs['pts']
-            self.faceSizes = kwargs['faceSizes']
-        else:
-            raise Error('Unknown call pattern for setSurfaceDefinition.')
-
+            faceSizes = 4*np.ones(len(conn)/4, 'intc')
+        
         # Call the fortran initialze warping command with  the
         # coordinates and the patch connectivity given to us.
         if self.solverOptions['restartFile'] is None:
@@ -284,14 +254,12 @@ class USMesh(object):
         self._setSymmetryConditions()
         
         self.warp.initializewarping(np.ravel(pts.real.astype('d')),
-                                    self.faceSizes, self.conn, 
-                                    restartFile)
-        self.nSurf = len(pts)//3
+                                    faceSizes, conn, restartFile)
+        self.nSurf = len(pts)
         self.warpInitialized = True
 
         # Clean-up patch data no longer necessary.
         self.warp.deallocatepatchio()
-
 
     def getSolverGrid(self):
         """Return the current grid in the order specified by
@@ -580,7 +548,6 @@ class USMesh(object):
                     "'setExternalMeshIndices()' and 'setSurfaceDefinition()' "
                     "routines.")
 
-        patchSizes = []
         conn = []
         pts = []
         patchNames = []
@@ -636,14 +603,6 @@ class USMesh(object):
                         if fullPatchNames[i] in surfaceFamilies:
                             # Keep track of the families we've actually used
                             usedFams.add(fullPatchNames[i])
-
-                            # Extract out the required
-                            # information. This is slightly tricky
-                            # since we have to adjust the conn to
-                            # reflect the potentially shrinking pt list
-                            patchSizes.append(fullPatchSizes[i])
-                            patchNames.append(fullPatchNames[i])
-
                             pts.extend(fullPts[curNodeIndex:curNodeIndex+curNodeSize*3])
                             conn.extend(fullConn[curCellIndex:curCellIndex+curCellSize*4] - curOffset)
                         else:
@@ -656,10 +615,9 @@ class USMesh(object):
                 # end for (root proc)
 
                 # Run the common surface definition routine
-                self.setSurfaceDefinition(patchNames=patchNames,
-                                          patchSizes=patchSizes,
-                                          conn=np.array(conn, 'intc'), 
-                                          pts=np.array(pts))
+                self.setSurfaceDefinition(pts=np.array(pts), 
+                                          conn=np.array(conn, 'intc'))
+
             else: # unstructured
                 if self.comm.rank == 0:
 
@@ -685,7 +643,6 @@ class USMesh(object):
                         if fullPatchNames[i] in surfaceFamilies:
                             # Keep track of the families we've actually used
                             usedFams.add(fullPatchNames[i])
-                            patchNames.append(fullPatchNames[i])
                             faceSizes.extend(fullFaceSizes[iStart:iEnd])
                             conn.extend(fullConn[iStart2:iEnd2] - curOffset)
                             pts.extend(fullPts[iStart2*3:iEnd2*3])
@@ -694,11 +651,9 @@ class USMesh(object):
                             curOffset += (iEnd2 - iStart2)
 
                 # Run the common surface definition routine
-                self.setSurfaceDefinition(patchNames=patchNames,
-                                          faceSizes=faceSizes,
+                self.setSurfaceDefinition(pts=np.array(pts), 
                                           conn=np.array(conn, 'intc'), 
-                                          pts=np.array(pts))
-
+                                          faceSizes=faceSizes)
 
             # Check if all supplied family names were actually
             # used. The user probably wants to know if a family
@@ -717,7 +672,7 @@ class USMesh(object):
 
         elif self.meshType.lower() == "openfoam":
 
-            patchNames, faceSizes, conn, pts = self._computeOFConn()
+            faceSizes, conn, pts = self._computeOFConn()
 
             # Create the internal structures for volume mesh
             x0 = self.OFData['x0']
@@ -725,8 +680,7 @@ class USMesh(object):
             self.warp.createcommongrid(x0.T, surfaceNodes)
 
             # Run the "external" command
-            self.setSurfaceDefinition(patchNames=patchNames, conn=conn,
-                                    pts=pts, faceSizes=faceSizes)
+            self.setSurfaceDefinition(pts=pts, conn=conn, faceSizes=faceSizes)
 
     def _setSymmetryConditions(self):
         """This function determines the symmetry planes used for the
@@ -932,7 +886,6 @@ class USMesh(object):
         x0 = self.OFData['x0']
         faces = self.OFData['faces']
         connCount = 0
-        patchNames = []
 
         for bName in self.OFData['boundaries']:
             bType = self.OFData['boundaries'][bName]['type'].lower()
@@ -952,11 +905,10 @@ class USMesh(object):
                         faceConn.extend(range(connCount, connCount + nNodes))
                         connCount += nNodes
 
-                    patchNames.append(bName.lower())
 
         pts = np.array(pts)
         faceConn = np.array(faceConn)
-        return patchNames, faceSizes, faceConn, pts
+        return  faceSizes, faceConn, pts
 
     def _computeOFSurfConn(self,groupName='all'):
 
