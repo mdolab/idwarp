@@ -160,9 +160,7 @@ def test2():
         new_coords[i,0] += .05*span
 
     # Reset the newly computed surface coordiantes
-    print('setting surface')
     mesh.setSurfaceCoordinates(new_coords)
-    print('warping mesh')
     mesh.warpMesh()
     
     # Get the sum of the warped coordinates
@@ -239,9 +237,7 @@ def test3():
         new_coords[i,0] += .05*span
 
     # Reset the newly computed surface coordiantes
-    print('setting surface')
     mesh.setSurfaceCoordinates(new_coords)
-    print('warping mesh')
     mesh.warpMesh()
     
     # Get the sum of the warped coordinates
