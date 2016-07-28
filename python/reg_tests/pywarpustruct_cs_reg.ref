@@ -43,10 +43,10 @@
 Sum of vCoords Inital:
 @value    25205.45183210548 1e-08 1e-08
 Sum of vCoords Warped:
-@value    25328.64055708381 1e-08 1e-08
+@value    25445.60588734505 1e-08 1e-08
 Computing Warp Deriv
 Sum of dxs:
-@value    19849.31642481092 1e-08 1e-08
+@value    30391.52787281721 1e-08 1e-08
 +---------------------------------------+
 |     All pyWarpUstruct Options:        |
 +---------------------------------------+
@@ -93,8 +93,6 @@ Sum of dxs:
  Finished Mesh Initialization.
 Sum of vCoords Inital:
 @value    498810.0295599474 1e-08 1e-08
-setting surface
-warping mesh
 Sum of vCoords Warped:
 @value    511381.1906853847 1e-05 1e-05
 Computing Warp Deriv
@@ -146,8 +144,6 @@ Sum of dxs:
  Finished Mesh Initialization.
 Sum of vCoords Inital:
 @value     613569.889186703 1e-08 1e-08
-setting surface
-warping mesh
 Sum of vCoords Warped:
 @value    626750.5464078001 1e-08 1e-08
 Computing Warp Deriv

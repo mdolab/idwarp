@@ -43,10 +43,10 @@
 Sum of vCoords Inital:
 @value    26501.10515260559 1e-08 1e-08
 Sum of vCoords Warped:
-@value    26623.70025366551 1e-08 1e-08
+@value    26754.73582721304 1e-08 1e-08
 Computing Warp Deriv
 Sum of dxs:
-@value    19708.05059361646 1e-08 1e-08
+@value    31971.38284173267 1e-08 1e-08
 +---------------------------------------+
 |     All pyWarpUstruct Options:        |
 +---------------------------------------+
@@ -91,16 +91,8 @@ Sum of dxs:
  Computing Denomenator Estimate...
  Load Balancing...
  Finished Mesh Initialization.
-setting surface
-setting surface
-setting surface
 Sum of vCoords Inital:
 @value     498810.029559943 1e-08 1e-08
-setting surface
-warping mesh
-warping mesh
-warping mesh
-warping mesh
 Sum of vCoords Warped:
 @value    511381.1906853894 1e-05 1e-05
 Computing Warp Deriv
@@ -150,16 +142,8 @@ Sum of dxs:
  Computing Denomenator Estimate...
  Load Balancing...
  Finished Mesh Initialization.
-setting surface
-setting surface
-setting surface
 Sum of vCoords Inital:
 @value    613569.8891866991 1e-08 1e-08
-setting surface
-warping mesh
-warping mesh
-warping mesh
-warping mesh
 Sum of vCoords Warped:
 @value    626750.5464077911 1e-08 1e-08
 Computing Warp Deriv

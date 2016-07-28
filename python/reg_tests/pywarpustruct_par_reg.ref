@@ -43,26 +43,26 @@
 Sum of vCoords Inital:
 @value    26501.10515260559 1e-08 1e-08
 Sum of vCoords Warped:
-@value    26623.70025366551 1e-08 1e-08
+@value    26754.73582721304 1e-08 1e-08
 Computing Warp Deriv
 Sum of dxs:
-@value    19708.05059361646 1e-08 1e-08
+@value    31971.38284173267 1e-08 1e-08
 Verifying Warp Deriv
  Welcome to verifyWarpDeriv
  Checking           10  degrees of freedom
  Doing centered differnce with h:   1.0000000000000001E-009
  Running AD Version
-DOF:    0 OrigVal:   1.00703580000     AD: 0.822664130221     FD: 0.822666963330     Err(%): 0.3443816489E-03
-DOF:    1 OrigVal:  0.171828000000     AD:  3.24238092328     FD:  3.24238497441     Err(%): 0.1249430336E-03
-DOF:    2 OrigVal:  0.245136000000     AD:-0.293892809061     FD:-0.293894053949     Err(%): 0.4235850546E-03
-DOF:    3 OrigVal:   1.00632220000     AD:  4.36788060443     FD:  4.36787817793     Err(%):-0.5555327559E-04
-DOF:    4 OrigVal:  0.194500000000     AD:  4.35167275617     FD:  4.53217536137     Err(%):  4.063613038    
-DOF:    5 OrigVal:  0.245664000000     AD:  4.28430775789     FD:  4.28430682923     Err(%):-0.2167576171E-04
-DOF:    6 OrigVal:   1.01780670000     AD:  2.77302398259     FD:  2.77302518591     Err(%): 0.4339381346E-04
-DOF:    7 OrigVal:  0.194500000000     AD:  4.38464175883     FD:  4.38463988022     Err(%):-0.4284523732E-04
-DOF:    8 OrigVal:  0.237334000000     AD:  2.07339047877     FD:  2.07338723171     Err(%):-0.1566062248E-03
-DOF:    9 OrigVal:   1.03277400000     AD:  3.95814804279     FD:  3.95815140597     Err(%): 0.8496849212E-04
-DOF:   10 OrigVal:  0.194500000000     AD:  4.68371583291     FD:  4.68371267006     Err(%):-0.6752868685E-04
+DOF:    0 OrigVal:   1.00703580000     AD: 0.822664130221     FD: 0.822664858100     Err(%): 0.8847819277E-04
+DOF:    1 OrigVal:  0.171828000000     AD:  3.24238092328     FD:  3.24237952720     Err(%):-0.4305729570E-04
+DOF:    2 OrigVal:  0.245136000000     AD:-0.293892809061     FD:-0.293891654091     Err(%):-0.3929910595E-03
+DOF:    3 OrigVal:   1.00632220000     AD:  4.36788060443     FD:  4.36787914267     Err(%):-0.3346628787E-04
+DOF:    4 OrigVal:  0.194500000000     AD:  4.35167275617     FD:  4.53217292336     Err(%):  4.063559267    
+DOF:    5 OrigVal:  0.245664000000     AD:  4.28430775789     FD:  4.28430802816     Err(%): 0.6308454937E-05
+DOF:    6 OrigVal:   1.01780670000     AD:  2.77302398259     FD:  2.77302982644     Err(%): 0.2107389255E-03
+DOF:    7 OrigVal:  0.194500000000     AD:  4.38464175883     FD:  4.38464150587     Err(%):-0.5769266715E-05
+DOF:    8 OrigVal:  0.237334000000     AD:  2.07339047877     FD:  2.07339382739     Err(%): 0.1615044080E-03
+DOF:    9 OrigVal:   1.03277400000     AD:  3.95814804279     FD:  3.95814986076     Err(%): 0.4592985148E-04
+DOF:   10 OrigVal:  0.194500000000     AD:  4.68371583291     FD:  4.68371348943     Err(%):-0.5003466075E-04
 +---------------------------------------+
 |     All pyWarpUstruct Options:        |
 +---------------------------------------+
@@ -107,16 +107,8 @@ DOF:   10 OrigVal:  0.194500000000     AD:  4.68371583291     FD:  4.68371267006
  Computing Denomenator Estimate...
  Load Balancing...
  Finished Mesh Initialization.
-setting surface
-setting surface
-setting surface
 Sum of vCoords Inital:
 @value     498810.029559943 1e-08 1e-08
-setting surface
-warping mesh
-warping mesh
-warping mesh
-warping mesh
 Sum of vCoords Warped:
 @value    511381.1906853894 1e-08 1e-08
 Computing Warp Deriv
@@ -176,17 +168,9 @@ DOF:    5 OrigVal:  0.208297391190E-01 AD:  2.99064873040     FD:  2.99064875413
 #--------------------------------#
  Computing Denomenator Estimate...
  Load Balancing...
-setting surface
  Finished Mesh Initialization.
 Sum of vCoords Inital:
 @value    613569.8891866991 1e-08 1e-08
-setting surface
-setting surface
-setting surface
-warping mesh
-warping mesh
-warping mesh
-warping mesh
 Sum of vCoords Warped:
 @value    626750.5464077911 1e-08 1e-08
 Computing Warp Deriv
@@ -247,16 +231,8 @@ DOF:    5 OrigVal:   0.00000000000     AD: -16.6022162054     FD: -16.6022162242
  Computing Denomenator Estimate...
  Load Balancing...
  Finished Mesh Initialization.
-setting surface
-setting surface
-setting surface
 Sum of vCoords Inital:
 @value    3198303.754755338 1e-08 1e-08
-setting surface
-warping mesh
-warping mesh
-warping mesh
-warping mesh
 Sum of vCoords Warped:
 @value    3259743.272174177 1e-08 1e-08
 Computing Warp Deriv
@@ -319,16 +295,8 @@ DOF:    5 OrigVal:  0.935098870910E-01 AD:  44.8469463667     FD:  44.8469449384
  Computing Denomenator Estimate...
  Load Balancing...
  Finished Mesh Initialization.
-setting surface
-setting surface
-setting surface
 Sum of vCoords Inital:
 @value    1772626.679902126 1e-08 1e-08
-setting surface
-warping mesh
-warping mesh
-warping mesh
-warping mesh
 Sum of vCoords Warped:
 @value    1785798.539355779 1e-08 1e-08
 Computing Warp Deriv
