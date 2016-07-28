@@ -615,8 +615,8 @@ class USMesh(object):
                 # end for (root proc)
 
                 # Run the common surface definition routine
-                self.setSurfaceDefinition(pts=np.array(pts), 
-                                          conn=np.array(conn, 'intc'))
+                pts = np.array(pts).reshape((len(pts)//3,3))
+                self.setSurfaceDefinition(pts=pts, conn=np.array(conn, 'intc'))
 
             else: # unstructured
                 if self.comm.rank == 0:
@@ -650,8 +650,9 @@ class USMesh(object):
                             # If we skipped, we increment the offset
                             curOffset += (iEnd2 - iStart2)
 
+                pts = np.array(pts).reshape((len(pts)//3,3))
                 # Run the common surface definition routine
-                self.setSurfaceDefinition(pts=np.array(pts), 
+                self.setSurfaceDefinition(pts=pts,
                                           conn=np.array(conn, 'intc'), 
                                           faceSizes=faceSizes)
 
