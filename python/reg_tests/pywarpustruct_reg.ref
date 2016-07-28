@@ -43,26 +43,26 @@
 Sum of vCoords Inital:
 @value    25205.45183210548 1e-08 1e-08
 Sum of vCoords Warped:
-@value    25328.64055708381 1e-08 1e-08
+@value    25445.60588734505 1e-08 1e-08
 Computing Warp Deriv
 Sum of dxs:
-@value    19849.31642481092 1e-08 1e-08
+@value    30391.52787281721 1e-08 1e-08
 Verifying Warp Deriv
  Welcome to verifyWarpDeriv
  Checking           10  degrees of freedom
  Doing centered differnce with h:   1.0000000000000001E-009
  Running AD Version
-DOF:    0 OrigVal:  -2.00000000000     AD:  1.27372669084     FD:  1.27372403967     Err(%):-0.2081424196E-03
-DOF:    1 OrigVal:   0.00000000000     AD: 0.976404207691E-02 FD: 0.976453249586E-02 Err(%): 0.5022577988E-02
-DOF:    2 OrigVal:   0.00000000000     AD: 0.136994980653     FD: 0.136990879237     Err(%):-0.2993889503E-02
-DOF:    3 OrigVal:  -1.99166665000     AD:  1.50512553429     FD:  1.50512312800     Err(%):-0.1598731090E-03
-DOF:    4 OrigVal:   0.00000000000     AD: 0.980359244347E-02 FD: 0.980407983471E-02 Err(%): 0.4971433908E-02
-DOF:    5 OrigVal:  0.166667000000     AD: 0.148679828764     FD: 0.148681963188     Err(%): 0.1435573649E-02
-DOF:    6 OrigVal:  -1.99166665000     AD:  2.16219603676     FD:  2.16219480970     Err(%):-0.5675021983E-04
-DOF:    7 OrigVal:  0.166668000000     AD: 0.371645542190E-01 FD: 0.371650318638E-01 Err(%): 0.1285207819E-02
-DOF:    8 OrigVal:  0.166667000000     AD: 0.134351569685     FD: 0.134351774700     Err(%): 0.1525961666E-03
-DOF:    9 OrigVal:  -2.00000000000     AD:  1.93216395188     FD:  1.93216271503     Err(%):-0.6401365211E-04
-DOF:   10 OrigVal:  0.166807000000     AD: 0.167165714544E-01 FD: 0.167170425664E-01 Err(%): 0.2818193815E-02
+DOF:    0 OrigVal:  -2.00000000000     AD:  1.27372669084     FD:  1.27372547204     Err(%):-0.9568713113E-04
+DOF:    1 OrigVal:   0.00000000000     AD: 0.976404207691E-02 FD: 0.976302795354E-02 Err(%):-0.1038684629E-01
+DOF:    2 OrigVal:   0.00000000000     AD: 0.136994980653     FD: 0.136990577359     Err(%):-0.3214253054E-02
+DOF:    3 OrigVal:  -1.99166665000     AD:  1.50512553429     FD:  1.50513184848     Err(%): 0.4195116167E-03
+DOF:    4 OrigVal:   0.00000000000     AD: 0.980359244347E-02 FD: 0.980258070139E-02 Err(%):-0.1032064820E-01
+DOF:    5 OrigVal:  0.166667000000     AD: 0.148679828764     FD: 0.148679857019     Err(%): 0.1900430872E-04
+DOF:    6 OrigVal:  -1.99166665000     AD:  2.16219603676     FD:  2.16219672814     Err(%): 0.3197595254E-04
+DOF:    7 OrigVal:  0.166668000000     AD: 0.371645542190E-01 FD: 0.371635543331E-01 Err(%):-0.2690465129E-02
+DOF:    8 OrigVal:  0.166667000000     AD: 0.134351569685     FD: 0.134353231526     Err(%): 0.1236927413E-02
+DOF:    9 OrigVal:  -2.00000000000     AD:  1.93216395188     FD:  1.93216454654     Err(%): 0.3077686005E-04
+DOF:   10 OrigVal:  0.166807000000     AD: 0.167165714544E-01 FD: 0.167155513348E-01 Err(%):-0.6102631472E-02
 +---------------------------------------+
 |     All pyWarpUstruct Options:        |
 +---------------------------------------+
@@ -109,8 +109,6 @@ DOF:   10 OrigVal:  0.166807000000     AD: 0.167165714544E-01 FD: 0.167170425664
  Finished Mesh Initialization.
 Sum of vCoords Inital:
 @value    498810.0295599474 1e-08 1e-08
-setting surface
-warping mesh
 Sum of vCoords Warped:
 @value    511381.1906853847 1e-08 1e-08
 Computing Warp Deriv
@@ -173,8 +171,6 @@ DOF:    5 OrigVal:  0.208297391190E-01 AD:  2.75885534123     FD:  2.75885535021
  Finished Mesh Initialization.
 Sum of vCoords Inital:
 @value     613569.889186703 1e-08 1e-08
-setting surface
-warping mesh
 Sum of vCoords Warped:
 @value    626750.5464078001 1e-08 1e-08
 Computing Warp Deriv
@@ -237,8 +233,6 @@ DOF:    5 OrigVal:   0.00000000000     AD: -5.21036308417     FD: -5.21036310273
  Finished Mesh Initialization.
 Sum of vCoords Inital:
 @value    3198303.754755381 1e-08 1e-08
-setting surface
-warping mesh
 Sum of vCoords Warped:
 @value    3259743.272174134 1e-08 1e-08
 Computing Warp Deriv
@@ -303,8 +297,6 @@ DOF:    5 OrigVal:  0.935098870910E-01 AD:  36.3302070464     FD:  36.3302056141
  Finished Mesh Initialization.
 Sum of vCoords Inital:
 @value    1772626.679902171 1e-08 1e-08
-setting surface
-warping mesh
 Sum of vCoords Warped:
 @value    1785798.539355807 1e-08 1e-08
 Computing Warp Deriv
