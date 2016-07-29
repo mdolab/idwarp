@@ -41,6 +41,7 @@ subroutine getRotationMatrix3d(v1, v2, Mi)
   real(kind=realType), dimension(3) :: axis, vv1, vv2
   real(kind=realType):: magV1, magV2, axisMag, angle, arg
   real(kind=realType), dimension(3, 3):: A, C
+  real(kind=realType), parameter :: tol= 1.4901161193847656e-08
 
   call getMag(v1, magV1)
   call getMag(v2, magV2)
@@ -51,8 +52,10 @@ subroutine getRotationMatrix3d(v1, v2, Mi)
   call cross_product_3d(v1,v2,axis)
   ! Now Normalize
   call getMag(axis,axisMag)
-
-  if (axisMag <1.0e-8) then
+  
+  ! When axisMag is less that sqrt(eps), the acos 'arg' value will be
+  ! exactly one which will give a nan in complex mode. 
+  if (axisMag < tol) then 
      ! no rotation at this point, angle is 0
      angle = zero
      ! the axis doesn't matter so set to x
