@@ -44,10 +44,10 @@ all:
 
 	f2py warpustruct.pyf.autogen
 	@echo " "
-	$(CC) $(CC_FLAGS) $(PYTHON_INCLUDES) -I$(NUMPY_INCLUDES) \
+	$(CC) $(CC_ALL_FLAGS) $(PYTHON_INCLUDES) -I$(NUMPY_INCLUDES) \
 	-I$(F2PY_ROOT)/src -c warpustructmodule.c
 
-	$(CC) $(CC_FLAGS) $(PYTHON_INCLUDES) -I$(NUMPY_INCLUDES) -c \
+	$(CC) $(CC_ALL_FLAGS) $(PYTHON_INCLUDES) -I$(NUMPY_INCLUDES) -c \
 	$(F2PY_ROOT)/src/fortranobject.c -o fortranobject.o
 
         # Compiled f2py generated wrapper file
