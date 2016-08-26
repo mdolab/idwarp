@@ -613,7 +613,9 @@ class USMesh(object):
 
                 # Run the common surface definition routine
                 pts = np.array(pts).reshape((len(pts)//3,3))
-                self.setSurfaceDefinition(pts=pts, conn=np.array(conn, 'intc'))
+                faceSizes = 4*np.ones(len(conn)/4, 'intc')
+                self.setSurfaceDefinition(pts=pts, conn=np.array(conn, 'intc'),
+                                          faceSizes=faceSizes)
 
             else: # unstructured
                 if self.comm.rank == 0:
