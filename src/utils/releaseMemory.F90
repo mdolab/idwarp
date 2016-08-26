@@ -14,7 +14,6 @@ subroutine releaseMemory
      call VecDestroy(commonGridVec, ierr)
      call EChk(ierr,__FILE__,__LINE__)
 
-     deallocate(surfaceIndices)
      commonGridVecSet = 0
   end if
   

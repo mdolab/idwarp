@@ -63,7 +63,6 @@ module gridData
   real(kind=realType), dimension(:), allocatable :: d2wall
   real(kind=realType), dimension(:), allocatable :: denomenator, denomenator0
   real(kind=realType), dimension(:, :), allocatable :: numerator
-  integer(kind=intType), dimension(:), allocatable :: surfaceIndices
 
   ! Symmetry Information
   integer(kind=intType) :: nLoop

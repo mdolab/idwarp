@@ -219,7 +219,7 @@ class USMesh(object):
 
         self.warp.setexternalmeshindices(ind)
 
-    def setSurfaceDefinition(self, pts, conn, faceSizes=None):
+    def setSurfaceDefinition(self, pts, conn, faceSizes):
         """This is the master function that determines the definition of the
         surface to be used for the mesh movement. This surface may be
         supplied from an external solver (such as SUmb) or it may be
@@ -229,18 +229,14 @@ class USMesh(object):
         ----------
         pts : array, size (M, 3)
             Nodes on this processor
-        conn : int array, size (N, 4)
+        conn : int array, size  (N,faceSizes(N)) 
             Connectivity of the nodes on this processor
         faceSizes : int Array size (N)
-            If given, treat the conn array as a flat list with the faceSizes giving
+            Treat the conn array as a flat list with the faceSizes giving
             connectivity offset for each element. 
         """
 
         conn = np.array(conn).flatten()
-
-        if faceSizes is None: 
-            # Since this is structured, faceSizes are all 4
-            faceSizes = 4*np.ones(len(conn)/4, 'intc')
         
         # Call the fortran initialze warping command with  the
         # coordinates and the patch connectivity given to us.
@@ -536,6 +532,7 @@ class USMesh(object):
         set BEFORE an operation is requested that requires this
         information.
         """
+
         if self.warpInitialized:
             return 
 
@@ -675,17 +672,23 @@ class USMesh(object):
 
             faceSizes, conn, pts = self._computeOFConn()
 
-            # Create the internal structures for volume mesh
-            x0 = self.OFData['x0']
-            surfaceNodes = np.zeros(len(x0), 'intc')
-            self.warp.createcommongrid(x0.T, surfaceNodes)
-
             # Run the "external" command
             self.setSurfaceDefinition(pts=pts, conn=conn, faceSizes=faceSizes)
 
     def _setSymmetryConditions(self):
         """This function determines the symmetry planes used for the
         computation. It has a similar structure to setInternalSurface.
+
+        Symmetry planes are specified throught 'symmetryPlanes' option, which
+        has the form
+        
+        'symmetryPlanes':[[[x1,y1, z1],[dir_x1, dir_y1, dir_z1]],[[x2,y2, z2],[dir_x2, dir_y2, dir_z2]],...]
+
+        Examples
+        --------
+        meshOptions = {'symmetryPlanes':[[[0.,0., 0.],[0., 1., 0.]]]}
+        mesh = USMesh(options=meshOptions,comm=gcomm)
+
         """
 
         symmList = self.solverOptions['symmetryPlanes']
@@ -775,7 +778,8 @@ class USMesh(object):
                     raise Error("Automatic determine of symmetry surfaces is "
                                 "not supported for unstructured CGNS. Please "
                                 "specify the symmetry planes using the "
-                                "'symmetryPlanes'option.")
+                                "'symmetryPlanes' option. See the _setSymmetryConditions()"
+                               " documentation string for the option prototype.")
                     
                 # Check if all supplied family names were actually
                 # used. The user probably wants to know if a family
@@ -795,7 +799,8 @@ class USMesh(object):
                 raise Error("Automatic determine of symmetry surfaces is "
                             "not supported for OpenFoam meshes. Please "
                             "specify the symmetry planes using the "
-                            "'symmetryPlanes'option.")
+                            "'symmetryPlanes' option. See the _setSymmetryConditions()"
+                            " documentation string for the option prototype.")
 
             # Now we have a list of planes. We have to reduce them to the
             # set of independent planes. This is tricky since you can have
@@ -911,298 +916,6 @@ class USMesh(object):
         faceConn = np.array(faceConn)
         return  faceSizes, faceConn, pts
 
-    def _computeOFSurfConn(self,groupName='all'):
-
-        '''
-        Find the points and connectivity associated with the given groupName.
-        '''
-
-        groupFamList = self.familyGroup[groupName]['families']
-
-        # Finally create the underlying data structure:
-        faceSizes = []
-        faceConn = []
-        pts = []
-        x0 = self.OFData['x0']
-        faces = self.OFData['faces']
-        connCount = 0
-        patchNames = []
-        symNodes = []
-        for bName in self.OFData['boundaries']:
-            if bName.lower() in groupFamList:
-                # This boundary is one that we want
-                nFace = len(self.OFData['boundaries'][bName]['faces'])
-                if nFace > 0:
-                    for iFace in self.OFData['boundaries'][bName]['faces']:
-                        face = faces[iFace]
-                        nNodes = len(face)
-                        # Pull out the 'len(face)' nodes from x0.
-                        for j in range(nNodes):
-                            pts.append(x0[face[j]])
-                        faceSizes.append(nNodes)
-                        faceConn.extend(range(connCount, connCount + nNodes))
-                        connCount += nNodes
-
-                    patchNames.append(bName.lower())
-
-    
-        pts = np.array(pts)
-        faceConn = np.array(faceConn)
-        uPts, uFaceConn,links,invLinks = self._pointReduce(pts,faceConn)
-                    
-        return patchNames, faceSizes, uFaceConn, uPts,links,invLinks
-
-    def _pointReduce(self,pts,conn):
-        '''
-        take in a set of points and their existing connectivity and return
-        a reduced set of points with connectivity for the reduced point set
-        '''
-
-        pts = np.array(pts)
-        conn = np.array(conn)
-        # now reduce the points to a unique set and figure out the new connectivity
-        try:
-            from scipy.spatial import cKDTree
-        except:
-            raise Error("scipy.spatial "
-                        "must be available to use pointReduce")
-
-        # Now make a KD-tree so we can use it to find the unique nodes
-        tree = cKDTree(pts)
-        links=np.zeros([pts.shape[0]],dtype='int')
-        invLinks = []
-        tol = 0.000001
-        # Loop over all nodes
-        counter = 0
-        for i in xrange(pts.shape[0]):
-            if (links[i] == 0):
-                # we haven't connected this point to anything yet
-                #find the nodes within tol. These are duplicate nodes
-                Ind =tree.query_ball_point(pts[i], tol)
-
-                # create the inverse link list going from the reduced set to the original
-                invLinks.append(Ind)
-
-                #points at Ind are connected to this point
-                links[Ind]=counter
-                counter+=1
-        
-        # save the number of unique nodes
-        nUnique = len(invLinks)
-
-        #now create the unique points and map the connectivity to reduced set
-        uPts = np.zeros([nUnique,3],dtype=self.dtype)
-        for i in xrange(nUnique):
-            uPts[i,:] = pts[invLinks[i][0]]
-
-        # the same number of elements still exist, so the connectivity should still be
-        # the same shape, but we need the indices from link instead
-        uConn = np.zeros_like(conn)
-        for i in xrange(len(conn)):
-            uConn[i] = links[conn[i]]
-        return uPts,uConn,links,invLinks
-            
-    def _getOFFileNames(self, caseDir):
-        """
-        Generate the standard set of filename for an openFoam grid.
-
-        Parameters
-        ----------
-        caseDir : str
-            The folder where the files are stored.
-        """
-        if self.comm.size > 1:
-            self.OFData['refPointsFile'] = os.path.join(caseDir, 'processor%d/constant/polyMesh/points_orig'%self.comm.rank)
-            self.OFData['pointsFile'] = os.path.join(caseDir, 'processor%d/constant/polyMesh/points'%self.comm.rank)
-            self.OFData['boundaryFile'] = os.path.join(caseDir, 'processor%d/constant/polyMesh/boundary'%self.comm.rank)
-            self.OFData['faceFile'] = os.path.join(caseDir, 'processor%d/constant/polyMesh/faces'%self.comm.rank)
-            self.OFData['ownerFile'] = os.path.join(caseDir, 'processor%d/constant/polyMesh/owner'%self.comm.rank)
-            self.OFData['neighbourFile'] = os.path.join(caseDir, 'processor%d/constant/polyMesh/neighbour'%self.comm.rank)
-        else:
-            self.OFData['refPointsFile'] = os.path.join(caseDir, 'constant/polyMesh/points_orig')
-            self.OFData['pointsFile'] = os.path.join(caseDir, 'constant/polyMesh/points')
-            self.OFData['boundaryFile'] = os.path.join(caseDir, 'constant/polyMesh/boundary')
-            self.OFData['faceFile'] = os.path.join(caseDir, 'constant/polyMesh/faces')
-            self.OFData['ownerFile'] = os.path.join(caseDir, 'constant/polyMesh/owner')
-            self.OFData['neighbourFile'] = os.path.join(caseDir, 'constant/polyMesh/neighbour')
-
-    def _parseFoamHeader(self, lines, i):
-        """Generic function to read the openfoam file header up to the point
-        where it determines the number of subsequent 'stuff' to read
-
-        Parameters
-        ----------
-        lines : list of strings
-            Lines of file obtained from f.readlines()
-        i : int
-            The starting index to look
-
-        Returns
-        -------
-        foamDict : dictionary
-             Dictionary of the data contained in the header
-        i : int
-             The next line to start at
-        N : int
-             The number of entries to read
-        """
-        keyword = re.compile(r'\s*[a-zA-Z]{1,100}\s*\n')
-
-        blockOpen = False
-        foamDict = {}
-        imax = len(lines)
-        while i < imax:
-            res = keyword.match(lines[i])
-            if res:
-                i, foamDict = self._readBlock(lines, i)
-                break
-            else:
-                i += 1
-        if i == imax:
-            raise Error("Error parsing openFoam file header.")
-
-        # Now we need to match the number followed by an open bracket:
-        numberHeader = re.compile(r'\s*(\d{1,100})\s*\n')
-        while i < imax:
-            res = numberHeader.match(lines[i])
-            if res:
-                N = int(lines[i][res.start(0):res.end(0)])
-                # We return +2 lines to skip the next '('
-                return foamDict, i+2, N
-            i += 1
-        raise Error("Could not find the starting data in openFoam file")
-
-    def _parseFoamHeader2(self, f):
-        """Generic function to read the openfoam file header up to the point
-        where it determines the number of subsequent 'stuff' to read
-        
-        Parameters
-        ----------
-        f : file handle
-            file to be parsed
-        
-        Returns
-        -------
-        foamDict : dictionary
-             Dictionary of the data contained in the header
-        i : int 
-             The next line to start at
-        N : int
-             The number of entries to read
-        """
-        keyword = re.compile(r'\s*[a-zA-Z]{1,100}\s*\n')
-
-        blockOpen = False
-        foamDict = {}
-
-        for line in f:
-            res = keyword.match(line)
-            if res:
-                foamData = self._readBlock2(f)
-                break
-
-        # Now we need to match the number followed by an open bracket:
-        numberHeader = re.compile(r'\s*(\d{1,100})\s*\n')
-
-        for line in f:
-            res = numberHeader.match(line)
-            if res:
-                N = int(line[res.start(0):res.end(0)])
-                # We return +2 lines to skip the next '('
-                return foamDict,  N
-
-        raise Error("Could not find the starting data in openFoam file")
-
-    def _readBlock2(self, f):
-        """
-        Generic code to read an openFoam type block structure
-        """
-
-        openBracket = re.compile(r'\s*\{\s*\n')
-        closeBracket = re.compile(r'\s*\}\s*\n')
-        data = re.compile(r'\s*([a-zA-Z]*)\s*(.*);\s*\n')
-
-        blockOpen = False
-        blk = {}
-        for line in f:
-            if not blockOpen:
-                res = openBracket.match(line)
-                if res:
-                    blockOpen = True
-              
-            else:
-                res = data.match(line)
-                if res:
-                    blk[res.group(1)] = res.group(2)
-                if closeBracket.match(line):
-                    break
-
-        return blk
-
-    def _readBlock(self, lines, i):
-        """
-        Generic code to read an openFoam type block structure
-        """
-        openBracket = re.compile(r'\s*\{\s*\n')
-        closeBracket = re.compile(r'\s*\}\s*\n')
-        data = re.compile(r'\s*([a-zA-Z]*)\s*(.*);\s*\n')
-
-        blockOpen = False
-        imax = len(lines)
-        blk = {}
-        while i < imax:
-            if not blockOpen:
-                res = openBracket.match(lines[i])
-                if res:
-                    blockOpen = True
-                i += 1
-            else:
-                res = data.match(lines[i])
-                if res:
-                    blk[res.group(1)] = res.group(2)
-                if closeBracket.match(lines[i]):
-                    i += 1
-                    break
-                i += 1
-        return i, blk
-
-    def _writeOpenFOAMVolumePoints(self,nodes):
-        '''
-        Write the most recent points to a file
-        '''
-        fileName = self.OFData['pointsFile']
-        f = open(fileName, 'w')
-
-        # write the file header
-        f.write('/*--------------------------------*- C++ -*----------------------------------*\ \n')
-        f.write('| =========                 |                                                 |\n')
-        f.write('| \\\\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |\n')
-        f.write('|  \\\\    /   O peration     | Version:  2.3.x                                 |\n')
-        f.write('|   \\\\  /    A nd           | Web:      www.OpenFOAM.org                      |\n')
-        f.write('|    \\\\/     M anipulation  |                                                 |\n')
-        f.write('\*---------------------------------------------------------------------------*/\n')
-        f.write('FoamFile\n')
-        f.write('{\n')
-        f.write('    version     2.0;\n')
-        f.write('    format      ascii;\n')
-        f.write('    class       vectorField;\n')
-        f.write('    location    "constant/polyMesh";\n')
-        f.write('    object      points;\n')
-        f.write('}\n')
-        f.write('// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //\n')
-        f.write('\n')
-        f.write('\n')
-
-        #nodes = self.getCommonGrid()#can I switch this to get solver grid now?
-        nodes = nodes.reshape((len(nodes)/3, 3))
-        nPoints = len(nodes)
-        f.write('%d\n'% nPoints)
-        f.write('(\n')
-        for i in range(nPoints):
-            f.write('(%20.12f %20.12f %20.12f)\n'%(nodes[i, 0], nodes[i, 1], nodes[i, 2]))
-        f.write(')\n\n\n')
-        f.write('// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //\n')
-
     def _readOFGrid(self, caseDir):
         """Read in the mesh points and connectivity from the polyMesh
         directory
@@ -1213,174 +926,35 @@ class USMesh(object):
             The directory containing the openFOAM Mesh files
         """
 
+        # first import the helper utilities
+        from openfoammeshreader import of_mesh_utils as ofm
+
         # Copy the reference points file to points to ensure
         # consistant starting point
-        self._getOFFileNames(caseDir)
-        shutil.copyfile(self.OFData['refPointsFile'], self.OFData['pointsFile'])
+        self.OFData = ofm.getFileNames(caseDir,comm=self.comm)
+        try:
+            shutil.copyfile(self.OFData['refPointsFile'], self.OFData['pointsFile'])
+        except:
+            raise Error('USMesh: Unable to copy %s to %s.'%(self.OFData['refPointsFile'], self.OFData['pointsFile']))
 
         # Read in the volume points
-        self._readOFVolumeMeshPoints()
-
+        self.OFData['x0'] = ofm.readVolumeMeshPoints(self.OFData)
+        
         # Read the face info for the mesh
-        self._readOFFaceInfo()
+        self.OFData['faces'] = ofm.readFaceInfo(self.OFData)
 
         # Read the boundary info
-        self._readOFBoundaryInfo()
+        self.OFData['boundaries'] = ofm.readBoundaryInfo(self.OFData,self.OFData['faces'])
 
         # Read the cell info for the mesh
-        self._readOFCellInfo()
+        self.OFData['owner'],self.OFData['neighbour'] = ofm.readCellInfo(self.OFData)
 
-    def _readOFVolumeMeshPoints(self):
-        '''
-        Return an numpy array of the mesh points
-        '''
+        # Create the internal structures for volume mesh
+        x0 = self.OFData['x0']
+        surfaceNodes = np.zeros(len(x0), 'intc') # this isn't used internally any more
+               
+        self.warp.createcommongrid(x0.T)
 
-        # Open the points file for reading
-        f = open(self.OFData['pointsFile'], 'r')
-        lines = f.readlines()
-        f.close()
-
-        # Read Regular Header
-        foamHeader, i, N = self._parseFoamHeader(lines, i=0)
-
-        try:
-            fmt = foamHeader['format'].lower()
-        except:
-            fmt = 'ascii' # assume ascii if format is missing.
-
-        x = np.zeros((N, 3), self.dtype)
-        pointLine = re.compile(r'\((\S*)\s*(\S*)\s*(\S*)\)\s*\n')
-
-        if fmt == 'binary':
-            raise Error('Binary Reading is not yet supported.')
-        else:
-            k = 0
-            for j in range(N):
-                res = pointLine.match(lines[j + i])
-                if res:
-                    k += 1
-                    for idim in range(3):
-                        x[j, idim] = float(
-                            lines[j + i][res.start(idim+1):res.end(idim+1)])
-
-            if k != N:
-                raise Error('Error reading grid coordinates. Expected %d'
-                            ' coordinates but found %d'%(N, k))
-        self.OFData['x0'] = x
-
-    def _readOFBoundaryInfo(self):
-        '''
-        read the boundary file information for this case and store in a dict.
-        '''
-
-        # Open the boundary file
-        f = open(self.OFData['boundaryFile'], 'r')
-        lines = f.readlines()
-        f.close()
-
-        # Read Regular Header
-        foamHeader, i, N = self._parseFoamHeader(lines, i=0)
-
-        # We don't actually need to know the number of blocks...just
-        # read them all:
-        boundaries = {}
-        keyword = re.compile(r'\s*([a-zA-Z]{1,100})\s*\n')
-        while i < len(lines):
-            res = keyword.match(lines[i])
-            if res:
-                boundaryName = lines[i][res.start(1):res.end(1)]
-                i, blkData = self._readBlock(lines, i)
-
-                # Now we can just read out the info we need:
-                startFace = int(blkData['startFace'])
-                nFaces = int(blkData['nFaces'])
-                faces = np.arange(startFace, startFace+nFaces)
-                nodes = []
-                for face in faces:
-                    nodes.extend(self.OFData['faces'][face])
-                boundaries[boundaryName] = {
-                    'faces':faces,
-                    'nodes':nodes,
-                    'type':blkData['type']}
-            else:
-                i += 1
-        self.OFData['boundaries'] = boundaries
-
-    def _readOFFaceInfo(self):
-        """
-        Read the face info for this case.
-        """
-
-        f = open(self.OFData['faceFile'], 'r')
-        lines = f.readlines()
-        f.close()
-
-        # Read Regular Header
-        foamHeader, i, N = self._parseFoamHeader(lines, i=0)
-
-        try:
-            fmt = foamHeader['format'].lower()
-        except:
-            fmt = 'ascii' # assume ascii if format is missing.
-
-        if fmt == 'binary':
-            raise Error('Binary Reading is not yet supported.')
-        else:
-            faces = [[] for k in range(N)]
-            for j in range(N):
-                line = lines[j+i].replace('(', ' ')
-                line = line.replace(')', ' ')
-                aux = line.split()
-                nNode = int(aux[0])
-                for k in range(1, nNode+1):
-                    faces[j].append(int(aux[k]))
-
-            self.OFData['faces'] = faces
-
-    def _readOFCellInfo(self):
-        """Read the boundary file information for this case and store in the
-        OFData dictionary."""
-
-        # ------------- Read the owners file ---------------
-        f = open(self.OFData['ownerFile'], 'r')
-        # Read Regular Header
-        foamHeader, N = self._parseFoamHeader2(f)
-
-        try:
-            fmt = foamHeader['format'].lower()
-        except:
-            fmt = 'ascii' # assume ascii if format is missing.
-
-        owner = np.zeros(N, 'intc')
-
-        if fmt == 'binary':
-            raise Error('Binary Reading is not yet supported.')
-        else:
-            owner = np.fromfile(f, dtype='int', count=N, sep=' ')
-            owner = owner.astype('intc')
- 
-        f.close()
-        
-        # ------------- Read the neighbour file ---------------
-        f = open(self.OFData['neighbourFile'], 'r')
-
-        # Read Regular Header
-        foamHeader, N = self._parseFoamHeader2(f)
-
-        try:
-            fmt = foamHeader['format'].lower()
-        except:
-            fmt = 'ascii' # assume ascii if format is missing.
-
-        neighbour = np.zeros(N, 'intc')
-        if fmt == 'binary':
-            raise Error('Binary Reading is not yet supported.')
-        else:
-            neighbour = np.fromfile(f, dtype='int', count=N, sep=' ')
-            neighbour = owner.astype('intc')
-
-        self.OFData['owner'] = owner
-        self.OFData['neighbour'] = neighbour
 
 # =========================================================================
 #                     Utility functions
