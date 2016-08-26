@@ -547,7 +547,7 @@ subroutine readUnstructuredCGNS(cg)
   ! All we are doing to do here is to create the Xv vector --- which
   ! is done via a call to createCommonGrid
 
-  call createCommonGrid(localNodes, localSurfaceNodes, size(localNodes, 2))
+  call createCommonGrid(localNodes, size(localNodes, 2))
   deallocate(localNodes, localSurfaceNodes)
 
 end subroutine readUnstructuredCGNS

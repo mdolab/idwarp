@@ -1,4 +1,4 @@
-subroutine createCommonGrid(volNodes, surfaceNodes, nVolLocal)
+subroutine createCommonGrid(volNodes, nVolLocal)
 
   ! This routine create a few arrys that are the size of the "common"
   ! grid...that is the ordering that is given in the original grid
@@ -13,7 +13,6 @@ subroutine createCommonGrid(volNodes, surfaceNodes, nVolLocal)
 
   ! Subroutine variables
   real(kind=realType), dimension(3, nVolLocal), intent(in) :: volNodes
-  integer(kind=intType), dimension(nVolLocal), intent(in) :: surfaceNodes
   integer(kind=intType), intent(in) :: nVolLocal
 
   ! Working variables
@@ -70,20 +69,6 @@ subroutine createCommonGrid(volNodes, surfaceNodes, nVolLocal)
   call VecAssemblyEnd(commonGridVec, ierr)
   call EChk(ierr,__FILE__,__LINE__)
 
-  ! Create the indices that selects just the surface nodes from the volume nodes
-  nSurface = sum(surfaceNodes)
-  allocate(surfaceIndices(nSurface*3))
-  ! Offset indices by the volnodesProc
-  surfaceIndices = volNodesProc(myid)*3
-  j = 0
-  do i=1, nVolLocal
-     if (surfaceNodes(i) == 1) then
-        surfaceIndices(3*j + 1) = surfaceIndices(3*j + 1) + 3*(i-1)
-        surfaceIndices(3*j + 2) = surfaceIndices(3*j + 2) + 3*(i-1)+1
-        surfaceIndices(3*j + 3) = surfaceIndices(3*j + 3) + 3*(i-1)+2
-        j = j + 1
-     end if
-  end do
 
   deallocate(volNodesProc)
  commonGridVecSet = 1
