@@ -11,6 +11,7 @@
 from __future__ import print_function
 import sys,os,copy
 import numpy
+from petsc4py import PETSc
 from mdo_regression_helper import *
 if 'complex' in sys.argv:
     from pywarpustruct import USMesh_C as USMesh
@@ -63,7 +64,7 @@ def test1():
      }
     )
     # Create warping object
-    mesh = USMesh(options=meshOptions)
+    mesh = USMesh(options=meshOptions, debug=True)
 
     # Extract Surface Coordinates
     coords0 = mesh.getSurfaceCoordinates()
