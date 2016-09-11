@@ -1,5 +1,5 @@
-subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSizesLocal, &
-     nFaceConnLocal, restartFile)
+subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
+     ndofLocal, nUnique, nLink,  nFaceSizes, nFaceConn, restartFile)
 
   use gridInput
   use communication
@@ -8,18 +8,17 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
   implicit none
 
   ! Input
-  real(kind=realType), intent(in) :: pts(ndof)
-  integer(kind=intType), intent(in) :: ndof
-  integer(kind=intType), dimension(nFaceSizesLocal), intent(in) :: faceSizesLocal
-  integer(kind=intType), dimension(nFaceConnLocal), intent(in) :: faceConnLocal
-  integer(kind=intType), intent(in) :: nFaceSizesLocal, nFaceConnLocal
+  real(kind=realType), intent(in) :: pts(ndofLocal), uniquePts(3, nUnique)
+  integer(kind=intType), intent(in) :: ndoflocal, nUnique, nLink
+  integer(kind=intType), dimension(nFaceSizes), intent(in) :: faceSizes
+  integer(kind=intType), dimension(nFaceConn), intent(in) :: faceConn
+  integer(kind=intType), dimension(nLink), intent(in) :: link
+  integer(kind=intType), intent(in) :: nFaceSizes, nFaceConn
   character*(*) :: restartFile
   ! Working
   integer(kind=intType) :: nNodesTotal, ierr, iStart, iEnd, iProc
   integer(kind=intType) :: i, j, ii, kk
-  integer(kind=intType), dimension(:), allocatable :: nNodesProc, cumNodesProc
-  real(kind=realType),dimension(:,:), allocatable :: allNodes
-  real(kind=realType), dimension(:), allocatable :: costs, procEndCosts
+  real(kind=realType), dimension(:), allocatable :: costs, procEndCosts, cumNodesProc
   integer(kind=intType), dimension(:), allocatable :: procSplits, procSplitsLocal
   real(kind=realType), dimension(:), allocatable :: denomenator0Copy
   real(kind=realtype) :: costOffset, totalCost, averageCost, c, tmp, r(3)
@@ -30,36 +29,9 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
   logical :: recompute, loadFile, saveFile, fileExists, localBadFile, globalBadFile
 
   ! ----------------------------------------------------------------------
-  !   Step 1: Communicate all points with every other proc
-  ! ----------------------------------------------------------------------
-  allocate(nNodesProc(nProc), cumNodesProc(0:nProc))
-  nNodesProc(:) = 0_intType
-
-  call mpi_allgather(ndof/3, 1, MPI_INTEGER, nNodesProc, 1, mpi_integer4, &
-       warp_comm_world, ierr)
-  call EChk(ierr, __FILE__, __LINE__)
-
-  ! Sum and Allocate receive displ offsets
-  cumNodesProc(0) = 0_intType
-  nNodesTotal = 0
-  do i=1, nProc
-     nNodesTotal = nNodesTotal + nNodesProc(i)
-     cumNodesProc(i) = cumNodesProc(i-1) + nNodesProc(i)
-  end do
-  nNodesTotal = nNodesTotal
-  allocate(allNodes(3, nNodesTotal))
-  allNodes = zero ! Make valgrind happy
-
-  call mpi_allgatherv(&
-       pts, ndof, MPI_REAL8, &
-       allNodes, nNodesProc*3, cumNodesProc*3, MPI_REAL8, &
-       warp_comm_world, ierr)
-  call EChk(ierr, __FILE__, __LINE__)
-
-  ! ----------------------------------------------------------------------
   !   Step 2: Create and set PETSc Vector for the local Nodes and fill
   ! ----------------------------------------------------------------------
-  call VecCreateMPI(warp_comm_world, ndof, PETSC_DETERMINE, Xs, ierr)
+  call VecCreateMPI(warp_comm_world, ndofLocal, PETSC_DETERMINE, Xs, ierr)
   call EChk(ierr, __FILE__, __LINE__)
 
   call VecDuplicate(Xs, dXs, ierr)
@@ -87,10 +59,9 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
 
   Call VecDuplicate(XsLocal, dXsLocal, ierr)
   call EChk(ierr, __FILE__, __LINE__)
-
   ! For now we just have a single tree....we may have more in the future. 
   allocate(mytrees(1))
-  mytrees(1)%tp => myCreateTree(allNodes, cumNodesProc, faceSizesLocal, faceConnLocal)
+  mytrees(1)%tp => myCreateTree(uniquePts, link, faceSizes, faceConn)
 
   ! We now need to generate the Wi estinate and loadbalance. There are
   ! quite costly and we can save startup time if they are chached by
@@ -116,6 +87,8 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
 
   ! Get the ownership ranges for common grid vector, we need that to
   ! determine where to write things. 
+  allocate(cumNodesProc(0:nProc))
+
   call VecGetOwnershipRanges(commonGridVec, cumNodesProc, ierr)
   call EChk(ierr, __FILE__, __LINE__)
 
@@ -508,7 +481,7 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
   commonMeshDOF = nVol*3
 
   ! Deallocate the memory from this subroutine
-  deallocate(nNodesProc, cumNodesProc, allNodes)
+  deallocate( cumNodesProc)
   deallocate(costs, procEndCosts, procSplits, procSplitsLocal, denomenator0Copy)
 
   if (myid == 0) then 
@@ -517,7 +490,6 @@ subroutine initializeWarping(pts, ndof, faceSizesLocal, faceConnLocal, nFaceSize
   initializationSet = 1
 
 end subroutine initializeWarping
-
 
 subroutine setSymmetryPlanes(pts, normals, n)
 
