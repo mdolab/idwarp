@@ -10,7 +10,7 @@
  'errTol': 0.0005,
  'evalMode': 'fast',
  'fileType': 'openfoam',
- 'gridFile': '/home/kenway/hg/pywarpustruct/python/input_files/ahmedBodyMesh',
+ 'gridFile': '/home/gaetan/hg/pywarpustruct/python/input_files/ahmedBodyMesh',
  'restartFile': None,
  'specifiedSurfaces': None,
  'symmTol': 1e-06,
@@ -18,6 +18,9 @@
  'symmetrySurfaces': None,
  'useRotations': True,
  'zeroCornerRotations': True}
+#------------------------------#
+ Total Volume Nodes :     22915 
+#------------------------------#
 
 +------------------------------------------------------------------------------+
 | pyWarpUstruct Warning: Using internally generated pyWarpUStruct surfaces. If |
@@ -27,9 +30,6 @@
 | 'setSurfaceDefinition()' routines.                                           |
 +------------------------------------------------------------------------------+
 
-#------------------------------#
- Total Volume Nodes :     22915 
-#------------------------------#
 +-------------------- Symmetry Planes -------------------+
 |           Point                        Normal          |
 | (  0.000   0.000   0.000)    (  0.000   1.000   0.000) |
@@ -41,12 +41,12 @@
  Load Balancing...
  Finished Mesh Initialization.
 Sum of vCoords Inital:
-@value    26501.10515260559 1e-08 1e-08
+@value     26501.1051526058 1e-08 1e-08
 Sum of vCoords Warped:
-@value    26754.73582721304 1e-08 1e-08
+@value    26754.64596317404 1e-08 1e-08
 Computing Warp Deriv
 Sum of dxs:
-@value    31971.38284173267 1e-08 1e-08
+@value    31939.67520934215 1e-08 1e-08
 +---------------------------------------+
 |     All pyWarpUstruct Options:        |
 +---------------------------------------+
@@ -92,12 +92,12 @@ Sum of dxs:
  Load Balancing...
  Finished Mesh Initialization.
 Sum of vCoords Inital:
-@value     498810.029559943 1e-08 1e-08
+@value    498810.0295599413 1e-08 1e-08
 Sum of vCoords Warped:
-@value    511381.1906853894 1e-05 1e-05
+@value     511335.543190358 1e-05 1e-05
 Computing Warp Deriv
 Sum of dxs:
-@value    206508.5153046472 1e-05 1e-05
+@value    206541.6336243159 1e-05 1e-05
 +---------------------------------------+
 |     All pyWarpUstruct Options:        |
 +---------------------------------------+
@@ -143,9 +143,9 @@ Sum of dxs:
  Load Balancing...
  Finished Mesh Initialization.
 Sum of vCoords Inital:
-@value    613569.8891866991 1e-08 1e-08
+@value    613569.8891866967 1e-08 1e-08
 Sum of vCoords Warped:
-@value    626750.5464077911 1e-08 1e-08
+@value    626765.9276076123 1e-08 1e-08
 Computing Warp Deriv
 Sum of dxs:
-@value    50186.39773166196 1e-08 1e-08
+@value     49958.2902986838 1e-08 1e-08

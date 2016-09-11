@@ -31,6 +31,7 @@ mpiexec= args.mpiexec
 if mode == 'train':
     try:
         os.remove('%s_reg.ref'%(module_name))
+        os.remove('%s_par_reg.ref'%(module_name))
     except OSError:
         pass
 
