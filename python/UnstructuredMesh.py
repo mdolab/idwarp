@@ -229,7 +229,7 @@ class USMesh(object):
         ----------
         pts : array, size (M, 3)
             Nodes on this processor
-        conn : int array, size  (N,faceSizes(N)) 
+        conn : int array, size  (sum(faceSizes))
             Connectivity of the nodes on this processor
         faceSizes : int Array size (N)
             Treat the conn array as a flat list with the faceSizes giving
@@ -248,9 +248,39 @@ class USMesh(object):
         # The symmetry conditions but be set before initializing the
         # warping.
         self._setSymmetryConditions()
+
+        allPts = np.vstack(self.comm.allgather(pts))
+        allFaceSizes = np.hstack(self.comm.allgather(faceSizes))
         
-        self.warp.initializewarping(np.ravel(pts.real.astype('d')),
-                                    faceSizes, conn, restartFile)
+        # Be careful with conn...need to increment by the offset from
+        # the points.
+        ptSizes = self.comm.allgather(len(pts))
+        offsets = np.zeros(len(ptSizes), 'intc')
+        offsets[1:] = np.cumsum(ptSizes)[:-1]
+        allConn = np.hstack(self.comm.allgather(conn + offsets[self.comm.rank]))
+        
+        # Next point reduce all nodes:
+        uniquePts, link, nUnique = self.warp.pointreduce(allPts.T, 1e-12)
+        uniquePts = uniquePts.T[0:nUnique]
+
+        # Now sort them by z, y and x to ensure that the tree is
+        # always created the same way. It is currently sensitivte to
+        # the ordering of the original nodes. Ie, if you reorder the
+        # nodes you get a differnet tree which gives slightly
+        # differnet warp values/derivatives. 
+
+        ind = np.lexsort(uniquePts.T)
+        uniquePts = uniquePts[ind]
+
+        # Update the link array such that it points back to the original list. 
+        inv = np.zeros_like(ind, 'intc')
+        rng = np.arange(len(ind))
+        inv[ind[rng]] = rng
+        link = inv[link-1] + 1
+
+        self.warp.initializewarping(np.ravel(pts), uniquePts.T, link,
+                                     allFaceSizes, allConn, restartFile)
+
         self.nSurf = len(pts)
         self.warpInitialized = True
 

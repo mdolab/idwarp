@@ -10,7 +10,7 @@
  'errTol': 0.0005,
  'evalMode': 'fast',
  'fileType': 'openfoam',
- 'gridFile': '/home/kenway/hg/pywarpustruct/python/input_files/ahmedBodyMesh',
+ 'gridFile': '/home/gaetan/hg/pywarpustruct/python/input_files/ahmedBodyMesh',
  'restartFile': None,
  'specifiedSurfaces': None,
  'symmTol': 1e-06,
@@ -18,6 +18,9 @@
  'symmetrySurfaces': None,
  'useRotations': True,
  'zeroCornerRotations': True}
+#------------------------------#
+ Total Volume Nodes :     21706 
+#------------------------------#
 
 +------------------------------------------------------------------------------+
 | pyWarpUstruct Warning: Using internally generated pyWarpUStruct surfaces. If |
@@ -27,9 +30,6 @@
 | 'setSurfaceDefinition()' routines.                                           |
 +------------------------------------------------------------------------------+
 
-#------------------------------#
- Total Volume Nodes :     21706 
-#------------------------------#
 +-------------------- Symmetry Planes -------------------+
 |           Point                        Normal          |
 | (  0.000   0.000   0.000)    (  0.000   1.000   0.000) |
@@ -41,28 +41,28 @@
  Load Balancing...
  Finished Mesh Initialization.
 Sum of vCoords Inital:
-@value    25205.45183210548 1e-08 1e-08
+@value    25205.45183210579 1e-08 1e-08
 Sum of vCoords Warped:
-@value    25445.60588734505 1e-08 1e-08
+@value    25445.49922624812 1e-08 1e-08
 Computing Warp Deriv
 Sum of dxs:
-@value    30391.52787281721 1e-08 1e-08
+@value    30393.80381494912 1e-08 1e-08
 Verifying Warp Deriv
  Welcome to verifyWarpDeriv
  Checking           10  degrees of freedom
  Doing centered differnce with h:   1.0000000000000001E-009
  Running AD Version
-DOF:    0 OrigVal:  -2.00000000000     AD:  1.27372669084     FD:  1.27372547204     Err(%):-0.9568713113E-04
-DOF:    1 OrigVal:   0.00000000000     AD: 0.976404207691E-02 FD: 0.976302795354E-02 Err(%):-0.1038684629E-01
-DOF:    2 OrigVal:   0.00000000000     AD: 0.136994980653     FD: 0.136990577359     Err(%):-0.3214253054E-02
-DOF:    3 OrigVal:  -1.99166665000     AD:  1.50512553429     FD:  1.50513184848     Err(%): 0.4195116167E-03
-DOF:    4 OrigVal:   0.00000000000     AD: 0.980359244347E-02 FD: 0.980258070139E-02 Err(%):-0.1032064820E-01
-DOF:    5 OrigVal:  0.166667000000     AD: 0.148679828764     FD: 0.148679857019     Err(%): 0.1900430872E-04
-DOF:    6 OrigVal:  -1.99166665000     AD:  2.16219603676     FD:  2.16219672814     Err(%): 0.3197595254E-04
-DOF:    7 OrigVal:  0.166668000000     AD: 0.371645542190E-01 FD: 0.371635543331E-01 Err(%):-0.2690465129E-02
-DOF:    8 OrigVal:  0.166667000000     AD: 0.134351569685     FD: 0.134353231526     Err(%): 0.1236927413E-02
-DOF:    9 OrigVal:  -2.00000000000     AD:  1.93216395188     FD:  1.93216454654     Err(%): 0.3077686005E-04
-DOF:   10 OrigVal:  0.166807000000     AD: 0.167165714544E-01 FD: 0.167155513348E-01 Err(%):-0.6102631472E-02
+DOF:    0 OrigVal:  -2.00000000000     AD:  1.27642322169     FD:  1.27642338371     Err(%): 0.1269357246E-04
+DOF:    1 OrigVal:   0.00000000000     AD: 0.978090212310E-02 FD: 0.978063111802E-02 Err(%):-0.2770795872E-02
+DOF:    2 OrigVal:   0.00000000000     AD: 0.137257479642     FD: 0.137259123873     Err(%): 0.1197910523E-02
+DOF:    3 OrigVal:  -1.99166665000     AD:  1.50818834222     FD:  1.50818639158     Err(%):-0.1293367155E-03
+DOF:    4 OrigVal:   0.00000000000     AD: 0.982045869970E-02 FD: 0.982017691878E-02 Err(%):-0.2869366621E-02
+DOF:    5 OrigVal:  0.166667000000     AD: 0.148925352941     FD: 0.148923765162     Err(%):-0.1066163406E-02
+DOF:    6 OrigVal:  -1.99166665000     AD:  2.16667422175     FD:  2.16667320500     Err(%):-0.4692644744E-04
+DOF:    7 OrigVal:  0.166668000000     AD: 0.371831885487E-01 FD: 0.371833133759E-01 Err(%): 0.3357081919E-03
+DOF:    8 OrigVal:  0.166667000000     AD: 0.134529510801     FD: 0.134528078659     Err(%):-0.1064562176E-02
+DOF:    9 OrigVal:  -2.00000000000     AD:  1.93627939090     FD:  1.93628216326     Err(%): 0.1431798906E-03
+DOF:   10 OrigVal:  0.166807000000     AD: 0.167342630294E-01 FD: 0.167339768261E-01 Err(%):-0.1710297994E-02
 +---------------------------------------+
 |     All pyWarpUstruct Options:        |
 +---------------------------------------+
@@ -108,23 +108,23 @@ DOF:   10 OrigVal:  0.166807000000     AD: 0.167165714544E-01 FD: 0.167155513348
  Load Balancing...
  Finished Mesh Initialization.
 Sum of vCoords Inital:
-@value    498810.0295599474 1e-08 1e-08
+@value    498810.0295599414 1e-08 1e-08
 Sum of vCoords Warped:
-@value    511381.1906853847 1e-08 1e-08
+@value    511335.5431903581 1e-08 1e-08
 Computing Warp Deriv
 Sum of dxs:
-@value    205511.4635450037 1e-08 1e-08
+@value    205483.1981170009 1e-08 1e-08
 Verifying Warp Deriv
  Welcome to verifyWarpDeriv
  Checking            5  degrees of freedom
  Doing centered differnce with h:   9.9999999999999995E-007
  Running AD Version
-DOF:    0 OrigVal: -0.233091541304E-04 AD:  23.4279910981     FD:  23.4279896039     Err(%):-0.6378114431E-05
-DOF:    1 OrigVal: -0.277555756156E-16 AD: -520.005513744     FD: -520.005531870     Err(%): 0.3485753129E-05
-DOF:    2 OrigVal:   0.00000000000     AD:-0.812913470870     FD:-0.812913505807     Err(%): 0.4297774456E-05
-DOF:    3 OrigVal:  0.101817780270E-02 AD:  2.39781361833     FD:  2.39781066359     Err(%):-0.1232267233E-03
-DOF:    4 OrigVal: -0.277555756156E-16 AD: -879.876476535     FD: -879.876508418     Err(%): 0.3623502302E-05
-DOF:    5 OrigVal:  0.208297391190E-01 AD:  2.75885534123     FD:  2.75885535021     Err(%): 0.3256940107E-06
+DOF:    0 OrigVal: -0.233091541304E-04 AD:  17.1758529206     FD:  17.1758519303     Err(%):-0.5765777340E-05
+DOF:    1 OrigVal: -0.277555756156E-16 AD: -410.784702283     FD: -410.784716632     Err(%): 0.3493027564E-05
+DOF:    2 OrigVal:   0.00000000000     AD:-0.477235280836     FD:-0.477235293495     Err(%): 0.2652549170E-05
+DOF:    3 OrigVal:  0.101817780270E-02 AD:  5.51555168972     FD:  5.51554953030     Err(%):-0.3915156885E-04
+DOF:    4 OrigVal: -0.277555756156E-16 AD: -695.363921249     FD: -695.363946475     Err(%): 0.3627661644E-05
+DOF:    5 OrigVal:  0.208297391190E-01 AD:  2.63317985680     FD:  2.63317989177     Err(%): 0.1327951957E-05
 +---------------------------------------+
 |     All pyWarpUstruct Options:        |
 +---------------------------------------+
@@ -170,23 +170,23 @@ DOF:    5 OrigVal:  0.208297391190E-01 AD:  2.75885534123     FD:  2.75885535021
  Load Balancing...
  Finished Mesh Initialization.
 Sum of vCoords Inital:
-@value     613569.889186703 1e-08 1e-08
+@value    613569.8891866968 1e-08 1e-08
 Sum of vCoords Warped:
-@value    626750.5464078001 1e-08 1e-08
+@value    626765.9276076123 1e-08 1e-08
 Computing Warp Deriv
 Sum of dxs:
-@value    52729.99717107417 1e-08 1e-08
+@value    52726.61691684423 1e-08 1e-08
 Verifying Warp Deriv
  Welcome to verifyWarpDeriv
  Checking            5  degrees of freedom
  Doing centered differnce with h:   9.9999999999999995E-007
  Running AD Version
-DOF:    0 OrigVal:  0.277372517670E-01 AD:  18.8912444151     FD:  18.8912443794     Err(%):-0.1890911013E-06
-DOF:    1 OrigVal: -0.466645120007E-01 AD:  11.9942604772     FD:  11.9942605323     Err(%): 0.4597694133E-06
-DOF:    2 OrigVal:   0.00000000000     AD: -5.53379073558     FD: -5.53379067685     Err(%):-0.1061230688E-05
-DOF:    3 OrigVal:  0.810425014665E-02 AD:  12.7974105844     FD:  12.7974104370     Err(%):-0.1151615979E-05
-DOF:    4 OrigVal: -0.262209872942E-01 AD: -1.59755632034     FD: -1.59755631139     Err(%):-0.5599920142E-06
-DOF:    5 OrigVal:   0.00000000000     AD: -5.21036308417     FD: -5.21036310273     Err(%): 0.3561328516E-06
+DOF:    0 OrigVal:  0.277372517670E-01 AD:  37.7709446404     FD:  37.7709446532     Err(%): 0.3404234781E-07
+DOF:    1 OrigVal: -0.466645120007E-01 AD:  15.0230079541     FD:  15.0230079087     Err(%):-0.3023226495E-06
+DOF:    2 OrigVal:   0.00000000000     AD: -18.3406672297     FD: -18.3406669855     Err(%):-0.1331451278E-05
+DOF:    3 OrigVal:  0.810425014665E-02 AD:  29.5917781041     FD:  29.5917780882     Err(%):-0.5368225200E-07
+DOF:    4 OrigVal: -0.262209872942E-01 AD: -18.8825073304     FD: -18.8825073196     Err(%):-0.5723583676E-07
+DOF:    5 OrigVal:   0.00000000000     AD: -18.1866527158     FD: -18.1866527724     Err(%): 0.3115565911E-06
 +---------------------------------------+
 |     All pyWarpUstruct Options:        |
 +---------------------------------------+
@@ -232,23 +232,23 @@ DOF:    5 OrigVal:   0.00000000000     AD: -5.21036308417     FD: -5.21036310273
  Load Balancing...
  Finished Mesh Initialization.
 Sum of vCoords Inital:
-@value    3198303.754755381 1e-08 1e-08
+@value    3198303.754755335 1e-08 1e-08
 Sum of vCoords Warped:
-@value    3259743.272174134 1e-08 1e-08
+@value      3259645.9807859 1e-08 1e-08
 Computing Warp Deriv
 Sum of dxs:
-@value    205061.9167297007 1e-08 1e-08
+@value    205083.3301401152 1e-08 1e-08
 Verifying Warp Deriv
  Welcome to verifyWarpDeriv
  Checking            5  degrees of freedom
  Doing centered differnce with h:   9.9999999999999995E-007
  Running AD Version
-DOF:    0 OrigVal:  0.344108144756E-10 AD:  53.4239817299     FD:  53.4239808714     Err(%):-0.1606848537E-05
-DOF:    1 OrigVal: -0.236961426481E-06 AD: -814.834572149     FD: -814.834575390     Err(%): 0.3977948391E-06
-DOF:    2 OrigVal:   0.00000000000     AD: -26.2350008132     FD: -26.2350012964     Err(%): 0.1841980201E-05
-DOF:    3 OrigVal:  0.547700767590E-01 AD: -51.1587833927     FD: -51.1587857660     Err(%): 0.4639025583E-05
-DOF:    4 OrigVal: -0.235853510364E-06 AD: -1391.51548449     FD: -1391.51548448     Err(%):-0.6754957345E-09
-DOF:    5 OrigVal:  0.935098870910E-01 AD:  36.3302070464     FD:  36.3302056141     Err(%):-0.3942473695E-05
+DOF:    0 OrigVal:  0.344108144756E-10 AD:  38.3960793455     FD:  38.3960797061     Err(%): 0.9389686590E-06
+DOF:    1 OrigVal: -0.236961426481E-06 AD: -559.744436903     FD: -559.744436747     Err(%):-0.2782569623E-07
+DOF:    2 OrigVal:   0.00000000000     AD: -18.3231940357     FD: -18.3231941247     Err(%): 0.4854002691E-06
+DOF:    3 OrigVal:  0.547700767590E-01 AD: -35.4790262372     FD: -35.4790264367     Err(%): 0.5621669402E-06
+DOF:    4 OrigVal: -0.235853510364E-06 AD: -956.661871568     FD: -956.661873424     Err(%): 0.1940149683E-06
+DOF:    5 OrigVal:  0.935098870910E-01 AD:  26.5281725177     FD:  26.5281723406     Err(%):-0.6675073981E-06
 +---------------------------------------+
 |     All pyWarpUstruct Options:        |
 +---------------------------------------+
@@ -296,20 +296,20 @@ DOF:    5 OrigVal:  0.935098870910E-01 AD:  36.3302070464     FD:  36.3302056141
  Load Balancing...
  Finished Mesh Initialization.
 Sum of vCoords Inital:
-@value    1772626.679902171 1e-08 1e-08
+@value    1772626.679902143 1e-08 1e-08
 Sum of vCoords Warped:
-@value    1785798.539355807 1e-08 1e-08
+@value    1785588.527425706 1e-08 1e-08
 Computing Warp Deriv
 Sum of dxs:
-@value    32291.62993022395 1e-08 1e-08
+@value    32295.31100101105 1e-08 1e-08
 Verifying Warp Deriv
  Welcome to verifyWarpDeriv
  Checking            5  degrees of freedom
  Doing centered differnce with h:   1.0000000000000000E-010
  Running AD Version
-DOF:    0 OrigVal:   1.10000000000     AD:  1.76812643842     FD:  1.77095252014     Err(%): 0.1597071867    
-DOF:    1 OrigVal:   0.00000000000     AD:  1.40338445668     FD:  1.40786384955     Err(%): 0.3186764301    
-DOF:    2 OrigVal:   0.00000000000     AD:  3.01701103397     FD:  3.03923565022     Err(%): 0.7339402573    
-DOF:    3 OrigVal:   1.10000000000     AD:  2.70871422080     FD:  2.71048529988     Err(%): 0.6536312495E-01
-DOF:    4 OrigVal:  0.624000000000E-01 AD:  1.70834650851     FD:  1.71224497363     Err(%): 0.2279409947    
-DOF:    5 OrigVal:   0.00000000000     AD:  2.62656125180     FD:  2.64929905081     Err(%): 0.8619560683    
+DOF:    0 OrigVal:   1.10000000000     AD:  2.87055669475     FD:  2.86938666987     Err(%):-0.4076781968E-01
+DOF:    1 OrigVal:   0.00000000000     AD:  1.88269575176     FD:  1.88143477302     Err(%):-0.6699973525E-01
+DOF:    2 OrigVal:   0.00000000000     AD:  2.61198372778     FD:  2.63322409383     Err(%): 0.8098960716    
+DOF:    3 OrigVal:   1.10000000000     AD:  2.88621881905     FD:  2.88504902062     Err(%):-0.4053869854E-01
+DOF:    4 OrigVal:  0.624000000000E-01 AD:  1.89116899242     FD:  1.88990801610     Err(%):-0.6669931953E-01
+DOF:    5 OrigVal:   0.00000000000     AD:  2.61332356901     FD:  2.63456397035     Err(%): 0.8094838610    

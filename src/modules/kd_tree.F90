@@ -1370,7 +1370,8 @@ Contains
 
 #endif
 #endif
-  function myCreateTree(nodes, cumNodesProc, faceSizesLocal, faceConnLocal) Result(tp)
+
+  function myCreateTree(uniquePts, link, faceSizes, faceConn) Result(tp)
     use gridInput
     use communication
     implicit none
@@ -1387,84 +1388,32 @@ Contains
 
 #endif
     Type (tree_master_record), Pointer :: tp
-    real(kind=realType), dimension(:, :) :: nodes
-    integer(kind=intType), dimension(:) :: cumNodesProc, faceSizesLocal, faceConnLocal
+    real(kind=realType), dimension(:, :) :: uniquePts
+    integer(kind=intType), dimension(:) :: faceSizes, faceConn, link
 
     ! Working
-    integer(kind=intType), dimension(:), allocatable :: surfSizesProc, surfSizesDisp
-    integer(kind=intType), dimension(:), allocatable :: surfConnProc, surfConnDisp
-    real(kind=realType), dimension(:, :), allocatable ::  uniquePts
-    integer(kind=intType), dimension(:), allocatable :: link, tempInt, invIndices
+    integer(kind=intType), dimension(:), allocatable :: tempInt, invIndices
     real(kind=realType), dimension(3) :: Xcen, dx
     integer(kind=intType) :: i, j, ind, curInd, ierr, iProc, maxConnectedFace, nPts
     ! Allocate the actual tree: tp means "tree pointer"
     allocate(tp)
 
-    ! Gather the displacements
-    allocate(surfSizesProc(nProc), surfSizesDisp(0:nProc), &
-         surfConnProc(nProc), surfConnDisp(0:nProc))
-
-    call MPI_allgather(size(faceSizesLocal), 1, MPI_INTEGER, surfSizesProc, 1, MPI_INTEGER, &
-         warp_comm_world, ierr)
-    call EChk(ierr,__FILE__,__LINE__)
-
-    call MPI_allgather(size(faceConnLocal), 1, MPI_INTEGER, surfConnProc, 1, MPI_INTEGER, &
-         warp_comm_world, ierr)
-    call EChk(ierr,__FILE__,__LINE__)
-
-    ! Finish the displacment calc:
-    surfSizesDisp(:) = 0
-    surfConnDisp(:) = 0
-    do i=1, nProc
-       surfSizesDisp(i) = surfSizesDisp(i-1) + surfSizesProc(i)
-       surfConnDisp(i) = surfConnDisp(i-1) + surfConnProc(i)
-    end do
-
-    tp%nFace = surfSizesDisp(nProc)
-
-    ! Allocate space for the full facePtr and faceConn
-    allocate(tp%facePtr(0:tp%nFace), tp%faceConn(surfConnDisp(nProc)))
-
-    ! And now for the super magical all-gather-v's!
-    call MPI_Allgatherv(&
-         faceSizesLocal, size(faceSizesLocal), MPI_INTEGER, &
-         tp%facePtr(1:), surfSizesProc, surfSizesDisp, MPI_INTEGER, warp_comm_world, ierr)
-    call EChk(ierr,__FILE__,__LINE__)
-
-    call MPI_Allgatherv(&
-         faceConnLocal, size(faceConnLocal), MPI_INTEGER, &
-         tp%faceConn   , surfConnProc, surfConnDisp, MPI_INTEGER, warp_comm_world, ierr)
-    call EChk(ierr,__FILE__,__LINE__)
-
-    ! Note that we put the result of the "faceSizes" allgather into
-    ! 'facePtr' which implies it should be size pointer...which we will
-    ! make it into now. Note that facePtr is 0-based which makes things
-    ! easier. 
+    tp%nFace = size(faceSizes)
+    allocate(tp%facePtr(0:tp%nFace), tp%faceConn(size(faceConn)))
+    tp%faceConn = faceConn
+    tp%facePtr(1:tp%nFace) = faceSizes
     tp%facePtr(0) = 0
     do i=2, tp%nFace
        tp%facePtr(i) = tp%facePtr(i) + tp%facePtr(i-1)
     end do
 
-    ! We now have to update faceConn since it is currently uses the
-    ! indexing from the mirror coordinates so we need up update by the
-    ! offset in the Xs nodes
-    do iProc=0, nProc-1
-       do i=surfConnDisp(iProc)+1, surfConnDisp(iProc+1)
-          ! Note that cumNOdesProc is now ONE-BASED since we passed to a
-          ! subroutine
-          tp%faceConn(i) = tp%faceConn(i) + cumNodesProc(iProc+1)
-       end do
-    end do
-
-    ! Now we can point-reduce the nodes:
-    allocate(uniquePts(3, size(nodes, 2)), link(size(nodes, 2)))
-    call pointReduce(nodes, size(nodes, 2), symmTol, uniquePts, link, tp%n)
+    tp%n = size(uniquePts, 2)
 
     ! Compute the inverse of the link arrary: this goes from the tree
     ! back to the original "nodes".
     allocate(tp%invLink(tp%n))
     tp%invLink = 0
-    do i=1, size(nodes, 2)
+    do i=1, size(link)
        if (tp%invLink(link(i)) == 0) then
           tp%invLink(link(i)) = i
        end if
@@ -1500,7 +1449,6 @@ Contains
        tp%Xu0(:, i) = uniquePts(:, tp%indexes(i))
        tp%Xu(:, i) = tp%Xu0(:, i)
     end do
-    deallocate(uniquePts)
 
     ! We use the indices used to sort to the tree to compute an inverse
     ! mapping for Bi and Mi.  By doing this first, this removes the
@@ -1557,7 +1505,7 @@ Contains
     allocate(tp%XuInd(tp%n))
     tp%XuInd(:) = 0
 
-    do i=1, size(nodes, 2)
+    do i=1, size(link)
        if (tp%XuInd(invindices(link(i))) == 0) then ! Un-assigned
           tp%XuInd(invindices(link(i))) = i
        end if
@@ -1578,8 +1526,7 @@ Contains
     end do
 
     ! Deallocate memory from this routine
-    deallocate(link, surfSizesProc, surfSizesDisp, invIndices)
-    deallocate(surfConnProc, surfConnDisp)
+    deallocate(invIndices)
 
     ! Allocate Space for the nodal properties:
     allocate(tp%Mi(3, 3, tp%n), tp%Bi(3, tp%n), tp%Ai(tp%n), &
