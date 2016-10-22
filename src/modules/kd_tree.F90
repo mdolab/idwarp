@@ -774,7 +774,7 @@ Contains
        end do
     else
        rr = r - np%X
-       dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2)
+       dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2 + 1e-16)
        
        if (dist*np%oradius > 5.0) then
           ! Far field calc is ok:
@@ -810,7 +810,7 @@ Contains
        c = c + dble(np%n)
     else
        rr = r - np%X
-       dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2)
+       dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2 + 1e-16)
        ! This 0.5 cost accounts for the subroutine calling
        ! overhead and the above dist calc.
        c = c + half
@@ -1663,7 +1663,19 @@ Contains
           tp%Bi(:, i) = tp%Xu(:, i) - (tp%Mi(:, 1, i)*tp%Xu0(1, i) + tp%Mi(:, 2, i)*tp%Xu0(2, i) + tp%Mi(:, 3, i)*tp%Xu0(3, i))
        end if
     end do
-
+    ! In case we have "free" nodes that are not included in the
+    ! connectivity, these will have zero area. Also zero out the
+    ! displacements and rotation matrix.
+    do i=1,tp%n
+       if (tp%Ai(i) == zero) then 
+          tp%normals(:, i) = [zero, zero, zero]
+          tp%Bi(:, i) = zero
+          tp%Mi(:, :, i) = zero
+          tp%Mi(1, 1, i) = one
+          tp%Mi(2, 2, i) = one
+          tp%Mi(3, 3, i) = one
+       end if
+    end do
   end subroutine computeNodalProperties
 
   subroutine determineCorners(tp)
