@@ -61,7 +61,7 @@ explains the various options.
 Parameter                                  Type       Default                                       Description
 ======================================  ==========  ===========================================   ================================================================================================================================================================================
 `gridFile`                              `str`       `None`                                        This is the grid file to use. It must always be spcified. It may be a structured or
-                                                                                                  unstructured CGNS file or it may OpenFOAM directory containing a mesh specification.
+                                                                                                  unstructured CGNS file or it may be an OpenFOAM directory containing a mesh specification.
 
 `fileType`                              `str`       `CGNS`                                        Specify the type of grid file. Valid options are 'CGNS' or 'OpenFOAM'
 
@@ -69,7 +69,7 @@ Parameter                                  Type       Default                   
                                                                                                   deformations are to be specified. The default is 'None' which will automatically use all wall-type surfaces
                                                                                                   in the grid file. For CGNS files this corresponds to the following boundary condtiions:
                                                                                                   'BCWall', 'BCWallViscous', 'BCWallViscousHeatFlux', 'BCWallViscousAdiabatic', 'BCWallInviscid'.
-                                                                                                  For open foam files, all 'Patch' and 'Wall' surfaces are assumed by default. If a non-None value
+                                                                                                  For OpenFOAM files, all 'Patch' and 'Wall' surfaces are assumed by default. If a non-None value
 												  is given it should be list of families the use wants to use to generate the surface definition. 
 
 `symmetrySurfaces`                      `list`      `None`                                        This option is used to specify which surfaces are used to determine symmetry planes. The default
@@ -85,18 +85,18 @@ Parameter                                  Type       Default                   
 												  normal=(nx1, ny1, nz1) and the second plane is defined with pt=(x2,y2,z2), normal=(nx2, ny2, nz2). The normal direction should be 
 												  normalized to unit magnitude. Note that no symmetry may be specified with the option 'symmetryPlanes':[]. 
 
-`aExp`                                  `float`     `3.0`                                         This is the first exponent in the for the inverse distance calc. However, for efficiency reasons this value is 
+`aExp`                                  `float`     `3.0`                                         This is the first exponent in the inverse distance calc. However, for efficiency reasons this value is 
                                                                                                   hard-coded and not currently available to be changed by the user. 
 
-`bExp`                                  `float`     `5.0`                                         This is the second exponent in the for the inverse distance calc. However, for efficiency reasons this value is 
+`bExp`                                  `float`     `5.0`                                         This is the second exponent in the inverse distance calc. However, for efficiency reasons this value is 
                                                                                                   hard-coded and not currently available to be changed by the user. 
 
-`LdefFact`                              `float`     `1.0`                                         This parameter is sued to determine how "far" into the field a surface deformation propagates before it is attenuated. 
+`LdefFact`                              `float`     `1.0`                                         This parameter is used to determine how "far" into the field a surface deformation propagates before it is attenuated. 
                                                                                                   For small shape modifications, such as small changes to the shape of a airfoil, the default value of 1.0 is likely to be
 												  sufficient. However, for much larger changes in the surface such as wing planform changes, much larger values tend to be more
 												  robust. For these cases, values in the range 50-100 are common. 
 
-`alpha`                                 `float`     `0.25`                                        This value determine how the two different exponent terms are blended. It determines how much of the higher exponent bExp
+`alpha`                                 `float`     `0.25`                                        This value determines how the two different exponent terms are blended. It determines how much of the higher exponent bExp
                                                                                                   term is used. Typical values are between 0.1 and 0.3. A lower value 
                                                                                                   prioritizes full blending and may result in quality reduction in the near-wall boundary layer. Higher values of alpha will 
 												  tend maintain near wall quality better, but may give unacceptable skewness in the transition region between where bExp is most
@@ -169,5 +169,5 @@ And finally to produce an updated grid file we can write the grid::
 
 The warped grid file 'warped.cgns' will contain all the boundary
 condition/connectivity/auxiliary information as the original cgns
-file. Only the coordinates are updated to their now positions. 
+file. Only the coordinates are updated to their new positions. 
 
