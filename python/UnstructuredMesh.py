@@ -491,7 +491,7 @@ class USMesh(object):
         # Extract the data we need from the OFDict to make the code a
         # little easier to read:
         nodes = self.getCommonGrid()
-        nodes = nodes.reshape((len(nodes)/3, 3))
+        nodes = nodes.reshape((len(nodes)//3, 3))
         nPoints = len(nodes)
 
         faces = self.OFData['faces']
@@ -643,7 +643,7 @@ class USMesh(object):
 
                 # Run the common surface definition routine
                 pts = np.array(pts).reshape((len(pts)//3,3))
-                faceSizes = 4*np.ones(len(conn)/4, 'intc')
+                faceSizes = 4*np.ones(len(conn)//4, 'intc')
                 self.setSurfaceDefinition(pts=pts, conn=np.array(conn, 'intc'),
                                           faceSizes=faceSizes)
 
