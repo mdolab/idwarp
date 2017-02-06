@@ -5,11 +5,11 @@ subroutine warpDerivFwd(Xsdot, cDof, Xvdot, meshDOF)
   use kd_tree
 
   implicit none
-  
+
   ! Input Arguments
   integer(kind=intType) , intent(in) :: cdof, meshDOF
   real(kind=realType)   , intent(in) :: xsdot(cdof)
-  
+
   ! Output Arguments
   real(kind=realType), intent(inout), dimension(meshDOF) :: XvDot
 #ifndef USE_COMPLEX
@@ -24,9 +24,9 @@ subroutine warpDerivFwd(Xsdot, cDof, Xvdot, meshDOF)
 
   call VecGetOwnershipRange(dXs, istart, iend, ierr)
   call EChk(ierr, __FILE__, __LINE__)
-  
+
   do i=1, cdof
-     call VecSetValues(Xs, 1, (/iStart+i-1/), XsDot(i), INSERT_VALUES, ierr)
+     call VecSetValues(dXs, 1, (/iStart+i-1/), XsDot(i), INSERT_VALUES, ierr)
      call EChk(ierr, __FILE__, __LINE__)
   end do
 
@@ -37,7 +37,7 @@ subroutine warpDerivFwd(Xsdot, cDof, Xvdot, meshDOF)
   call VecAssemblyEnd(dXs, ierr)
   call EChk(ierr, __FILE__, __LINE__)
 
-  ! Scatter Xs into our local vector  
+  ! Scatter Xs into our local vector
   call VecScatterBegin(XsToXsLocal, dXs, dXsLocal, INSERT_VALUES, SCATTER_FORWARD, ierr)
   call EChk(ierr,__FILE__,__LINE__)
 
@@ -71,9 +71,9 @@ subroutine warpDerivFwd(Xsdot, cDof, Xvdot, meshDOF)
         call getMirrorPt(Xv0Ptr(3*j-2:3*j), r, kk)
 
         numd = zero
-        if (evalMode == EVAL_EXACT) then 
+        if (evalMode == EVAL_EXACT) then
            call evalNodeExact_d(mytrees(1)%tp, mytrees(1)%tp%root, r, numd)
-        else           
+        else
            call evalNode_d(mytrees(1)%tp, mytrees(1)%tp%root, r, numd, &
                 denomenator0(j))
         end if
@@ -87,10 +87,10 @@ subroutine warpDerivFwd(Xsdot, cDof, Xvdot, meshDOF)
 
      end do volLoop
   end do
-  
-  ! Done with derivative values 
+
+  ! Done with derivative values
   call deallocDerivValues(mytrees(1)%tp)
-  
+
   updateLoop: do j=1, nVol
      oden = one / denomenator(j)
      Xvdot(3*j-2) = numerator(1, j) * oden
