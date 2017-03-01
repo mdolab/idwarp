@@ -710,6 +710,7 @@ class MultiUSMesh(object):
            format. The len of the array is 3*len(indices) as
            set by setExternalMeshIndices()
 
+        Ney Secco 2017-02
         """
 
         # Hopefully, the CGNS ordering will save us.
@@ -1072,7 +1073,9 @@ class MultiUSMesh(object):
 
     def getdXs(self):
         """Return the current values in dXs. This is the result from a
-        mesh-warp derivative computation.
+        mesh-warp derivative computation. Note that the same steps
+        used in this function are done at warpDeriv, so in theory you
+        could save time by just saving the output of warpDeriv.
 
         Returns
         -------
@@ -1080,14 +1083,48 @@ class MultiUSMesh(object):
             The specific components of dXs. size(N,3). This the same
             size as the array obtained with getSurfaceCoordiantes(). N may
             be zero if this processor does not have any surface coordinates.
-        """
-        # dXs = np.zeros((self.nSurf, 3), self.dtype)
-        # self.warp.getdxs(np.ravel(dXs))
-        #
-        # return dXs
 
-        for mesh in self.meshes:
-            dXs = mesh.getdXs()
+        Ney Secco 2017-03
+        """
+
+        # Initialize array to hold seeds of all surface point of this proc
+        warpdXs = np.zeros((self.surfSliceIndices[-1],3))
+
+        # Loop over all instances
+        for instanceID,mesh in enumerate(self.meshes):
+
+            # Get the surface seeds of the current instance
+            curr_warpdXs = mesh.getdXs()
+
+            # Assign seeds of the current instance to the general array
+            warpdXs[self.surfSliceIndices[instanceID]:self.surfSliceIndices[instanceID+1],:] = curr_warpdXs
+
+        #---------------------------------------------------
+        # CONVERT PYWARPMULTI ORDERING TO ADFLOW ORDERING
+
+        # Then take the derivative seeds of all surface nodes in this proc and send them
+        # to the global PETSC vector in pyWarpMulti ordering.
+        #
+        # In the end, we are building the global surface vector with this structure:
+        #
+        # |------p0--------|----------p1---------|-------p2-------|
+        # xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+        # |-m0-|-m1-|--m2--|--m0--|---m1--|--m2--|-m0-|-m1-|--m2--| m:mesh
+        # |-------p0-------|---------p1----------|-------p2-------|
+        #
+        # Also remember that we need to flatten the coordinate array, since we
+        # are working with PETSc vectors
+        self.warpSurfPtsVecb.setArray(warpdXs.flatten())
+
+        # Here we need to do a reverse scatter to take values from the pyWarp surface vector
+        # an pass them back to the ADflow surface vector format.
+        # We use an auxiliary function defined at the end of this file to do this task.
+        # This will populate self.surfPtsVecb with values from self.warpSurfPtsVecb
+        reverseSurfaceScatter(self.surfScatter, self.surfPtsVecb, self.warpSurfPtsVecb, self.numSurfRepetitions)
+
+        # Now get the slice of the global ADflow surface vector that belongs to the current proc
+        # Remember to reshape it since PETSc is working with vectors
+        dXs = self.surfPtsVecb.getArray().reshape((-1,3))
 
         return dXs
 
@@ -1134,6 +1171,7 @@ class MultiUSMesh(object):
         if myID == 0:
             print('')
             print('pyWarpMulti successfully warped all instances!')
+            print('')
 
     def warpDeriv(self, dXv, solverVec=True):
         """Compute the warping derivative (dXv/dXs^T)*Vec (where vec is the
@@ -1160,10 +1198,16 @@ class MultiUSMesh(object):
         None. The resulting calculation is available from the getdXs()
         function.
 
+        Ney Secco 2017-03
         """
 
         # Get proc rank
         myID = self.comm.Get_rank()
+
+        # Print log
+        if myID == 0:
+            print('')
+            print('Starting pyWarpMulti reverse AD')
 
         # Make sure the reverse AD vectors are initialized
         self._initializeADVectors(mode='reverse')
@@ -1224,15 +1268,19 @@ class MultiUSMesh(object):
         # Loop over all instances
         for instanceID,mesh in enumerate(self.meshes):
 
+            # Print log
             if myID == 0:
-                print('Reverse on instance',instanceID)
+                print('')
+                print(' Working on mesh',instanceID,'of',len(self.meshes))
 
             # Run reverse AD.
             # This will update the surface seeds inside the mesh object
             mesh.warpDeriv(volNodesListb[instanceID], solverVec=False)
 
+            # Print log
             if myID == 0:
-                print('Done reverse on instance',instanceID)
+                print('')
+                print(' Done')
 
             # Get the surface seeds of the current instance
             curr_warpdXs = mesh.getdXs()
@@ -1240,6 +1288,12 @@ class MultiUSMesh(object):
             # Assign seeds of the current instance to the general array
             warpdXs[self.surfSliceIndices[instanceID]:self.surfSliceIndices[instanceID+1],:] = curr_warpdXs
             
+        # Print log
+        if myID == 0:
+            print('')
+            print('pyWarpMulti successfully finished reverse AD on all instances!')
+            print('')
+
         # We can stop here if the user does not want solver ordering
         if not solverVec:
             return warpdXs
@@ -1295,7 +1349,17 @@ class MultiUSMesh(object):
             The peturbation on the volume meshes. It may be
             in warp ordering or solver ordering depending on
             the solverVec flag.
+
+        Ney Secco 2017-03
         """
+
+        # Get proc ID
+        myID = self.comm.Get_rank()
+
+        # Print log
+        if myID == 0:
+            print('')
+            print('Starting pyWarpMulti forward AD')
 
         #---------------------------------------------------
         # CONVERT ADFLOW ORDERING TO PYWARPMULTI ORDERING
@@ -1332,14 +1396,16 @@ class MultiUSMesh(object):
         # SPLIT SURFACE SEEDS ACROSS ALL INSTANCES AND GATHER
         # ALL VOLUME SEEDS
 
-        # Initialize instance counter
-        instanceID = 0
-
         # Initialize list to gather volume seeds of all instances
         volNodesListd = []
 
         # Loop over every mesh object to get a slice of the surface seeds array
-        for mesh in self.meshes:
+        for instanceID,mesh in enumerate(self.meshes):
+
+            # Print log
+            if myID == 0:
+                print('')
+                print(' Working on mesh',instanceID,'of',len(self.meshes))
 
             # Get set of points that belongs to the current instance
             curr_ptsd = warpPtsd[self.surfSliceIndices[instanceID]:self.surfSliceIndices[instanceID+1],:]
@@ -1352,14 +1418,17 @@ class MultiUSMesh(object):
             # Append seeds of the current instance to the list
             volNodesListd.append(dXvWarp)
 
-            # Increment instance counter
-            instanceID = instanceID + 1
-
         # Do a first scatter to take values from the instance list and populate the
         # global PETSc vector in pyWarp ordering.
         # Note that self.instanceVec and self.instanceScatter were automatically
         # generated during the __init__ method.
         forwardInstanceScatter(self.warpVolPtsVecd, self.instanceVec, self.instanceScatter, volNodesListd)
+
+        # Print log
+        if myID == 0:
+            print('')
+            print('pyWarpMulti successfully finished forward AD on all instances!')
+            print('')
 
         # If the user requested derivatives in pyWarp ordering, then we can return the values right away
         if not solverVec:
@@ -1389,6 +1458,7 @@ class MultiUSMesh(object):
         # RETURNS
         return dXv
 
+    '''
     def verifyWarpDeriv(self, dXv=None, solverVec=True, dofStart=0,
                         dofEnd=10, h=1e-6, randomSeed=314):
         """Run an internal verification of the solid warping
@@ -1405,30 +1475,35 @@ class MultiUSMesh(object):
                 dXvWarp = dXv
 
         self.warp.verifywarpderiv(dXvWarp, dofStart, dofEnd, h)
-
+    '''
 # ==========================================================================
 #                        Output Functionality
 # ==========================================================================
-    def writeGrid(self, fileName=None):
+    def writeGrid(self, baseName=None):
         """
-        Write the current grid to the correct format
+        Write the grids of each instance
 
         Parameters
         ----------
-        fileName : str or None
-            Filename for grid. Should end in .cgns for CGNS files. It is
-            not required for openFOAM meshes. This call will update the
-            'points' file.
+        baseName : str or None
+            a base namve that will be used to generate filenames for
+            all instance mesh files.
+
+        Ney Secco 2017-03
         """
 
-        if self.meshType.lower() == 'cgns':
-            # Copy the default and then write
-            if self.comm.rank == 0:
-                shutil.copy(self.solverOptions['gridFile'], fileName)
-            self.warp.writecgns(fileName)
+        # Assign baseName if user provided none
+        if baseName is None:
+            baseName = 'pyWarpMulti'
 
-        elif self.meshType.lower() == 'openfoam':
-            self._writeOpenFOAMVolumePoints(self.getCommonGrid())
+        # Loop over all instances to write their meshes
+        for instanceID,mesh in enumerate(self.meshes):
+
+            # Generate a fileName
+            fileName = baseName + '_inst%03d.cgns'%(instanceID)
+
+            # Call function to write the mesh of the current instance
+            mesh.writeGrid(fileName)
 
 # =========================================================================
 #                     Utility functions
@@ -1506,32 +1581,82 @@ class MultiUSMesh(object):
                 self.warpVolPtsVecb = self.warpVolPtsVec.duplicate()
                 self.warpVolPtsVecb.set(0.0)
 
+    def _destroyPETScObjects(self):
+        """ This destroys PETSc vectors used by pyWarpMulti.
+
+        Ney Secco 2017-03
+        """
+
+        if self.surfPtsVec is not None:
+            self.surfPtsVec.destroy()
+
+        if self.surfPtsVecd is not None:
+            self.surfPtsVecd.destroy()
+
+        if self.surfPtsVecb is not None:
+            self.surfPtsVecb.destroy()
+
+        if self.warpSurfPtsVec is not None:
+            self.warpSurfPtsVec.destroy()
+
+        if self.warpSurfPtsVecd is not None:
+            self.warpSurfPtsVecd.destroy()
+
+        if self.warpSurfPtsVecb is not None:
+            self.warpSurfPtsVecb.destroy()
+
+        if self.volPtsVec is not None:
+            self.volPtsVec.destroy()
+
+        if self.volPtsVecd is not None:
+            self.volPtsVecd.destroy()
+
+        if self.volPtsVecb is not None:
+            self.volPtsVecb.destroy()
+
+        if self.warpVolPtsVec is not None:
+            self.warpVolPtsVec.destroy()
+
+        if self.warpVolPtsVecd is not None:
+            self.warpVolPtsVecd.destroy()
+
+        if self.warpVolPtsVecb is not None:
+            self.warpVolPtsVecb.destroy()
+
+        if self.instanceVec is not None:
+            self.instanceVec.destroy()
+
+        if self.surfScatter is not None:
+            self.surfScatter.destroy()
+
+        if self.volScatter is not None:
+            self.volScatter.destroy()
+
+        if self.instanceScatter is not None:
+            self.instanceScatter.destroy()
+
     def _printCurrentOptions(self):
         """Prints a nicely formatted dictionary of all the current options to
         the stdout on the root processor
         """
-        if self.comm.rank == 0:
-            print('+---------------------------------------+')
-            print('|     All pyWarpUstruct Options:        |')
-            print('+---------------------------------------+')
-            pprint(self.solverOptions)
 
-    def _processFortranStringArray(self, strArray):
-        """Getting arrays of strings out of Fortran can be kinda nasty. This
-        takes the array and returns a nice python list of strings"""
-        shp = strArray.shape
-        arr = strArray.reshape((shp[1],shp[0]), order='F')
-        tmp = []
-        for i in range(arr.shape[1]):
-            tmp.append(''.join(arr[:, i]).strip().lower())
-
-        return tmp
+        for mesh in self.meshes():
+            if self.comm.rank == 0:
+                print('')
+                print(' Options of mesh',meshCounter,'of',len(self.meshes))
+                print('')
+                print('+---------------------------------------+')
+                print('|     All pyWarpUstruct Options:        |')
+                print('+---------------------------------------+')
+                pprint(mesh.solverOptions)
+                print('')
 
     def __del__(self):
         """Release all the mesh warping memory. This should be called
         automatically when the object is garbage collected."""
         for mesh in self.meshes:
             mesh.warp.releasememory()
+        self._destroyPETScObjects()
 
 # =========================================================================
 # Other simple functions
@@ -1948,7 +2073,7 @@ def forwardSurfaceScatter(surfScatter, surfVec, warpSurfVec, numSurfRepetitions)
 
     This function has no explicit outputs. It modifies warpSurfVec instead.
 
-    Ney Secco 2017-02
+    Ney Secco 2017-03
     '''
 
     # Here we need to do a forward scatter to take values from the ADflow surface vector
@@ -2023,7 +2148,7 @@ def reverseSurfaceScatter(surfScatter, surfVec, warpSurfVec, numSurfRepetitions)
 
     This function has no explicit outputs. It modifies surfVec instead.
 
-    Ney Secco 2017-02
+    Ney Secco 2017-03
     '''
 
     # Here we need to do a reverse scatter to take values from the pyWarp surface vector
