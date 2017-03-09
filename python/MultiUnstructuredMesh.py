@@ -38,6 +38,7 @@ from mpi4py import MPI
 from .MExt import MExt
 import pywarpustruct
 from petsc4py import PETSc
+from cgnsutilities import cgns_utils as cs
 
 class Error(Exception):
     """
@@ -85,23 +86,23 @@ class MultiUSMesh(object):
     to interact with an structured or unstructured CFD solver though a
     variety of interface functions.
     """
-    def __init__(self, optionsList, bgFileList=[], comm=None):
+    def __init__(self, CGNSFile, optionsDict, comm=None):
         """
         Create the MultiUSMesh object.
 
         INPUTS:
 
-        optionsList: list of dictionaries -> List containing dictionaries that will
-        be used to initialize multiple pyWarp instances. Each dictionary must have
-        a structured CGNS filename in its 'gridFile' field.
-        ATTENTION: The CGNS files should follow the same ordering as the combined
-        CGNS file given to ADflow.
+        CGNSFile: string -> file name of the CGNS file. This CGNS file should be generated with
+        cgns_utils combine, so that the domain names have the appropriate convention. That is,
+        domains will have the same name as their original files. Domains that share the same name
+        will be grouped to make a pyWarp instance.
 
-        bgFileList: list of strings -> List containing file names of CGNS files that
-        contains just background meshes, and were combined to make the full CGNS file
-        given to ADflow
-        ATTENTION: The CGNS files should follow the same ordering as the combined
-        CGNS file given to ADflow.
+        optionsDict: dictionary of dictionaries -> Dictionary containing dictionaries that will
+        be used to initialize multiple pyWarp instances. The keys are domain names and the
+        values are dictionaries of standard pyWarp options that will be applied to this domain.
+        The domains of the full CGNS file that do not have a corresponding entry in optionsDict will
+        not be warped. For instance, if the CGNS file has the domains wing.00000, wing.00001, and wing.00002
+        associated with a wing mesh that we want to warp, then optionsDict should have an entry for 'wing'.
 
         Ney Secco 2017-02
         """
@@ -115,9 +116,35 @@ class MultiUSMesh(object):
         # Get rank of the current proc
         myID = self.comm.Get_rank()
 
-        #------------------------------------------------------
-        # READING NEARFIELD MESHES (The ones that will be warped)
-        #
+        # Only the root processor will take the combined CGNS file
+        # and explode it by instance.
+        if myID == 0:
+
+            # Load the CGNS file
+            combined_file = cs.readGrid(CGNSFile)
+
+            # Explode the CGNS file by zones (this will only work if the user used cgns_utils combine
+            # to create the input CGNS file)
+            grids, zoneNames = cs.explodeByZoneName(combined_file)
+
+            # Save temporary grid files with the exploded zones
+            for grid,zoneName in zip(grids,zoneNames):
+                grid.writeToCGNS('_'+zoneName+'.cgns')
+
+            # Zone names should follow alphabetical order, just like the CGNS file
+            zoneNames.sort()
+
+        else:
+
+            # Initialize variable to get results in the end
+            zoneNames = None
+
+        # Send zoneNames to all procs
+        zoneNames = comm.bcast(zoneNames, root=0)
+
+        # Get names for nearfield meshes.
+        # The nearfield mesh names will be the keys of the options dictionary.
+        nearfieldNames = optionsDict.keys()
 
         # Initialize list of pyWarp instances
         self.meshes = []
@@ -126,43 +153,180 @@ class MultiUSMesh(object):
         # coordinates vector into the pieces that belong to each instance
         self.surfSliceIndices = [0]
 
-        # Loop over the multiple CGNS files to initialize the corresponding pyWarp instances.
-        # We use the same loop to count how many surface nodes we have in each instance.
-        for meshOptions in optionsList:
+        # Initialize array to store CGNS intervals for each instance (nearfield meshes only)
+        self.CGNSSliceIndices = []
 
-            # Initialize a pyWarp instance with the current options
-            currMesh = pywarpustruct.USMesh(options=meshOptions, comm=self.comm)
+        # Initialize counter to get the current CGNS index
+        CGNSOffset = 0
 
-            # Append the instance to the list
-            self.meshes.append(currMesh)
+        # Initialize list to hold indices of the background zones
+        backgroundZoneIDs = []
 
-            # Get the points in the current pyWarp instance.
-            # Note that this will force pyWarp to build its own connectivities, which
-            # will (luckily) be the same structure seen by ADflow.
-            pts = currMesh.getSurfaceCoordinates()
+        # Initialize list to hold volume nodes
+        volNodesList = []
 
-            # Get the number of nodes that belong to the current instance
-            numSurfPts = pts.shape[0]
+        # We will do a loop over all zones of the exploded CGNS file.
+        # If we find a nearfield mesh, we will store its number of nodes and also
+        # determine which CGNS indices are contained in it.
+        # If we find a background mesh, then we will store its volume nodes in
+        # volNodesList_BG, so that we can initialize a PETSc vector later on.
+        # We also need to store how many background nodes we have in order
+        # to initialize the PETSc vector.
 
-            # Add index to help slice the global surface array later on
-            self.surfSliceIndices.append(self.surfSliceIndices[-1] + numSurfPts)
+        # Loop over all zones that we found in the combined CGNS file
+        for zoneNumber,zoneName in enumerate(zoneNames):
 
-        # Get list of nodes in the current proc, divided by instance.
-        # That is, volNodesList[i] has the volume nodes in the current proc that
-        # belong to the i-th pyWarp instance.
-        # The same function also returns the total number of coordinates (numCoor = 3*numNodes)
-        # of all volume meshes.
-        volNodesList, numCoorTotal = self.getWarpGrid()
+            # Initialize flag to identify nearfield meshes
+            isnearfield = False
 
-        # Store the total number of coordinates
-        self.numCoorTotal = numCoorTotal
+            # Check if the zone belongs to a nearfield mesh
+            if zoneName in nearfieldNames:
 
+
+                #------------------------------------------------------
+                # READING NEARFIELD MESHES (The ones that will be warped)
+                #
+
+                # Assign the name of the temporary CGNS file to the options.
+                # This is the file that contains the mesh o a single component.
+                # Remember that we should use the temporary grid file.
+                optionsDict[zoneName]['gridFile'] = '_'+zoneName + '.cgns'
+
+                # Initialize a pyWarp instance with the current options
+                currMesh = pywarpustruct.USMesh(options=optionsDict[zoneName], comm=self.comm)
+
+                # Append the instance to the list
+                self.meshes.append(currMesh)
+
+                # Get the points in the current pyWarp instance.
+                # Note that this will force pyWarp to build its own connectivities, which
+                # will (luckily) be the same structure seen by ADflow.
+                pts = currMesh.getSurfaceCoordinates()
+
+                # Get the number of surface nodes that belong to the current instance
+                numSurfPts = pts.shape[0]
+
+                # Add index to help slice the global surface array later on
+                self.surfSliceIndices.append(self.surfSliceIndices[-1] + numSurfPts)
+
+                # Set nearfield flag to true
+                isnearfield = True
+
+            else:
+
+                # We have a background mesh
+
+                # Regenerate the temporary filename for the background grid
+                bgFile = '_'+zoneName + '.cgns'
+
+                #------------------------------------------------------
+                # READING BACKGROUND MESHES
+
+                #=========================================================#
+                # THIS IS A MESSY (HOPEFULLY TEMPORARY) WAY OF LOADING THE
+                # BACKGROUND MESH NODES. IF YOU COME UP WITH A BETTER WAY
+                # TO GET volNodes, PLEASE ADD IT HERE.
+                # volNodes is a flattened vector that contains the background
+                # mesh volume nodes that belong to the current proc.
+
+                # Let's try using pyWarp's CGNS loader to extract the bakground nodes.
+                # However, we will have to trick pyWarp in order to do this, since it
+                # expects a surface mesh in the file.
+                # So we will make a copy of the background mesh file, assign an arbitrary
+                # wall surface, and then load it with pyWarp
+
+                # Only the root proc will modify the input file
+                if myID == 0:
+
+                    # Make a copy of the background mesh file
+                    os.system('cp '+bgFile+' tmp_bg_file.cgns')
+
+                    # Create a temporary BC file
+                    with open('tmp_bcdata.dat','w') as fid:
+                        fid.write('1 iLow BCwall wall\n')
+
+                    # Use CGNS utils to modify the BCs
+                    os.system('cgns_utils overwritebc tmp_bg_file.cgns tmp_bcdata.dat')
+
+                # Create dummy set of options just to load the CGNS file
+                dummyOptions = {
+                    'gridFile':'tmp_bg_file.cgns',
+                    'warpType':'unstructured',
+                }
+
+                # Initialize a pyWarp instance with the current options
+                currMesh = pywarpustruct.USMesh(options=dummyOptions, comm=self.comm)
+
+                # The root proc can remove the temporary files
+                if myID == 0:
+
+                    # Make a copy of the background mesh file
+                    os.system('rm tmp_bg_file.cgns')
+                    os.system('rm tmp_bcdata.dat')
+
+                # Dummy call to initialize warping
+                currMesh._setInternalSurface()
+
+                # Store the ID of this zone
+                backgroundZoneIDs.append(zoneNumber)
+
+
+            #---------------------------------------------
+            # READING VOLUME NODES
+
+            # Get volume nodes.
+            # volNodes is a flattened vector that contains the
+            # mesh volume nodes that belong to the current proc.
+            volNodes = currMesh.getWarpGrid()
+
+            # Get number of coordinates on the current processor, for the current pyWarp instance.
+            numVolNodes = len(volNodes)
+
+            # Each proc should send its number of nodes to all other procs
+            numVolNodes_all = np.hstack(comm.allgather([numVolNodes]))
+
+            # If we have a nearfield mesh, we need to compute the indices of the CGNS nodes
+            # that belong to it
+            if isnearfield:
+
+                # Create array to store the CGNS interval that belongs to the current proc
+                # at the current pyWarp instance. myIndexList will store the first and
+                # last index of the current slice.
+                myIndexList = [0,0]
+                
+                # Assign the first index value
+                if myID == 0:
+                    myIndexList[0] = 0
+                else:
+                    myIndexList[0] = sum(numVolNodes_all[:myID])
+                    
+                # Assign the last index value
+                myIndexList[1] = myIndexList[0] + numVolNodes
+            
+                # Now offset the indices to take into account multiple pyWarp instances
+                myIndexList[0] = myIndexList[0] + CGNSOffset
+                myIndexList[1] = myIndexList[1] + CGNSOffset
+                
+                # Store this interval in the interval list
+                self.CGNSSliceIndices.append(myIndexList)
+
+            # Store the nodes of the current instance in the list
+            volNodesList.append(volNodes)
+
+            # Increment the offset for the next instance
+            CGNSOffset = CGNSOffset + np.sum(numVolNodes_all)
+                
+        # Now the root proc can remove the temporary grid files
+        if myID == 0:
+            for zoneName in zoneNames:
+                os.system('rm _'+zoneName+'.cgns')
+            
         #------------------------------------------------------
-        # GENERATING pyWarpMulti GLOBAL VOLUME VECTOR FOR NEARFIELD MESHES
+        # GENERATING pyWarpMulti GLOBAL VOLUME VECTOR
         #
-        # We loaded all meshes nearfield meshes (the ones that will be warped)
+        # Whew... We loaded all meshes...
         # Now it is time to initialize the global PETSc vector that will hold
-        # all nearfield volume nodes following the CGNS ordering.
+        # all volume nodes following the CGNS ordering.
         #
         # In the end, we need a PETSc global vector with the following structure:
         #
@@ -188,18 +352,41 @@ class MultiUSMesh(object):
         # This means that the automatic indexList generated by initializeInstanceScatter will
         # do the trick!
 
+        # Store the total number of coordinates.
+        # The CGNSoffset variable will hold this number at the end.
+        self.numCoorTotal = CGNSOffset
+
         # Are you ready for some PETSc?
 
         # Initialize a PETSc vector
         warpVolPtsVec = PETSc.Vec()
 
         # Here we set the global vector size, and let PETSc do the partitioning.
-        # Fortunately, the variable instanceOffset has the total number of coordinate points.
-        warpVolPtsVec.createMPI(size=numCoorTotal)
+        warpVolPtsVec.createMPI(size=self.numCoorTotal)
 
-        # Initialize the scatter that will fill all entries of the global vector with instance values.
+        # Now we need to populate this global vector with all volume nodes.
+        # We will use the scatter operation to do so.
+        # The next group of functions will define a temporary scatter context to take all nodes
+        # from volNodesList (which contains both nearfield and background mesh nodes) and send
+        # them to the global vector keeping the same order.
+        instanceVec, instanceScatter, instanceSplitList = initializeInstanceScatter(warpVolPtsVec,
+                                                                                    volNodesList,
+                                                                                    comm)
+
+        # Do the proper scatter operation to fill the global vector
+        forwardInstanceScatter(warpVolPtsVec, instanceVec, instanceScatter, volNodesList)
+
+        # Now we need to create a more specialized scatter context that will update only nearfield
+        # nodes in the global vector. We do this to avoid unnecessary communication of background nodes,
+        # which will never change.
+
+        # Get list of volume nodes that will be warped (the ones that were assigned to the pyWarp instances).
+        volNodesList, _ =self.getWarpGrid()
+
         # We need a scatter operation to take values from each instance local volume vector and send them
         # to a global volume vector that has information on all instances.
+        # In this case, we know the position of the global vector in which we should insert data by using
+        # the cgns indices.
         # We will store the initialized variables for the future volume mesh updates.
         # self.instanceVec is a local PETSc vector that contains all concatenated volume
         # nodes from all instances.
@@ -207,151 +394,16 @@ class MultiUSMesh(object):
         # to warpVolPtsVec.
         # self.instanceSplitList is a list that will help split the data in self.instanceVec back
         # into slices corresponding to each instance.
-        self.instanceVec, self.instanceScatter, self.instanceSplitList = initializeInstanceScatter(warpVolPtsVec, volNodesList, comm)
+        self.instanceVec, self.instanceScatter, self.instanceSplitList = initializeInstanceScatter(warpVolPtsVec,
+                                                                                                   volNodesList,
+                                                                                                   comm,
+                                                                                                   indexList=self.CGNSSliceIndices)
 
         # Do the proper scatter operation to fill the global vector
         forwardInstanceScatter(warpVolPtsVec, self.instanceVec, self.instanceScatter, volNodesList)
 
-        # Store the global vector with the nearfield mesh volume nodes.
+        # Store the global vector with the volume nodes.
         self.warpVolPtsVec = warpVolPtsVec
-
-        #------------------------------------------------------
-        # READING BACKGROUND MESHES
-        #
-        # We will initialize a global vector that will store all background mesh nodes.
-        # It will be analogous to the nearfield global vector.
-        #
-        # First we will load each background mesh, to get the volume nodes,
-        # then we can initialize the PETSc vector and assign the corresponding slices.
-
-        # Initialize list to hold volume nodes (in the current proc) of all instances.
-        # That is, volNodesList[i] gives the volume nodes of the i-th pyWarp instance that belong
-        # to the current proc.
-        volNodesList = []
-
-        # Initialize counter to store the total number of coordinates (numCoor = 3*numNodes)
-        # of all volume mesh.
-        numCoorTotal = 0
-
-        for bgFile in bgFileList:
-
-            #=========================================================#
-            # THIS IS A MESSY (HOPEFULLY TEMPORARY) WAY OF LOADING THE
-            # BACKGROUND MESH NODES. IF YOU COME UP WITH A BETTER WAY
-            # TO GET volNodes, PLEASE ADD IT HERE.
-            # volNodes is a flattened vector that contains the background
-            # mesh volume nodes that belong to the current proc.
-
-            # Let's try using pyWarp's CGNS loader to extract the bakground nodes.
-            # However, we will have to trick pyWarp in order to do this, since it
-            # expects a surface mesh in the file.
-            # So we will make a copy of the background mesh file, assign an arbitrary
-            # wall surface, and then load it with pyWarp
-
-            # Only the root proc will modify the input file
-            if myID == 0:
-
-                # Make a copy of the background mesh file
-                os.system('cp '+bgFile+' tmp_bg_file.cgns')
-
-                # Create a temporary BC file
-                with open('tmp_bcdata.dat','w') as fid:
-                    fid.write('1 iLow BCwall wall\n')
-
-                # Use CGNS utils to modify the BCs
-                os.system('cgns_utils overwritebc tmp_bg_file.cgns tmp_bcdata.dat')
-
-            # Create dummy set of options just to load the CGNS file
-            optionsDict = {
-                'gridFile':'tmp_bg_file.cgns',
-                'warpType':'unstructured',
-            }
-
-            # Initialize a pyWarp instance with the current options
-            currMesh = pywarpustruct.USMesh(options=optionsDict, comm=self.comm)
-
-            # The root proc can remove the temporary files
-            if myID == 0:
-
-                # Make a copy of the background mesh file
-                os.system('rm tmp_bg_file.cgns')
-                os.system('rm tmp_bcdata.dat')
-
-            # Dummy call to initialize warping
-            currMesh._setInternalSurface()
-
-            # Get volume nodes.
-            # volNodes is a flattened vector that contains the background
-            # mesh volume nodes that belong to the current proc.
-            volNodes = currMesh.getWarpGrid()
-
-            #=========================================================#
-
-            # Store the nodes of the current instance in the list
-            volNodesList.append(volNodes)
-
-            # Get number of coordinates on the current processor, for the current pyWarp instance.
-            numCoor = len(volNodes)
-
-            # Each processor needs to know how many coordinates are in the other processors.
-            # We use an allreduce operation to sum the number of coordinates in all procs
-            numCoor_all = comm.allreduce(numCoor, MPI.SUM)
-
-            # Increment counter for the next instance
-            numCoorTotal = numCoorTotal + numCoor_all
-
-        #------------------------------------------------------
-        # GENERATING pyWarpMulti GLOBAL VOLUME VECTOR FOR THE BACKGROUND MESHES
-
-        # Whew... We loaded all meshes...
-        # Now it is time to initialize the global PETSc vector.
-        #
-        # In the end, we need a PETSc global vector with the following structure:
-        #
-        #
-        # |------p0--------|----------p1---------|------p2-------|
-        # xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx = warpVolPtsVec_BG
-        # |------mesh 0------|------mesh 1------|----mesh 2------|
-        # |--p0--|-p1-|--p2--|--p0--|--p1--|-p2-|-p0-|-p1-|--p2--| p:proc
-        #
-        # The upper part shows where the elements are stored, while the
-        # lower shows where the elements are coming from.
-        #
-        # Here is a very important thing to keep in mind. Even though a node was read
-        # in proc i, it may end up in the global vector slice that belongs to proc j.
-        # We allow this because it is important to keep the pyWarp INSTANCES contiguous
-        # in the global vector.
-
-        # Here comes PETSc again...
-
-        # Initialize a PETSc vector
-        warpVolPtsVec_BG = PETSc.Vec()
-
-        # Here we set the global vector size, and let PETSc do the partitioning.
-        # Fortunately, the variable instanceOffset has the total number of coordinate points.
-        warpVolPtsVec_BG.createMPI(size=numCoorTotal)
-
-        # Only do the next step if we actually have background meshes:
-        if len(bgFileList) > 0:
-
-            # Now we will populate the global vector with the nodal coordinates.
-            # We do not need to store the slicing indices here since the background mesh
-            # will not be warped.
-
-            # Initialize the scatter that will fill all entries of the global vector.
-            # We do not need to store the new variables, since this scatter will be done once.
-            instanceVec, instanceScatter, instanceSplitList = initializeInstanceScatter(warpVolPtsVec_BG, volNodesList, comm)
-
-            # Do the proper scatter operation to fill the global vector
-            forwardInstanceScatter(warpVolPtsVec_BG, instanceVec, instanceScatter, volNodesList)
-
-        else:
-
-            # Just give a dummy value to the empty vector
-            warpVolPtsVec_BG.set(0.0)
-
-        # Store the global vector with the background mesh volume nodes.
-        self.warpVolPtsVec_BG = warpVolPtsVec_BG
 
         #------------------------------------------------------
         # Initialize fields for other PETSc objects that will be created later on
@@ -549,20 +601,22 @@ class MultiUSMesh(object):
         """
 
         # Here we will do the mapping between pyWarpMulti and ADflow volume nodes.
-        # ASSUMPTION: We assume that the pyWarp instances are loaded in the same order
-        # as the full CGNS file loaded by ADflow. In other words, if you concatenate
-        # all blocks in the pyWarp CGNS files, you will get the same ordering as the
-        # combined CGNS file given to ADflow.
 
         # Here is the main logic of the function:
-        # - Imagine that we create a big [N by 3] array with all nodal coordinates in
-        #   the CGNS file. Then we flatten it to get a [N*3] array. This global array
-        #   is split across multiple procs by pyWarp. Therefore, pyWarp has this global
-        #   vector.
+        # - We have all volume nodes, in CGNS ordering, stored in self.warpVolPtsVec. This global array
+        #   is split across multiple procs by pyWarp.
         # - ADflow gives us the indices of this global array that the current proc needs (this is ind).
         #   Thus we can use this information to create a PETSc VecScatter operation, since ind is
         #   the PETSc index set itself!
         
+        # Get rank of the current proc
+        myID = self.comm.Get_rank()
+
+        # Print log
+        if myID == 0:
+            print('')
+            print('Mapping solver volume nodes to pyWarpMulti volume nodes')
+
         #----------------------------------------------------
         # INITIALIZE PETSc VECTOR
 
@@ -573,7 +627,7 @@ class MultiUSMesh(object):
         volPtsVec = PETSc.Vec()
 
         # For now let's use the indices themselves to set the vector, since ind has the size of
-        # the local number of coordinates. THe data itself will be overwritten later on, we just
+        # the local number of coordinates. The data itself will be overwritten later on, we just
         # want the corret size for now.
         # When we use Vec.createWithArray, PETSc will concatenate all local vectors
         # to create the global one.
@@ -584,41 +638,128 @@ class MultiUSMesh(object):
         self.volPtsVec = volPtsVec
 
         #----------------------------------------------------
-        # NEARFIELD MESH MAPPING
+        # INITIAL COPY OF ALL POINTS
 
-        # Our main goal in this section is to build the Scatter context to send data from
-        # ADflow volume nodes to pyWarpMulti volume nodes.
-        # pyWarpMulti will not warp the background mesh. Therefore, we will remove from the
-        # nearfield scatter to avoid unnecessary communication during the optimization.
+        # In this initial pass, we will do a scatter operation to take all volume coordinates
+        # in the global pyWarpMulti volume vector (self.warpVolPtsVec, which follows the CGNS ordering)
+        # and populate the global solver volume vector (volPtsVec).
+        # We do this so that we can populate the initial nearfield nodes and, most importantly, the
+        # backgroun nodes, which will remain fixed during the warping.
+        # In the enxt section we will create a specialized scatter for the nearfield nodes.
 
-        # Find indices of ind that will point to nearfield nodes. We can find them using
-        # the number of nearfield coordinates that we stored during the initialization
-        adflowIndex = np.where(ind < self.numCoorTotal)[0]
+        # The indices given in ind are follow the CGNS ordering. Therefore, they correspond to the
+        # exact location in the global pyWarpMulti volume vector. So we can create index sets directly with them.
 
-        # Now take the corresponding links. Note that these will point to the CGNS ordering,
-        # which is the one used by pyWarp
-        warpIndex = ind[adflowIndex]
+        #-------------------------------------
+        # Creating index lists
 
-        # Get the range of the global ADflow volume vector owned by the current proc
-        (indexStartADflowPts, indexEndADflowPts) = volPtsVec.getOwnershipRange()
+        # First create a straight sequence to take indices from the solver vector.
+        solverIndex = range(len(ind))
 
-        # Now we need to offset the indices given by the np.where, since they are originally
-        # defined in local coordinates. (Note that warpIndex already got information in
-        # the CGNS ordering, and does not need to be offset).
-        adflowIndex = adflowIndex + indexStartADflowPts
+        # We need to shift these indices to convert them to global ordering.
+        # Get the range of the global solver volume vector owned by the current proc.
+        (indexStartPts, indexEndPts) = self.volPtsVec.getOwnershipRange()
+        
+        # Convert index list to array so that we can do element-wise addition
+        solverIndex = np.array(solverIndex)
 
-        # Make sure indices are defined as integers
-        adflowIndex = np.array(adflowIndex, dtype='int32')
+        # Offset indices
+        solverIndex = solverIndex + indexStartPts
 
-        ### We need to build the index sets that will define the VecScatter operation.
+        # Convert back to list
+        solverIndex = solverIndex.tolist()
 
-        # This index set indicates which indices will be taken for the ADflow volume vector
+        # The corresponding pyWarp vector indices are given by ind itself. Note that this is already
+        # in global ordering
+        pywarpIndex = ind
+
+        #-------------------------------------
+        # Creating PETSc index sets
+
+        # This index set indicates which indices will be taken for the solver volume vector
         volPtsVecIS = PETSc.IS()
-        volPtsVecIS.createGeneral(adflowIndex)
+        volPtsVecIS.createGeneral(solverIndex)
 
         # This index set indicates which indices will be taken for the pyWarp volume vector
         warpVolPtsVecIS = PETSc.IS()
-        warpVolPtsVecIS.createGeneral(warpIndex)
+        warpVolPtsVecIS.createGeneral(pywarpIndex)
+
+        #-------------------------------------
+        # Creating Scatter context
+
+        # Initialize VecScatter
+        volScatter = PETSc.Scatter()
+
+        # Create Scatter using the index sets
+        # We follow this syntax to create the scatter context:
+        # Scatter.create(Vec_from, IS_from, Vec_to, IS_to)
+        # IS_from and IS_to should have the same size.
+        volScatter.create(self.volPtsVec, volPtsVecIS, self.warpVolPtsVec, warpVolPtsVecIS)
+
+        # Now let's use this scatter context right away to send all nodes from
+        # the pyWarp-ordered global vector the the ADflow-ordered global vector.
+        # In this case we use the reverse scatter (mode=True).
+        volScatter.scatter(self.warpVolPtsVec, self.volPtsVec, addv=None, mode=True)
+
+        # At this point, the solver-ordered volume vector (self.volPtsVec) has all background nodes
+        # assigned to it (as well as the initial nearfield nodes). These background nodes will remain
+        # fixed throughout the optimization. So we will discard this previous scatter context and
+        # define a new one just to update nearfield nodes.
+        volPtsVecIS.destroy()
+        warpVolPtsVecIS.destroy()
+        volScatter.destroy()
+
+        #----------------------------------------------------
+        # NEARFIELD MESH MAPPING
+
+        # Our main goal in this section is to build the Scatter context to send data from
+        # the solver volume nodes to pyWarpMulti volume nodes, but just for the nearfield meshes.
+        # pyWarpMulti will not warp the background mesh. Therefore, we will remove it from the
+        # nearfield scatter to avoid unnecessary communication during the optimization.
+
+        # We want to find indices of ind that points to nearfield nodes. The solver will give us
+        # The CGNS indices it wants. If any of the instances in this proc has this CGNS index in it,
+        # then we can assign a link to update the nearfield mesh. Otherwise, we might have a background
+        # node (might because it may be a nearfield node on another proc, so we should do an additional
+        # check for this at the end).
+
+        # Let's gather all indices requested by the solver, since a pyWarp node of the current proc may
+        # be linked to a solver node on another proc.
+        ind_all = np.hstack(self.comm.allgather(ind))
+
+        # Initialize list of solver and pyWarp indices that correspond to nearfield nodes
+        solverIndex = []
+        pywarpIndex = []
+
+        # Loop for every instance's CGNS interval
+        for CGNSInterval in self.CGNSSliceIndices:
+
+            # Check which solver nodes belong to the current slice
+            curr_solverIndex = np.where((ind_all >= CGNSInterval[0]) & (ind_all < CGNSInterval[1]))[0]
+
+            # Get the corresponding pyWarpMultiIndices
+            curr_pywarpIndex = ind_all[curr_solverIndex]
+
+            # Convert the arrays to lists
+            curr_solverIndex = curr_solverIndex.tolist()
+            curr_pywarpIndex = curr_pywarpIndex.tolist()
+
+            # Append them to the general lists
+            solverIndex = solverIndex + curr_solverIndex
+            pywarpIndex = pywarpIndex + curr_pywarpIndex
+
+        #----------------------------------------------------
+        # CREATING NEARFIELD SCATTER CONTEXT
+
+        ### We need to build the index sets that will define the VecScatter operation.
+
+        # This index set indicates which indices will be taken for the solver volume vector
+        volPtsVecIS = PETSc.IS()
+        volPtsVecIS.createGeneral(solverIndex)
+
+        # This index set indicates which indices will be taken for the pyWarp volume vector
+        warpVolPtsVecIS = PETSc.IS()
+        warpVolPtsVecIS.createGeneral(pywarpIndex)
 
         ### It is time to create the scatter context
 
@@ -631,72 +772,14 @@ class MultiUSMesh(object):
         # IS_from and IS_to should have the same size.
         volScatter.create(self.volPtsVec, volPtsVecIS, self.warpVolPtsVec, warpVolPtsVecIS)
 
-        # Store this scatter
+        # Store this scatter for future use.
+        # We will use it whenever we need to update the nearfield nodes in the solver vector.
         self.volScatter = volScatter
 
-        #----------------------------------------------------
-        # BACKGROUND MESH ASSIGNMENT
-
-        # Our main goal in this section is to assign the background volume nodes to the global
-        # volume vector in ADflow ordering. We have to do this just once here, since the
-        # background meshes will not be updated during the optimization.
-
-        # Find indices of ind that will point to background nodes. We can find them using
-        # the number of nearfield coordinates that we stored during the initialization
-        adflowIndex = np.where(ind >= self.numCoorTotal)[0]
-
-        # Now take the corresponding links. Note that these will point to the CGNS ordering,
-        # which is the one used by pyWarp
-        warpIndex = ind[adflowIndex]
-
-        # Since we will take values from a global vector that only has background nodes,
-        # we need to offset the pyWarp indices to take into acount that the background nodes
-        # are after all nearfield nodes
-        warpIndex = warpIndex - self.numCoorTotal
-
-        # Now we need to offset the indices given by the np.where, since they are originally
-        # defined in local coordinates. (Note that warpIndex already got information in
-        # the CGNS ordering, and does not need to be offset).
-        adflowIndex = adflowIndex + indexStartADflowPts  
-
-        # Make sure indices are defined as integers
-        adflowIndex = np.array(adflowIndex, dtype='int32')
-
-        ### We need to build the index sets that will define the VecScatter operation.
-
-        # This index set indicates which indices will be taken for the ADflow volume vector
-        volPtsVecIS = PETSc.IS()
-        volPtsVecIS.createGeneral(adflowIndex)
-
-        # This index set indicates which indices will be taken for the pyWarp volume vector
-        warpVolPtsVecIS = PETSc.IS()
-        warpVolPtsVecIS.createGeneral(warpIndex)
-
-        ### It is time to create the scatter context
-
-        # Initialize VecScatter
-        volScatter = PETSc.Scatter()
-
-        # Create Scatter using the index sets
-        # We follow this syntax to create the scatter context:
-        # Scatter.create(Vec_from, IS_from, Vec_to, IS_to)
-        # IS_from and IS_to should have the same size.
-        volScatter.create(self.volPtsVec, volPtsVecIS, self.warpVolPtsVec_BG, warpVolPtsVecIS)
-
-        # Now let's use this scatter context right away to send the background nodes from
-        # the pyWarp-ordered global vector the the ADflow-ordered global vector.
-        # In this case we use the reverse scatter (mode=True).
-        volScatter.scatter(self.warpVolPtsVec_BG, self.volPtsVec, addv=None, mode=True)
-
-        ### DESTRUCTION
-
-        # Now we can erase most PETSc objects and variables associated with the background mesh
-        # since they are no longer needed during the optimization
-        self.warpVolPtsVec_BG.destroy()
-        self.warpVolPtsVec_BG = 'used'
-        volScatter.destroy()
-        volPtsVecIS.destroy()
-        warpVolPtsVecIS.destroy()
+        # Print log
+        if myID == 0:
+            print('Mapping solver volume nodes to pyWarpMulti volume nodes')
+            print(' Done!')
 
     def getSolverGrid(self):
         """Return the current grid in the order specified by
@@ -1418,6 +1501,11 @@ class MultiUSMesh(object):
             # Append seeds of the current instance to the list
             volNodesListd.append(dXvWarp)
 
+            # Print log
+            if myID == 0:
+                print('')
+                print(' Done')
+
         # Do a first scatter to take values from the instance list and populate the
         # global PETSc vector in pyWarp ordering.
         # Note that self.instanceVec and self.instanceScatter were automatically
@@ -1721,7 +1809,7 @@ def initializeInstanceScatter(globalVec, localList, comm, indexList=None):
     We allow this because it is important to keep the pyWarp INSTANCES contiguous
     in the global vector.
 
-    localList: list of local 1D arrays -> List containing coordinates that belong to proc 0.
+    localList: list of local 1D arrays -> List containing coordinates that belong to the current proc.
     localList[i] should have a 1D array with the coordinates of pyWarp instance i that
     belong to the current proc. Each element of localList corresponds to a lower "p[i]" tag
     on the ASCII art.
@@ -1734,7 +1822,7 @@ def initializeInstanceScatter(globalVec, localList, comm, indexList=None):
 
     OUTPUTS:
 
-    indexList: list of list[2] -> This is will be list provided by the user, or the one that was
+    indexList: list of list[2] -> This is will be a list provided by the user, or the one that was
     automatically generated by the function.
 
     localVec: local PETSc Vector -> This is a vector that will be used to send and receive
