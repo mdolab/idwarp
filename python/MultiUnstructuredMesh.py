@@ -109,9 +109,10 @@ class MultiUSMesh(object):
 
         # Assign communicator if we do not have one yet
         if comm is None:
-            self.comm = MPI.COMM_WORLD
-        else:
-            self.comm = comm
+            comm = MPI.COMM_WORLD
+
+        # Store communicator
+        self.comm = comm
 
         # Get rank of the current proc
         myID = self.comm.Get_rank()
@@ -140,7 +141,7 @@ class MultiUSMesh(object):
             zoneNames = None
 
         # Send zoneNames to all procs
-        zoneNames = comm.bcast(zoneNames, root=0)
+        zoneNames = self.comm.bcast(zoneNames, root=0)
 
         # Get names for nearfield meshes.
         # The nearfield mesh names will be the keys of the options dictionary.
@@ -283,7 +284,7 @@ class MultiUSMesh(object):
             numVolNodes = len(volNodes)
 
             # Each proc should send its number of nodes to all other procs
-            numVolNodes_all = np.hstack(comm.allgather([numVolNodes]))
+            numVolNodes_all = np.hstack(self.comm.allgather([numVolNodes]))
 
             # If we have a nearfield mesh, we need to compute the indices of the CGNS nodes
             # that belong to it
