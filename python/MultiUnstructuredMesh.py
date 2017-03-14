@@ -411,6 +411,9 @@ class MultiUSMesh(object):
         self.surfScatter = None
         self.volScatter = None
 
+        self.surfPtsVec = None
+        self.volPtsVec = None
+
         self.surfPtsVecd = None
         self.warpSurfPtsVecd = None
         self.surfPtsVecb = None
@@ -779,8 +782,8 @@ class MultiUSMesh(object):
 
         # Print log
         if myID == 0:
-            print('Mapping solver volume nodes to pyWarpMulti volume nodes')
             print(' Done!')
+            print('')
 
     def getSolverGrid(self):
         """Return the current grid in the order specified by
