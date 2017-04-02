@@ -71,7 +71,10 @@ subroutine createCommonGrid(volNodes, nVolLocal)
 
 
   deallocate(volNodesProc)
- commonGridVecSet = 1
+  commonGridVecSet = 1
+
+  commonMeshDOF = nVol*3
+
 end subroutine createCommonGrid
 
 
