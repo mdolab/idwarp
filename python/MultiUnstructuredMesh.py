@@ -166,8 +166,10 @@ class MultiUSMesh(object):
                 # Update node counter
                 nodeCounter = nodeCounter + totalNodes
 
+
             # Delete grids to free space
             del grids
+            del combined_file
 
         else:
 

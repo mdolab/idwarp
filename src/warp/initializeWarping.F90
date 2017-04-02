@@ -335,6 +335,9 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
   end do
 
   ! Now just vector sum the costs array
+  ! Remember that initially the "costs" array had the cumulative costs of each volume
+  ! node in the current proc. Now we add the offset so that the cumulative costs
+  ! take into account the costs of the procs that came before this one.
   costs = costs + costOffset
 
   ! We now have a distributed "costs" array that in cumulative
@@ -357,20 +360,34 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
   call EChk(ierr, __FILE__, __LINE__)
   allocate(procSplits(0:nProc), procSplitsLocal(0:nProc))
   procSplitsLocal(:) = 0 ! Do this zero-based ordering!
-  curBin = int(costs(1) /  averageCost)
-  do i=2, nVol
-     newBin = int(costs(i) / averageCost)
+
+  ! procSplitsLocal is a vector that indicates where the breaks should be. Each proc will analyze the
+  ! cumulative costs of each of its volume nodes (which are stored in "costs" array).
+  ! If we take the cumulative cost of a node, divide it the average cost, and round the remaining result
+  ! to the lowest integer, then get the procID that should contain this node.
+  ! We will apply this operation to every node in the current proc. When we detect an increase in the integer
+  ! value, then we have a point where we should split the work between the processors.
+
+  ! In order to start our iterative process, we need to take a reference value coming from the previous processor.
+  ! We can use the costOffset variable (which contains the cumulative cost of the last node of the previous proc)
+  ! to estimate which proc should contain the last node of the previous proc.
+  curBin = int(costOffset /  averageCost)
+
+  ! Now loop over the volume nodes of the current proc to detect the breakpoints.
+  do i=1, nVol
+     newBin = int(costs(i) / averageCost) ! Due to the int, this will indicate which proc should have the current node
      if (newBin > curBin) then
-        ! We passed a boundary:
+        ! We passed a boundary. So now we store the split position for the procID newBin.
         procSplitsLocal(newBin) = i + iStart/3
         curBin = newBin
      end if
   end do
+
   ! Make sure the last proc has the right end...
   if (myid == nProc-1) then 
      procSplitsLocal(nProc) = iStart/3 + nVol
   end if
-  ! Communicate to all procs 
+  ! Communicate to all procs. We use MPI_MAX to overwrite the original zeros of the break points.
   call mpi_AllReduce(procSplitsLocal, procSplits, nProc+1, MPI_INTEGER, MPI_MAX, &
        warp_comm_world, ierr)
   call EChk(ierr,__FILE__,__LINE__)
