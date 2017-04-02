@@ -406,7 +406,7 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
   call ISCreateStride(warp_comm_world, newDOFProc, procSplits(myid), 1, IS1, ierr)
   call EChk(ierr, __FILE__, __LINE__)  
 
-  call ISCreateStride (warp_comm_world, newDOFProc, procSplits(myid), 1, IS2, ierr)
+  call ISCreateStride(warp_comm_world, newDOFProc, procSplits(myid), 1, IS2, ierr)
   call EChk(ierr, __FILE__, __LINE__)
 
   call VecScatterCreate(commonGridVec, IS1, Xv, IS2, common_to_warp, ierr)

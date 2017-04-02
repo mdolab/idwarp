@@ -219,7 +219,7 @@ class USMesh(object):
 
         self.warp.setexternalmeshindices(ind)
 
-    def setSurfaceDefinition(self, pts, conn, faceSizes):
+    def setSurfaceDefinition(self, pts, conn, faceSizes, cgnsBlockID=None):
         """This is the master function that determines the definition of the
         surface to be used for the mesh movement. This surface may be
         supplied from an external solver (such as SUmb) or it may be
@@ -233,7 +233,10 @@ class USMesh(object):
             Connectivity of the nodes on this processor
         faceSizes : int Array size (N)
             Treat the conn array as a flat list with the faceSizes giving
-            connectivity offset for each element. 
+            connectivity offset for each element.
+        cgnsBlockID : dummy argument.
+            This argument is not used at all. It is here just to have the
+            same API as the pyWarpMulti class.
         """
 
         conn = np.array(conn).flatten()
