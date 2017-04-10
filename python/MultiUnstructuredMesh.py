@@ -114,12 +114,15 @@ class MultiUSMesh(object):
         # Store communicator
         self.comm = comm
 
+        # Store original file name
+        self.CGNSFile = CGNSFile
+
         # Get rank of the current proc
-        myID = self.comm.Get_rank()
+        self.myID = self.comm.Get_rank()
 
         # Only the root processor will take the combined CGNS file
         # and explode it by instance.
-        if myID == 0:
+        if self.myID == 0:
 
             # Initialize list to store the block IDs that belong to each pyWarp instance.
             # For example, suppose that our combined CGNS file has 21 blocks.
@@ -236,7 +239,7 @@ class MultiUSMesh(object):
                 # wall surface, and then load it with pyWarp
 
                 # Only the root proc will modify the input file
-                if myID == 0:
+                if self.myID == 0:
 
                     # Make a copy of the background mesh file
                     os.system('cp '+bgFile+' tmp_bg_file.cgns')
@@ -259,24 +262,32 @@ class MultiUSMesh(object):
 
                 # Initialize a dummy surface in the background mesh
                 '''
-                if myID == 0:
+                if self.myID == 0:
                     print('===========================================')
                     print('ATTENTION: This is a dummy initialization for background mesh warping.')
                 pts = np.array([[1.0, 0.0, 1.0],
                                 [2.0, 0.0, 1.0],
                                 [2.0, 1.0, 1.0],
-                                [1.0, 1.0, 1.0]])*(myID+1)
+                                [1.0, 1.0, 1.0]])*(self.myID+1)
                 conn = np.array([0,1,2,3])
                 faceSizes = np.array([4])
                 currMesh.setSurfaceDefinition(pts, conn, faceSizes)
-                if myID == 0:
+                if self.myID == 0:
                     print('Dummy initialization is Done!')
                     print('===========================================')
                 '''
+                if self.myID == 0:
+                    print('===========================================')
+                    print('ATTENTION: This is a dummy initialization for background mesh warping.')
+
                 currMesh._setInternalSurface()
 
+                if self.myID == 0:
+                    print('Dummy initialization is Done!')
+                    print('===========================================')
+
                 # The root proc can remove the temporary files
-                if myID == 0:
+                if self.myID == 0:
 
                     # Make a copy of the background mesh file
                     os.system('rm tmp_bg_file.cgns')
@@ -293,7 +304,7 @@ class MultiUSMesh(object):
 
                 
         # Now the root proc can remove the temporary grid files
-        if myID == 0:
+        if self.myID == 0:
             for zoneName in zoneNames:
                 os.system('rm _'+zoneName+'.cgns')
 
@@ -388,11 +399,8 @@ class MultiUSMesh(object):
         # - So we create masks so that we can take pieces from the full volume vector and
         #   send them to each instance.
         
-        # Get rank of the current proc
-        myID = self.comm.Get_rank()
-
         # Print log
-        if myID == 0:
+        if self.myID == 0:
             print('')
             print('Mapping solver volume nodes to pyWarpMulti volume nodes')
 
@@ -454,7 +462,7 @@ class MultiUSMesh(object):
         self.backgroundInstanceIDs = None
 
         # Print log
-        if myID == 0:
+        if self.myID == 0:
             print(' Done!')
             print('')
 
@@ -520,11 +528,8 @@ class MultiUSMesh(object):
         # - So we can use the CGNS block ID to separate ADflow surface patches per
         #   pyWarp instance.
 
-        # Get rank of the current proc
-        myID = self.comm.Get_rank()
-
         # Print log
-        if myID == 0:
+        if self.myID == 0:
             print('')
             print('Mapping solver surface nodes to pyWarpMulti volume nodes')
 
@@ -632,7 +637,7 @@ class MultiUSMesh(object):
             self.filtered2fullMaps.append(filtered2fullMap)
 
         # Print log
-        if myID == 0:
+        if self.myID == 0:
             print('Done')
             print('')
 
@@ -740,7 +745,7 @@ class MultiUSMesh(object):
         myID = self.comm.Get_rank()
 
         # Print log
-        if myID == 0:
+        if self.myID == 0:
             print('')
             print('Starting pyWarpMulti mesh warping')
 
@@ -751,7 +756,7 @@ class MultiUSMesh(object):
         for mesh in self.meshes:
 
             # Print log
-            if myID == 0:
+            if self.myID == 0:
                 print('')
                 print(' warping mesh',meshCounter,'of',len(self.meshes))
 
@@ -759,7 +764,7 @@ class MultiUSMesh(object):
             mesh.warpMesh()
 
             # Print log
-            if myID == 0:
+            if self.myID == 0:
                 print('')
                 print(' Done')
 
@@ -767,7 +772,7 @@ class MultiUSMesh(object):
             meshCounter = meshCounter + 1
 
         # Print log
-        if myID == 0:
+        if self.myID == 0:
             print('')
             print('pyWarpMulti successfully warped all instances!')
             print('')
@@ -807,7 +812,7 @@ class MultiUSMesh(object):
         myID = self.comm.Get_rank()
 
         # Print log
-        if myID == 0:
+        if self.myID == 0:
             print('')
             print('Starting pyWarpMulti reverse AD')
 
@@ -818,7 +823,7 @@ class MultiUSMesh(object):
         for instanceID,mesh in enumerate(self.meshes):
 
             # Print log
-            if myID == 0:
+            if self.myID == 0:
                 print('')
                 print(' Working on mesh',instanceID+1,'of',len(self.meshes))
 
@@ -830,12 +835,12 @@ class MultiUSMesh(object):
             mesh.warpDeriv(curr_dXv)
 
             # Print log
-            if myID == 0:
+            if self.myID == 0:
                 print('')
                 print(' Done')
             
         # Print log
-        if myID == 0:
+        if self.myID == 0:
             print('')
             print('pyWarpMulti successfully finished reverse AD on all instances!')
             print('')
@@ -875,7 +880,7 @@ class MultiUSMesh(object):
         myID = self.comm.Get_rank()
 
         # Print log
-        if myID == 0:
+        if self.myID == 0:
             print('')
             print('Starting pyWarpMulti forward AD')
 
@@ -890,7 +895,7 @@ class MultiUSMesh(object):
         for instanceID,mesh in enumerate(self.meshes):
 
             # Print log
-            if myID == 0:
+            if self.myID == 0:
                 print('')
                 print(' Working on mesh',instanceID+1,'of',len(self.meshes))
 
@@ -904,12 +909,12 @@ class MultiUSMesh(object):
             dXv[self.cgnsVolNodeMasks[instanceID]] = curr_dXvWarp
 
             # Print log
-            if myID == 0:
+            if self.myID == 0:
                 print('')
                 print(' Done')
 
         # Print log
-        if myID == 0:
+        if self.myID == 0:
             print('')
             print('pyWarpMulti successfully finished forward AD on all instances!')
             print('')
@@ -952,6 +957,24 @@ class MultiUSMesh(object):
         Ney Secco 2017-03
         """
 
+        # We need to reexplode the original file
+        if self.myID == 0:
+
+            # Load the CGNS file
+            combined_file = cs.readGrid(self.CGNSFile)
+
+            # Explode the CGNS file by zones (this will only work if the user used cgns_utils combine
+            # to create the input CGNS file, since the explosion uses the domain names)
+            grids, zoneNames = cs.explodeByZoneName(combined_file)
+
+            # Save temporary grid files with the exploded zones
+            for grid,zoneName in zip(grids,zoneNames):
+                grid.writeToCGNS('_'+zoneName+'.cgns')
+
+            # Delete grids to free space
+            del grids
+            del combined_file
+
         # Assign baseName if user provided none
         if baseName is None:
             baseName = 'pyWarpMulti'
@@ -964,6 +987,11 @@ class MultiUSMesh(object):
 
             # Call function to write the mesh of the current instance
             mesh.writeGrid(fileName)
+
+        # Now the root proc can remove the temporary grid files
+        if self.myID == 0:
+            for zoneName in zoneNames:
+                os.system('rm _'+zoneName+'.cgns')
 
 # =========================================================================
 #                     Utility functions
