@@ -40,9 +40,9 @@ all:
 	cp f2py_f2cmap.ref .f2py_f2cmap
 
 #       Run the preprocessor on the pyf file:
-	python pyf_preprocessor.py real warpustruct.pyf 
+	$(PYTHON) pyf_preprocessor.py real warpustruct.pyf 
 
-	f2py warpustruct.pyf.autogen
+	$(F2PY) warpustruct.pyf.autogen
 	@echo " "
 	$(CC) $(CC_ALL_FLAGS) $(PYTHON_INCLUDES) -I$(NUMPY_INCLUDES) \
 	-I$(F2PY_ROOT)/src -c warpustructmodule.c
