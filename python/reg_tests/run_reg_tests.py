@@ -1,3 +1,4 @@
+from __future__ import print_function
 # =============================================================================
 # Standard Python modules                                           
 # =============================================================================
@@ -37,11 +38,11 @@ if mode == 'train':
         pass
 
     # Run each script
-    os.system('%s -np 1 python solve_script.py >> %s_reg.ref 2>&1'%(
+    os.system('%s -np 1 python3.5 solve_script.py >> %s_reg.ref 2>&1'%(
                   mpiexec, module_name))
 
     # Run each script
-    os.system('%s -np 4 python solve_script.py >> %s_par_reg.ref 2>&1'%(
+    os.system('%s -np 4 python3.5 solve_script.py >> %s_par_reg.ref 2>&1'%(
                   mpiexec, module_name))
 
             
@@ -55,11 +56,11 @@ else:
         pass
 
     # Run each script
-    os.system('%s -np 1 python solve_script.py  >> %s_reg 2>&1'%(
+    os.system('%s -np 1 python3.5 solve_script.py  >> %s_reg 2>&1'%(
                 mpiexec, module_name))
 
     # Run each script
-    os.system('%s -np 4 python solve_script.py  >> %s_par_reg 2>&1'%(
+    os.system('%s -np 4 python3.5 solve_script.py  >> %s_par_reg 2>&1'%(
                 mpiexec, module_name))
 
     # Do the comparison (reference file must be first)
@@ -69,23 +70,23 @@ else:
 
 # Set the proper return codes for the script running this:
 if res == 0: #reg.REG_FILES_MATCH
-    print '%s: Success!'%(module_name)
+    print('%s: Success!'%(module_name))
 elif res == 1: #reg.REG_FILES_DO_NOT_MATCH
-    print '%s: Failure!'%(module_name)
+    print('%s: Failure!'%(module_name))
     if not nodiff:
         os.system('%s %s_reg.ref %s_reg'%(diff_cmd, module_name, module_name))
 elif res == -1: #reg.REG_ERROR
-    print '%s: Error in regression. Missing files.'%(module_name)
+    print('%s: Error in regression. Missing files.'%(module_name))
 # end if
 # Set the proper return codes for the script running this:
 if res_par == 0: #reg.REG_FILES_MATCH
-    print '%s: Parallel Success!'%(module_name)
+    print('%s: Parallel Success!'%(module_name))
 elif res_par == 1: #reg.REG_FILES_DO_NOT_MATCH
-    print '%s: Parallel Failure!'%(module_name)
+    print('%s: Parallel Failure!'%(module_name))
     if not nodiff:
         os.system('%s %s_par_reg.ref %s_par_reg'%(diff_cmd, module_name, module_name))
 elif res_par == -1: #reg.REG_ERROR
-    print '%s: Error in parallel regression. Missing files.'%(module_name)
+    print('%s: Error in parallel regression. Missing files.'%(module_name))
 
 
 # Exit with code from reg_file_comp:

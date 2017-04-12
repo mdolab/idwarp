@@ -1050,8 +1050,12 @@ class USMesh(object):
         shp = strArray.shape
         arr = strArray.reshape((shp[1],shp[0]), order='F')
         tmp = []
+        
         for i in range(arr.shape[1]):
-            tmp.append(''.join(arr[:, i]).strip().lower())
+            tmp.append("")
+            for j in range(arr.shape[0]):
+                tmp[-1] += arr[j, i].decode()
+            tmp[-1] = tmp[-1].strip().lower()
 
         return tmp
 
