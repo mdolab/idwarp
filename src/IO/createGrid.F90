@@ -76,8 +76,3 @@ subroutine createCommonGrid(volNodes, nVolLocal)
   commonMeshDOF = nVol*3
 
 end subroutine createCommonGrid
-
-
-
-
-
