@@ -69,3 +69,13 @@ module gridData
   real(kind=realType), dimension(:, :), allocatable :: symmPts, symmNormals
 
 end module gridData
+
+module plot3dSurface
+
+  use constants
+  implicit none
+  save
+  
+  real(kind=realType), dimension(:, :), allocatable :: pts
+  integer(kind=intType), dimension(:, :), allocatable :: conn
+end module plot3dSurface

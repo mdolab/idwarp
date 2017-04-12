@@ -168,6 +168,8 @@ class USMesh(object):
 
             elif self.meshType.lower() == "openfoam":
                 self._readOFGrid(fileName)
+            elif self.meshType.lower() == "plot3d":
+                self.warp.readplot3d(fileName)
         else:
             raise Error("Invalid input file type. valid options are: "
                         "CGNS" or "OpenFOAM.")
@@ -254,7 +256,6 @@ class USMesh(object):
 
         allPts = np.vstack(self.comm.allgather(pts))
         allFaceSizes = np.hstack(self.comm.allgather(faceSizes))
-        
         # Be careful with conn...need to increment by the offset from
         # the points.
         ptSizes = self.comm.allgather(len(pts))
@@ -280,15 +281,73 @@ class USMesh(object):
         rng = np.arange(len(ind))
         inv[ind[rng]] = rng
         link = inv[link-1] + 1
-
         self.warp.initializewarping(np.ravel(pts), uniquePts.T, link,
                                      allFaceSizes, allConn, restartFile)
-
         self.nSurf = len(pts)
         self.warpInitialized = True
 
         # Clean-up patch data no longer necessary.
         self.warp.deallocatepatchio()
+
+    def setSurfaceDefinitionFromFile(self, surfFile):
+        """Set the surface definition for the warping from a
+        multiblock plot3d surface file
+
+        Parameters
+        ----------
+        surfFile : filename of multiblock plot3d surface file.
+        """
+
+        # Read the plot3d surface file
+        self.warp.readplot3dsurface(surfFile)
+        
+        if self.comm.rank == 0:
+            # Extract out the data we want from the module. Note that
+            # becuase we are in python, convert conn to 0 based. 
+            pts = self.warp.plot3dsurface.pts.T.copy()
+            conn = self.warp.plot3dsurface.conn.T.copy()-1
+            faceSizes = 4*np.ones(len(conn))
+        else:
+            pts = np.zeros((0, 3))
+            conn = np.zeros((0, 4))
+            faceSizes = 4*np.ones(0)
+
+        # Run the regular setSurfaceDefinition routine. Note that only
+        # the root proc has non-zero length arrays. That's ok. 
+        self.setSurfaceDefinition(pts, conn, faceSizes)
+
+        # Cleanup the fortran memory we used to read the surface
+        self.warp.plot3dsurface.pts = None
+        self.warp.plot3dsurface.conn = None
+
+    def setSurfaceFromFile(self, surfFile):
+        """Update the internal surface surface coordinates using an
+        external plot3d surface file. This can be used in an analogous
+        way to setSurfaceDefinitionFromFile. The 'sense' of the file
+        must be same as the file used with
+        setSurfaceDefinitionFromFile. That means, the same number of
+        blocks, with the same sizes, in the same order.
+
+        Parameters
+        ----------
+        surfFile: filename of multiblock plot3d surface file'
+        """
+        
+        # Read the plot3d surface file
+        self.warp.readplot3dsurface(surfFile)
+        
+        if self.comm.rank == 0:
+            # Extract out the data we want from the module
+            pts = self.warp.plot3dsurface.pts.T.copy()
+        else:
+            pts = np.zeros((0, 3))
+
+        # Do the regular update
+        self.setSurfaceCoordinates(pts)
+        
+        # Cleanup the memory we used to read the surface
+        self.warp.plot3dsurface.pts = None
+        self.warp.plot3dsurface.conn = None
 
     def getSolverGrid(self):
         """Return the current grid in the order specified by
@@ -455,18 +514,28 @@ class USMesh(object):
         Parameters
         ----------
         fileName : str or None
-            Filename for grid. Should end in .cgns for CGNS files. It is
-            not required for openFOAM meshes. This call will update the
-            'points' file.
+
+            Filename for grid. Should end in .cgns for CGNS files. For
+            plot3d whatever you want. It is not optional for
+            cgns/plot3d. It is not required for openFOAM meshes. This
+            call will update the 'points' file.
         """
+        mt = self.meshType.lower()
+        if mt in ['cgns', 'plot3d']:
+            if fileName is None:
+                raise Error('fileName is not optional for writeGrid with '
+                            'gridType of cgns or plot3d')
+            
+            if mt == 'cgns':
+                # Copy the default and then write
+                if self.comm.rank == 0:
+                    shutil.copy(self.solverOptions['gridFile'], fileName)
+                self.warp.writecgns(fileName)
 
-        if self.meshType.lower() == 'cgns':
-            # Copy the default and then write
-            if self.comm.rank == 0:
-                shutil.copy(self.solverOptions['gridFile'], fileName)
-            self.warp.writecgns(fileName)
+            elif mt == 'plot3d':
+                self.warp.writeplot3d(fileName)
 
-        elif self.meshType.lower() == 'openfoam':
+        elif mt == 'openfoam':
             self._writeOpenFOAMVolumePoints(self.getCommonGrid())
 
     def writeOFGridTecplot(self, fileName):
@@ -826,17 +895,17 @@ class USMesh(object):
                                 "were given were found the CGNS file. "
                                 "The families not found are %s."%(repr(missing)))
 
-            elif self.meshType.lower() == "openfoam":
+            elif self.meshType.lower() in ['openfoam', 'plot3d']:
 
                 # We could probably implement this at some point, but
                 # it is not critical 
 
                 raise Error("Automatic determine of symmetry surfaces is "
-                            "not supported for OpenFoam meshes. Please "
+                            "not supported for OpenFoam or Plot3d meshes. Please "
                             "specify the symmetry planes using the "
                             "'symmetryPlanes' option. See the _setSymmetryConditions()"
                             " documentation string for the option prototype.")
-
+            
             # Now we have a list of planes. We have to reduce them to the
             # set of independent planes. This is tricky since you can have
             # have to different normals belonging to the same physical
