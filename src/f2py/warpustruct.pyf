@@ -29,6 +29,14 @@ python module warpustruct ! in
          character*(*) :: cgns_file
        end subroutine readcgns
 
+       subroutine readplot3d(plot3d_file)
+         character*(*) :: plot3d_file
+       end subroutine readplot3d
+
+       subroutine readplot3dsurface(plot3d_file)
+         character*(*) :: plot3d_file
+       end subroutine readplot3dsurface
+
        subroutine setexternalmeshindices(ndof_solver,solver_indices)
          integer(kind=inttype) optional,intent(in),check(len(solver_indices)>=ndof_solver),depend(solver_indices) :: ndof_solver=len(solver_indices)
          integer(kind=inttype) dimension(ndof_solver),intent(in) :: solver_indices
@@ -120,6 +128,10 @@ python module warpustruct ! in
          character*(*) :: cgns_file
        end subroutine writecgns
 
+       subroutine writeplot3d(plot3d_file)
+         character*(*) :: plot3d_file
+       end subroutine writeplot3d
+
        subroutine releasememory
        end subroutine releasememory
 
@@ -167,6 +179,11 @@ python module warpustruct ! in
          character(32), dimension(:), allocatable :: surfacenames
          logical :: cgnsstructured
        end module cgnsgrid
+
+       module plot3dsurface
+         real(kind=realtype), dimension(:, :), allocatable :: pts
+         integer(kind=inttype), dimension(:, :), allocatable :: conn
+       end module plot3dsurface
 
        subroutine pointreduce(pts,n,tol,uniquepts,link,nunique) ! in :test:pointReduce.F90
          real(kind=realtype) dimension(3,n),intent(in) :: pts
