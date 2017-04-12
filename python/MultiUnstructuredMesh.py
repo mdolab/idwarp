@@ -38,7 +38,10 @@ from mpi4py import MPI
 from .MExt import MExt
 import pywarpustruct
 from petsc4py import PETSc
-from cgnsutilities import cgns_utils as cs
+try: 
+    from cgnsutilities import cgns_utils as cs
+except:
+    cs = None
 
 class Error(Exception):
     """
@@ -106,6 +109,11 @@ class MultiUSMesh(object):
 
         Ney Secco 2017-02
         """
+
+        # Check if cs was imported correctly:
+        if cs is None:
+            raise Error('cgns_utils could not be loaded correctly. MultiUSMesh '
+                        'requires cgns_utils to function.')
 
         # Assign communicator if we do not have one yet
         if comm is None:
