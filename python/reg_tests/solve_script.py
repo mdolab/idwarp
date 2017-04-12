@@ -70,7 +70,7 @@ def test1():
 
     new_coords = coords0.copy()
     # Do a stretch:
-    for i in xrange(len(coords0)):
+    for i in range(len(coords0)):
         length = coords0[i,2]
         new_coords[i,0] += .05*length
 
@@ -129,7 +129,7 @@ def test2():
 
     new_coords = coords0.copy()
     # Do a shearing sweep deflection:
-    for i in xrange(len(coords0)):
+    for i in range(len(coords0)):
         span = coords0[i,2]
         new_coords[i,0] += .05*span
 
@@ -187,7 +187,7 @@ def test3():
 
     new_coords = coords0.copy()
     # Do a shearing sweep deflection:
-    for i in xrange(len(coords0)):
+    for i in range(len(coords0)):
         span = coords0[i,2]
         new_coords[i,0] += .05*span
 
@@ -246,7 +246,7 @@ def test4():
 
     new_coords = coords0.copy()
     # Do a shearing sweep deflection:
-    for i in xrange(len(coords0)):
+    for i in range(len(coords0)):
         span = coords0[i,2]
         new_coords[i,0] += .05*span
 
@@ -305,7 +305,7 @@ def test5():
 
     new_coords = coords0.copy()
 
-    for i in xrange(len(coords0)):
+    for i in range(len(coords0)):
         new_coords[i,0] *= 1.1
         new_coords[i,1] *= 1.2
         new_coords[i,1] *= 1.3
