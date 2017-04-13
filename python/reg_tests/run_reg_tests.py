@@ -38,11 +38,11 @@ if mode == 'train':
         pass
 
     # Run each script
-    os.system('%s -np 1 python3.5 solve_script.py >> %s_reg.ref 2>&1'%(
+    os.system('%s -np 1 python solve_script.py >> %s_reg.ref 2>&1'%(
                   mpiexec, module_name))
 
     # Run each script
-    os.system('%s -np 4 python3.5 solve_script.py >> %s_par_reg.ref 2>&1'%(
+    os.system('%s -np 4 python solve_script.py >> %s_par_reg.ref 2>&1'%(
                   mpiexec, module_name))
 
             
@@ -56,11 +56,11 @@ else:
         pass
 
     # Run each script
-    os.system('%s -np 1 python3.5 solve_script.py  >> %s_reg 2>&1'%(
+    os.system('%s -np 1 python solve_script.py  >> %s_reg 2>&1'%(
                 mpiexec, module_name))
 
     # Run each script
-    os.system('%s -np 4 python3.5 solve_script.py  >> %s_par_reg 2>&1'%(
+    os.system('%s -np 4 python solve_script.py  >> %s_par_reg 2>&1'%(
                 mpiexec, module_name))
 
     # Do the comparison (reference file must be first)
