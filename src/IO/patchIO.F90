@@ -248,6 +248,10 @@ subroutine averageNormal(pts, conn, faceSizes, nPts, nConn, nFaceSizes, avgNorm)
      end do
   end do
   avgNorm = avgNorm / nAvg
+
+  ! Renormalize to be sure
+  avgNorm = avgNorm / sqrt(avgNorm(1)**2 + avgNorm(2)**2 + avgNorm(3)**2)
+
 end subroutine averageNormal
 
 subroutine deallocatePatchIO
