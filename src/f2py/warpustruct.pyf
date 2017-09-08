@@ -178,6 +178,13 @@ python module warpustruct ! in
          integer(kind=inttype), dimension(:), allocatable :: surfacepatchptr
          character(32), dimension(:), allocatable :: surfacenames
          logical :: cgnsstructured
+         subroutine getnpatch(npatches)
+           integer(kind=inttype) intent(out) :: npatches
+         end subroutine getnpatch
+         subroutine getsurf(i,surf)
+           integer(kind=inttype) intent(in) :: i
+           character(32) intent(out) :: surf
+         end subroutine getsurf
        end module cgnsgrid
 
        module plot3dsurface
