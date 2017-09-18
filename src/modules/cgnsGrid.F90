@@ -57,29 +57,33 @@ module cgnsGrid
 
   ! List of default names for surfaces if not provided
   character(maxCGNSNameLen), dimension(25) :: defaultFamName
- 
+
 contains
+
   subroutine getnpatch(npatch)
-    
+
     implicit none
-     integer(kind=inttype), intent(out) :: npatch
-     if (allocated(surfaceNames)) then
-        npatch = size(surfaceNames)
-     else
-        npatch = 0
+
+    integer(kind=inttype), intent(out) :: npatch
+    if (allocated(surfaceNames)) then
+       npatch = size(surfaceNames)
+    else
+       npatch = 0
     end if
 
-   end subroutine getnpatch
- 
-   subroutine getsurf(i, surf)
-     implicit none
-     character(len=maxCGNSNameLen), intent(out) :: surf
-     integer(kind=intType), intent(in) :: i
+  end subroutine getnpatch
 
-     if (allocated(surfaceNames)) then
-        surf = surfaceNames(i)
-     end if
+  subroutine getsurf(i, surf)
 
-   end subroutine getsurf
+    implicit none
 
- end module cgnsGrid
+    character(len=maxCGNSNameLen), intent(out) :: surf
+    integer(kind=intType), intent(in) :: i
+
+    if (allocated(surfaceNames)) then
+       surf = surfaceNames(i)
+    end if
+
+  end subroutine getsurf
+
+end module cgnsGrid
