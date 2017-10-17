@@ -3,18 +3,18 @@ subroutine readUnstructuredCGNS(cg)
   use precision
   use communication
   use gridData
-  use gridInput  
+  use gridInput
   use CGNSGrid
 
   implicit none
-  include 'cgnslib_f.h'
 
   ! Input Arguments
   integer(kind=intType), intent(in) :: cg
 
   ! CGNS Variables
   integer(kind=intType) :: i, j, k, m, l, istart, iend, localsize, iProc
-  integer(kind=intType):: ierr, base, dims(3), iZone
+  integer(kind=intType):: ierr, base, iZone
+  integer(kind=cgsize_t) :: dims(3)
   integer(kind=intType):: nNodes, nCells
   integer(kind=intType) :: tmpSym, nSymm
   character*32 :: zoneName, bocoName, famName
@@ -23,12 +23,13 @@ subroutine readUnstructuredCGNS(cg)
   integer(kind=intType) :: nbocos, boco
   integer(kind=intType) :: nVertices,nElements, nzones
   integer(kind=intType) :: zoneType,dataType,sec,type
-  integer(kind=intType) :: nSections,nElem,nConn
-  integer(kind=intType) :: eBeg,eEnd,nBdry, parentFlag
+  integer(kind=intType) :: nSections,nElem,nConn,parentFlag, nBdry
+  integer(kind=cgsize_t) :: eBeg,eEnd,elementDataSize
   integer(kind=intType) :: bocoType,ptsettype,nbcelem
-  integer(kind=intType) :: normalIndex,normalListFlag
+  integer(kind=intType) :: normalIndex(1)
+  integer(kind=cgsize_t) :: normalListFlag, nPnts
   integer(kind=intType) :: nDataSet, tmpInt(2)
-  integer(kind=intType) :: elementDataSize, curElement, eCount, nPnts
+  integer(kind=intType) :: curElement, eCount
   real(kind=realType), dimension(:), allocatable :: coorX, coorY, coorZ
   integer(kind=intType), dimension(:), allocatable :: tmpConn
 #ifdef USE_COMPLEX
@@ -47,7 +48,7 @@ subroutine readUnstructuredCGNS(cg)
 
   integer(kind=intType) :: nElemNotFound, curElem, curElemSize, localIndex
   real(kind=realType) :: symmSum(3)
-  logical :: isSurface 
+  logical :: isSurface
 
   ! ---------------------------------------
   !           Open CGNS File
@@ -65,7 +66,7 @@ subroutine readUnstructuredCGNS(cg)
 
      ! do a check that we have all unstructured zones
      do iZone = 1,nZones
-        ! Check the zone type. This should be Unstructured. 
+        ! Check the zone type. This should be Unstructured.
         call cg_zone_type_f(cg,base, iZone, zoneType, ierr)
         if (ierr .eq. ERROR) call cg_error_exit_f
 
@@ -93,7 +94,7 @@ subroutine readUnstructuredCGNS(cg)
      end do
 
      ! Now we know the total number of nodes we can allocate the final
-     ! required space and read them in. 
+     ! required space and read them in.
      allocate(allNodes(3, nNodes))
      allocate(surfaceNodes(nNodes))
      surfaceNodes = 0
@@ -108,11 +109,11 @@ subroutine readUnstructuredCGNS(cg)
          call cg_coord_read_f(cg,base,iZone,"CoordinateX",&
              & realDouble, 1, dims(1), coorX, ierr)
         if (ierr .eq. CG_ERROR) call cg_error_exit_f
-        
+
         call cg_coord_read_f(cg,base,iZone,"CoordinateY",&
              & realDouble, 1, dims(1), coorY, ierr)
         if (ierr .eq. CG_ERROR) call cg_error_exit_f
-           
+
         call cg_coord_read_f(cg,base,iZone,"CoordinateZ",&
              & realDouble, 1, dims(1), coorZ, ierr)
         if (ierr .eq. CG_ERROR) call cg_error_exit_f
@@ -158,19 +159,19 @@ subroutine readUnstructuredCGNS(cg)
            zones(iZone)%sections(sec)%nElem = nElem
            zones(iZone)%sections(sec)%name = secName
            zones(iZone)%sections(sec)%elemStart = eBeg
-           zones(iZone)%sections(sec)%elemEnd = eEnd   
+           zones(iZone)%sections(sec)%elemEnd = eEnd
 
            ! Currently we can only deal with three and four sided
            ! surfaces. These can show up type == TRI_3 (all tris),
            ! type == QUAD_4 or type == MIXED. In the case of mixed we
-           ! need to check each of the types individually. 
+           ! need to check each of the types individually.
            select case (type)
 
               ! all tris or quads
            case (TRI_3, QUAD_4)
               ! Firstly flag this section as a surface
               zones(iZone)%sections(sec)%isSurface = .True.
-             
+
               ! Get the nodes per element "npe" (constant)
               call cg_npe_f(type, nConn, ierr)
               if (ierr .eq. CG_ERROR) call cg_error_exit_f
@@ -185,19 +186,19 @@ subroutine readUnstructuredCGNS(cg)
               if (ierr .eq. CG_ERROR) call cg_error_exit_f
 
               ! Set up the pointer which is simple in this case...it
-              ! is just an arithematic list. 
+              ! is just an arithematic list.
               zones(iZone)%sections(sec)%elemPtr(1) = 1
               do i=2,nElem+1
                  zones(iZone)%sections(sec)%elemPtr(i) = &
                       zones(iZone)%sections(sec)%elemPtr(i-1) + nConn
               end do
 
-           case (MIXED) 
+           case (MIXED)
 
               ! This section *could* be a surface but we don't
-              ! actually know yet. 
+              ! actually know yet.
 
-              ! First get the number of values we need to read 
+              ! First get the number of values we need to read
               call cg_ElementDataSize_f(cg, base, iZone, sec, &
                    ElementDataSize , ierr)
               if (ierr .eq. CG_ERROR) call cg_error_exit_f
@@ -224,7 +225,7 @@ subroutine readUnstructuredCGNS(cg)
 
                     call cg_npe_f(curElement, nConn, ierr)
                     if (ierr .eq. CG_ERROR) call cg_error_exit_f
-                    
+
                     i = i + nConn + 1 ! The plus 1 is for the element Type
 
                  case default
@@ -233,17 +234,17 @@ subroutine readUnstructuredCGNS(cg)
                     exit elementCheckLoop
                  end select
               end do elementCheckLoop
-              
+
               ! Only continue if we are now sure the section is only
               ! surfaces
-              if (zones(iZone)%sections(sec)%isSurface) then 
-                               
+              if (zones(iZone)%sections(sec)%isSurface) then
+
                  ! Allocate space for the connectivities and the
                  ! pointer. It should be save to take this as
-                 ! ElementDataSize - nElem. 
+                 ! ElementDataSize - nElem.
                  allocate(zones(iZone)%sections(sec)%elemConn(ElementDataSize-nElem))
                  allocate(zones(iZone)%sections(sec)%elemPtr(nElem+1))
-                 
+
                  zones(iZone)%sections(sec)%elemConn = -999999999
 
                  ! Loop back over the section elements
@@ -258,10 +259,10 @@ subroutine readUnstructuredCGNS(cg)
                     case (TRI_3, QUAD_4)
                        ! We're OK...now determine how much we need to
                        ! increment the counter
-                       
+
                        call cg_npe_f(curElement, nConn, ierr)
                        if (ierr .eq. CG_ERROR) call cg_error_exit_f
-                       
+
                        ! iStart is the start of the element in elemPtr
                        ! iEnd is one more than the end of the element
                        ! in elemPtr (or the start of the next one)
@@ -273,7 +274,7 @@ subroutine readUnstructuredCGNS(cg)
                        ! The connectivity is easy:
                        zones(iZone)%sections(sec)%elemConn(iStart:iEnd-1) = &
                             tmpConn(i+1: i+nConn)
-                       
+
                        ! Move to the next element
                        i = i + nConn + 1
                        eCount = eCount + 1
@@ -303,7 +304,7 @@ subroutine readUnstructuredCGNS(cg)
         ! for the elements as well.
         do sec=1, nSections-1
            if ( zones(iZone)%sections(sec+1)%elemStart /= &
-                zones(iZone)%sections(sec  )%elemEnd + 1) then 
+                zones(iZone)%sections(sec  )%elemEnd + 1) then
               print *,'The section element ranges are not in order. This cannot be handled.'
               stop
            end if
@@ -325,7 +326,7 @@ subroutine readUnstructuredCGNS(cg)
 
         bocoLoop: do boco=1, nBocos
 
-           ! Read the info for this boundary condition. 
+           ! Read the info for this boundary condition.
            call cg_boco_info_f(cg, base, iZone, boco, boconame, bocotype, &
                 ptsettype, nPnts, NormalIndex, NormalListFlag, datatype, &
                 ndataset, ierr)
@@ -333,8 +334,8 @@ subroutine readUnstructuredCGNS(cg)
 
            ! We only allow ElementRange and ElementList...its just too
            ! hard to figure out what is going on with the point types.
-           if (ptSetType == PointRange .or. ptSetType == pointList) then 
-              print *, 'pyWarpUStruct cannot handle boundary conditions & 
+           if (ptSetType == PointRange .or. ptSetType == pointList) then
+              print *, 'pyWarpUStruct cannot handle boundary conditions &
                    &defined by "PointRange" or "PointList". Please use &
                    &boundary conditions defined by "ElementRange" or "ElementList" &
                    &instead'
@@ -342,8 +343,8 @@ subroutine readUnstructuredCGNS(cg)
               stop
            end if
 
-           ! Load in the 
-           if (ptSetType == ElementRange) then 
+           ! Load in the
+           if (ptSetType == ElementRange) then
               ! We have to read off the start and end elements, this
               ! will always require an array of lenght 2 (tmpInt)
 
@@ -393,7 +394,7 @@ subroutine readUnstructuredCGNS(cg)
            l = 1 ! Running index of elemPtr
 
            do i=1, size(zones(iZone)%bocos(boco)%bcElements)
-              
+
               curElem = zones(iZone)%bocos(boco)%bcElements(i)
               sec = -1
 
@@ -419,8 +420,8 @@ subroutine readUnstructuredCGNS(cg)
                  ! iStart/iEnd are the indices on the section
                  iStart = secPtr%elemPtr(localIndex)
                  iEnd   = secPtr%elemPtr(localIndex+1) - 1
-                 
-                 ! Number of nodes on this section. 
+
+                 ! Number of nodes on this section.
                  curElemSize =  iEnd - iStart + 1
 
                  ! Since we just blew up the global connectivity, the
@@ -443,9 +444,9 @@ subroutine readUnstructuredCGNS(cg)
                  end do
               end if
            end do
-        
+
            ! Now we set the *actual* number of nBCElem and nBCNodes
-           zones(iZone)%bocos(boco)%nBCElem = nBCElem - nElemNotFound 
+           zones(iZone)%bocos(boco)%nBCElem = nBCElem - nElemNotFound
            zones(iZOne)%bocos(boco)%nBCNodes = k-1
 
            ! Save the boco name
@@ -498,7 +499,7 @@ subroutine readUnstructuredCGNS(cg)
      ! Loop over the remainer of the procs and send the nodes they need
      do iProc=1, nProc-1
         ! compute the node range for the target processor
-        istart = int(nNodes*(dble(iProc)/nProc)) +1 
+        istart = int(nNodes*(dble(iProc)/nProc)) +1
         iend   = int(nNodes*(dble(iProc+1)/nProc))
         localSize = iend - istart + 1
 
@@ -522,7 +523,7 @@ subroutine readUnstructuredCGNS(cg)
   else
 
      ! compute the incoming node range for this processor
-     istart = int(nNodes*(dble(myid)/nProc)) +1 
+     istart = int(nNodes*(dble(myid)/nProc)) +1
      iend   = int(nNodes*(dble(myid+1)/nProc))
      localSize = iend - istart + 1
 
@@ -551,5 +552,3 @@ subroutine readUnstructuredCGNS(cg)
   deallocate(localNodes, localSurfaceNodes)
 
 end subroutine readUnstructuredCGNS
-
-

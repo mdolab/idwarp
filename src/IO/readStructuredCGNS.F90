@@ -5,19 +5,20 @@ subroutine readStructuredCGNS(cg)
   use CGNSGrid
 
   implicit none
-  include 'cgnslib_f.h'
 
   ! Input Arguments
   integer(kind=intType) :: cg
 
-  ! Working 
+  ! Working
   integer(kind=intType) :: i, j, k, ii, istart, iend, localsize, iProc, iZone, offset
-  integer(kind=intType):: ierr, base, nZones, nNodes, dims(9)
+  integer(kind=intType):: ierr, base, nZones, nNodes
+  integer(kind=cgsize_t) :: dims(9), npts
   integer(kind=intType) :: start(3)
   character(len=maxCGNSNameLen) :: bocoName, famName, coorName(3), zoneName
-  integer(kind=intType) :: npts, nbocos, bocotype, pts(3, 2), boco
-  integer(kind=intType) :: ptset_type, normalIndex(3), NormalListFlag, datatype, ndataset
+  integer(kind=intType) :: nbocos, bocotype, pts(3, 2), boco
+  integer(kind=intType) :: ptset_type, normalIndex(3), datatype, ndataset
   integer(kind=intType) :: coorDataType(3)
+  integer(kind=cgsize_t) :: normalListFlag
   real(kind=8)   ::  data_double(6)
   real(kind=realType), dimension(:, :, :), allocatable :: coorX, coorY, coorZ
 #ifdef USE_COMPLEX
@@ -32,15 +33,15 @@ subroutine readStructuredCGNS(cg)
   logical :: lowFace
 
   ! Only do reading on root proc:
-  rootProc: if (myid == 0) then 
+  rootProc: if (myid == 0) then
 
      ! Always the first base
      base = 1_intType
-   
+
      call cg_nzones_f(cg, base, nZones, ierr);
      if (ierr .eq. CG_ERROR) call cg_error_exit_f
      allocate(zones(nZones))
-     
+
      ! Now count up the total number of nodes
      nNodes = 0
      allocate(sizes(3, nZones))
@@ -54,14 +55,14 @@ subroutine readStructuredCGNS(cg)
      end do
 
      ! Now we know the total number of nodes we can allocate the final
-     ! required space and read them in. 
+     ! required space and read them in.
      allocate(allNodes(3, nNodes))
      allocate(surfaceNodes(nNodes))
      surfaceNodes = 0
 
      ! We make two loops over the zones....the first *just* reads the
      ! BC info and stores it. The second, actually reads the
-     ! nodes. 
+     ! nodes.
 
      nSurf = 0
      nConn = 0
@@ -82,16 +83,16 @@ subroutine readStructuredCGNS(cg)
            ! Nullify elemPtr, elemConn and elemNodes since we won't have any
            nullify(zones(iZone)%bocos(boco)%elemPtr, &
                    zones(iZone)%bocos(boco)%elemConn, &
-                   zones(iZone)%bocos(boco)%elemNodes) 
+                   zones(iZone)%bocos(boco)%elemNodes)
 
            call cg_boco_info_f(cg, base, iZone, boco, boconame, bocotype, &
                 ptset_type, npts, NormalIndex, NormalListFlag, datatype, &
                 ndataset, ierr)
            if (ierr .eq. CG_ERROR) call cg_error_exit_f
-           
+
            call cg_boco_read_f(cg, base, iZone, boco, pts, data_double, ierr)
            if (ierr .eq. CG_ERROR) call cg_error_exit_f
-          
+
            ! Save the boco info
            zones(iZone)%bocos(boco)%name = boconame
            zones(iZone)%bocos(boco)%type = bocoType
@@ -111,19 +112,19 @@ subroutine readStructuredCGNS(cg)
                  ! map table setup for that
                  zones(iZone)%bocos(boco)%family = defaultFamName(bocoType)
               end if
-              
+
               ! Actual number of nodes on patch
               nx = pts(1, 2) - pts(1, 1) + 1
               ny = pts(2, 2) - pts(2, 1) + 1
               nz = pts(3, 2) - pts(3, 1) + 1
-                    
-              if (pts(1,1) == pts(1, 2)) then 
+
+              if (pts(1,1) == pts(1, 2)) then
                  nSurf = nSurf + ny*nz
                  nConn = nConn + (ny-1)*(nz-1)
-              else if (pts(2,1) == pts(2, 2)) then 
+              else if (pts(2,1) == pts(2, 2)) then
                  nSurf = nSurf + nx*nz
                  nConn = nConn + (nx-1)*(nz-1)
-              else if (pts(3,1) == pts(3, 2)) then 
+              else if (pts(3,1) == pts(3, 2)) then
                  nSurf = nSurf + nx*ny
                  nConn = nConn + (nx-1)*(ny-1)
               end if
@@ -163,15 +164,15 @@ subroutine readStructuredCGNS(cg)
               stop
            end if
         end do
-        
+
         call cg_coord_read_f(cg, base, iZone, "CoordinateX", RealDouble, start, dims(1:3), coorX, ierr)
         if (ierr .eq. CG_ERROR) call cg_error_exit_f
         call cg_coord_read_f(cg, base, iZone, "CoordinateY", RealDouble, start, dims(1:3), coorY, ierr)
         if (ierr .eq. CG_ERROR) call cg_error_exit_f
         call cg_coord_read_f(cg, base, iZone, "CoordinateZ", RealDouble, start, dims(1:3), coorZ, ierr)
         if (ierr .eq. CG_ERROR) call cg_error_exit_f
-        
-        ! Now interlace the packing      
+
+        ! Now interlace the packing
         do k=1, dims(3)
            do j=1, dims(2)
               do i=1, dims(1)
@@ -192,7 +193,7 @@ subroutine readStructuredCGNS(cg)
         bocoLoop2: do boco=1, size(zones(iZone)%bocos)
            bocoType = zones(iZone)%bocos(boco)%type
            pts = zones(iZone)%bocos(boco)%ptRange
-        
+
            ! Flag the surface nodes
            do k=pts(3, 1), pts(3, 2)
               do j=pts(2, 1), pts(2, 2)
@@ -216,28 +217,28 @@ subroutine readStructuredCGNS(cg)
            if (pts(1,1) == pts(1,2)) then ! iMin/iMax
               ni = pts(2,2) - pts(2,1) + 1
               nj = pts(3,2) - pts(3,1) + 1
-              if (pts(1,1) == 1) then 
+              if (pts(1,1) == 1) then
                  lowFace = .True.
               end if
-              
+
            else if (pts(2,1) ==pts(2,2)) then !jMin/jMax
               ni = pts(1,2) - pts(1,1) + 1
               nj = pts(3,2) - pts(3,1) + 1
-              if (pts(2,1) == 1) then 
+              if (pts(2,1) == 1) then
                  lowFace = .True.
               end if
-              
+
            else ! kMin/kMax
               ni = pts(1,2) - pts(1,1) + 1
               nj = pts(2,2) - pts(2,1) + 1
-              
-              if (pts(3,1) == 1) then 
+
+              if (pts(3,1) == 1) then
                  lowFace = .True.
               end if
            end if
-          
+
            ! Loop over generic face size...We are doing 1 based
-           ! ordering. If it is low face normal ordering: 
+           ! ordering. If it is low face normal ordering:
            !
            ! i, j+1 +-----+ i+1, j+1
            !   n4   |     | n3
@@ -246,7 +247,7 @@ subroutine readStructuredCGNS(cg)
               !       n1     n2
            !
            ! Otherwise, we flip the ordering to be n1, n4, n3, n2
-           if (lowFace) then 
+           if (lowFace) then
               do j=0,nj-2
                  do i=0,ni-2
                     surfaceConn(4*nConn+1) = nodeCount + (j  )*ni + i + 1     ! n1
@@ -286,7 +287,7 @@ subroutine readStructuredCGNS(cg)
      ! Allocate these to zero so we can just blindly dealloc later
      allocate(surfacePoints(0), surfaceConn(0))
   end if rootProc
-  
+
   ! Communicate the total number of nodes to everyone
   call MPI_bcast(nNodes, 1, MPI_INTEGER, 0, warp_comm_world, ierr)
   call EChk(ierr, __FILE__, __LINE__)
@@ -305,7 +306,7 @@ subroutine readStructuredCGNS(cg)
 
      ! Loop over the remainer of the procs and send
      do iProc=1, nProc-1
-        istart = int(nNodes*(dble(iProc)/nProc)) +1 
+        istart = int(nNodes*(dble(iProc)/nProc)) +1
         iend   = int(nNodes*(dble(iProc+1)/nProc))
         localSize = iend - istart + 1
 #ifdef USE_COMPLEX
@@ -325,10 +326,10 @@ subroutine readStructuredCGNS(cg)
      deallocate(surfaceNodes)
   else
 
-     istart = int(nNodes*(dble(myid)/nProc)) +1 
+     istart = int(nNodes*(dble(myid)/nProc)) +1
      iend   = int(nNodes*(dble(myid+1)/nProc))
      localSize = iend - istart + 1
-     
+
      allocate(localNodes(3, localSize))
      allocate(localSurfaceNodes(localSize))
 
@@ -345,7 +346,7 @@ subroutine readStructuredCGNS(cg)
           warp_comm_world, status, ierr)
      call EChk(ierr, __FILE__, __LINE__)
   end if rootProc2
-  
+
   ! All we are doing to do here is to create the Xv vector --- which
   ! is done via a call to createCommonGrid
 
@@ -355,7 +356,7 @@ subroutine readStructuredCGNS(cg)
 end subroutine readStructuredCGNS
 
 subroutine checkInFamilyList(familyList, famName, nFamily, index)
-  use precision 
+  use precision
   use constants
   implicit none
   character*32, dimension(maxFamilies) :: familyList
