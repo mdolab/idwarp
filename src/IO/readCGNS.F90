@@ -5,7 +5,6 @@ subroutine readCGNS(cgns_file)
   use CGNSGrid
 
   implicit none
-  include 'cgnslib_f.h'
 
   ! Input Arguments
   character*(*),intent(in) :: cgns_file
@@ -44,7 +43,7 @@ subroutine readCGNS(cgns_file)
 
   ! Do the I/O that is common to both types of grids
 
-  if (myid == 0) then 
+  if (myid == 0) then
      print *, ' -> Reading CGNS File: ', cgns_file
 
      ! Open and get the number of zones:
@@ -53,7 +52,7 @@ subroutine readCGNS(cgns_file)
 
      call cg_nbases_f(cg, nbases, ierr)
      if (ierr .eq. CG_ERROR) call cg_error_exit_f
-     
+
      if (nbases .gt. 1) then
         print *, ' ** Warning: pyWarpUstruct only reads the first base in a cgns file'
      end if
@@ -66,20 +65,20 @@ subroutine readCGNS(cgns_file)
         print *, 'The Cells must 3 dimensional'
         stop
      end if
-   
+
      call cg_nzones_f(cg, base, nZones, ierr);
      if (ierr .eq. CG_ERROR) call cg_error_exit_f
      print *, '   -> Number of Zones:', nzones
-     
+
      ! Determine if we have structured or unstructured zones. We can
      ! only deal with one or the other.
      nStructured = 0
      nUnstructured = 0
      do i=1, nZones
         call cg_zone_type_f(cg, base, i, zoneType, ierr)
-        if (zoneType == Structured) then 
+        if (zoneType == Structured) then
            nStructured = nStructured + 1
-        else if (zoneType == Unstructured) then 
+        else if (zoneType == Unstructured) then
            nUnstructured = nUnstructured + 1
         end if
      end do
@@ -93,10 +92,10 @@ subroutine readCGNS(cgns_file)
   call EChk(ierr, __FILE__, __LINE__)
 
   ! There are 4 possibilities:
-  if (nStructured /= 0 .and. nUnstructured == 0) then 
+  if (nStructured /= 0 .and. nUnstructured == 0) then
      cgnsStructured = .True.
      call readStructuredCGNS(cg)
-  else if (nStructured == 0 .and. nUnstructured /= 0) then 
+  else if (nStructured == 0 .and. nUnstructured /= 0) then
      cgnsStructured = .False.
      call readUnstructuredCGNS(cg)
   else
