@@ -5,11 +5,10 @@ subroutine writeCGNS(cgns_file)
   use CGNSGrid
   use gridData
   implicit none
-  include 'cgnslib_f.h'
 
   ! Input Arguments
   character*(*),intent(in) :: cgns_file
-    
+
   ! CGNS Variabls
   integer(kind=intType) :: cg, base
   integer(kind=intType) :: iZone, coordID, ierr
@@ -17,9 +16,9 @@ subroutine writeCGNS(cgns_file)
   real(kind=realType), dimension(:), allocatable :: coorX, coorY, coorZ
   real(kind=realType), pointer, dimension(:) :: xx
   integer(kind=intType) :: j, jj, offset, nNodes
-  
+
   ! This isn't technically scalable...we will dump the entire grid
-  ! onto the root proc and write there. 
+  ! onto the root proc and write there.
   call VecScatterCreateToZero(Xv, XvToLocal, Xvlocal, ierr)
 
   call VecScatterBegin(XvToLocal, Xv, XvLocal, INSERT_VALUES, SCATTER_FORWARD, ierr)
@@ -29,7 +28,7 @@ subroutine writeCGNS(cgns_file)
   call EChk(ierr,__FILE__,__LINE__)
 
   ! Only do writing on root proc:
-  rootProc: if (myid == 0) then 
+  rootProc: if (myid == 0) then
 
      call VecGetArrayF90(XvLocal, xx, ierr)
      call EChk(ierr,__FILE__,__LINE__)
@@ -44,10 +43,10 @@ subroutine writeCGNS(cgns_file)
      do iZone=1, size(zones)
 
         ! Get the number of points:
-        if (cgnsStructured) then 
+        if (cgnsStructured) then
            nNodes = zones(iZone)%il*zones(iZone)%jl*zones(iZone)%kl
         else
-           nNodes = zones(iZone)%nVertices 
+           nNodes = zones(iZone)%nVertices
         end if
 
         ! Allocate arrays for X,Y and Z.Note that we CANNOT just use
@@ -89,6 +88,5 @@ subroutine writeCGNS(cgns_file)
 
   call VecScatterDestroy(XvToLocal, ierr)
   call EChk(ierr,__FILE__,__LINE__)
-  
-end subroutine writeCGNS
 
+end subroutine writeCGNS
