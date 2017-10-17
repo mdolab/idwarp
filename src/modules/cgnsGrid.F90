@@ -4,7 +4,17 @@ module cgnsGrid
   ! to a structured or unstructured CGNS grid
   !
   use constants
-  implicit none
+
+#ifdef USECGNSMODULE
+       use cgns
+       implicit none
+#else
+       implicit none
+       include "cgnslib_f.h"
+       integer(kind=4), private :: dummyInt
+       integer, parameter :: cgsize_t=kind(dummyInt)
+#endif
+
   save
 
   type bctype

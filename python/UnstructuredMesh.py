@@ -174,7 +174,7 @@ class USMesh(object):
             raise Error("Invalid input file type. valid options are: "
                         "CGNS" or "OpenFOAM.")
 
-    def getSurfaceCoordinates(self): 
+    def getSurfaceCoordinates(self):
         """Returns all defined surface coordinates on this processor
 
         Returns
@@ -210,8 +210,8 @@ class USMesh(object):
         """
         Set the indicies defining the transformation of an external
         solver grid to the original CGNS grid. This is required to use
-        USMesh functions that involve the word "Solver" and warpDeriv. 
-        The indices must be zero-based. 
+        USMesh functions that involve the word "Solver" and warpDeriv.
+        The indices must be zero-based.
 
         Parameters
         ----------
@@ -242,7 +242,7 @@ class USMesh(object):
         """
 
         conn = np.array(conn).flatten()
-        
+
         # Call the fortran initialze warping command with  the
         # coordinates and the patch connectivity given to us.
         if self.solverOptions['restartFile'] is None:
@@ -262,7 +262,7 @@ class USMesh(object):
         offsets = np.zeros(len(ptSizes), 'intc')
         offsets[1:] = np.cumsum(ptSizes)[:-1]
         allConn = np.hstack(self.comm.allgather(conn + offsets[self.comm.rank]))
-        
+
         # Next point reduce all nodes:
         uniquePts, link, nUnique = self.warp.pointreduce(allPts.T, 1e-12)
         uniquePts = uniquePts.T[0:nUnique]
@@ -271,14 +271,15 @@ class USMesh(object):
         # always created the same way. It is currently sensitivte to
         # the ordering of the original nodes. Ie, if you reorder the
         # nodes you get a differnet tree which gives slightly
-        # differnet warp values/derivatives. 
+        # differnet warp values/derivatives.
 
         ind = np.lexsort(uniquePts.T)
         uniquePts = uniquePts[ind]
 
-        # Update the link array such that it points back to the original list. 
+        # Update the link array such that it points back to the original list.
         inv = np.zeros_like(ind, 'intc')
-        rng = np.arange(len(ind))
+        rng = np.arange(len(ind)).astype('intc')
+
         inv[ind[rng]] = rng
         link = inv[link-1] + 1
         self.warp.initializewarping(np.ravel(pts), uniquePts.T, link,
@@ -300,10 +301,10 @@ class USMesh(object):
 
         # Read the plot3d surface file
         self.warp.readplot3dsurface(surfFile)
-        
+
         if self.comm.rank == 0:
             # Extract out the data we want from the module. Note that
-            # becuase we are in python, convert conn to 0 based. 
+            # becuase we are in python, convert conn to 0 based.
             pts = self.warp.plot3dsurface.pts.T.copy()
             conn = self.warp.plot3dsurface.conn.T.copy()-1
             faceSizes = 4*np.ones(len(conn))
@@ -313,7 +314,7 @@ class USMesh(object):
             faceSizes = 4*np.ones(0)
 
         # Run the regular setSurfaceDefinition routine. Note that only
-        # the root proc has non-zero length arrays. That's ok. 
+        # the root proc has non-zero length arrays. That's ok.
         self.setSurfaceDefinition(pts, conn, faceSizes)
 
         # Cleanup the fortran memory we used to read the surface
@@ -332,10 +333,10 @@ class USMesh(object):
         ----------
         surfFile: filename of multiblock plot3d surface file'
         """
-        
+
         # Read the plot3d surface file
         self.warp.readplot3dsurface(surfFile)
-        
+
         if self.comm.rank == 0:
             # Extract out the data we want from the module
             pts = self.warp.plot3dsurface.pts.T.copy()
@@ -344,7 +345,7 @@ class USMesh(object):
 
         # Do the regular update
         self.setSurfaceCoordinates(pts)
-        
+
         # Cleanup the memory we used to read the surface
         self.warp.plot3dsurface.pts = None
         self.warp.plot3dsurface.conn = None
@@ -391,20 +392,20 @@ class USMesh(object):
 
     def getdXs(self):
         """Return the current values in dXs. This is the result from a
-        mesh-warp derivative computation. 
+        mesh-warp derivative computation.
 
         Returns
         -------
         dXs :  numpy array
             The specific components of dXs. size(N,3). This the same
-            size as the array obtained with getSurfaceCoordiantes(). N may 
+            size as the array obtained with getSurfaceCoordiantes(). N may
             be zero if this processor does not have any surface coordinates.
         """
         dXs = np.zeros((self.nSurf, 3), self.dtype)
         self.warp.getdxs(np.ravel(dXs))
 
         return dXs
-  
+
     def warpMesh(self):
         """
         Run the applicable mesh warping strategy.
@@ -412,7 +413,7 @@ class USMesh(object):
         This will update the volume coordinates to match surface
         coordinates set with setSurfaceCoordinates()
         """
-        # Initialize internal surface if one isn't already set. 
+        # Initialize internal surface if one isn't already set.
         self._setInternalSurface()
 
         # Set Options
@@ -464,7 +465,7 @@ class USMesh(object):
         Parameters
         ----------
         dXs : array, size Nsx3
-            This is the forward mode peturbation seed. Same size as the 
+            This is the forward mode peturbation seed. Same size as the
             surface mesh from getSurfaceCoordinates().
         solverVec : bool
             Whether or not to convert to the solver ordering.
@@ -525,7 +526,7 @@ class USMesh(object):
             if fileName is None:
                 raise Error('fileName is not optional for writeGrid with '
                             'gridType of cgns or plot3d')
-            
+
             if mt == 'cgns':
                 # Copy the default and then write
                 if self.comm.rank == 0:
@@ -636,7 +637,7 @@ class USMesh(object):
         """
 
         if self.warpInitialized:
-            return 
+            return
 
         if self.comm.rank == 0:
             Warning("Using internally generated pyWarpUStruct surfaces. If "
@@ -671,7 +672,7 @@ class USMesh(object):
                 # We now have all surfaces belonging to
                 # boundary conditions. We need to decide which
                 # ones to use depending on what the user has
-                # told us. 
+                # told us.
                 surfaceFamilies = set()
                 if self.solverOptions['specifiedSurfaces'] is None:
                     # Use all wall surfaces:
@@ -683,7 +684,7 @@ class USMesh(object):
                     for name in self.solverOptions['specifiedSurfaces']:
                         surfaceFamilies.add(name.lower())
 
-             
+
             usedFams = set()
             if self.warp.cgnsgrid.cgnsstructured:
                 if self.comm.rank == 0:
@@ -737,7 +738,7 @@ class USMesh(object):
                     for i in range(len(fullPatchNames)):
 
                         # Start/end indices into fullPtr array
-                        iStart = fullPatchPtr[i]   
+                        iStart = fullPatchPtr[i]
                         iEnd   = fullPatchPtr[i+1]
 
                         # Start/end indices into the fullConn/fullPts array
@@ -757,7 +758,7 @@ class USMesh(object):
                 pts = np.array(pts).reshape((len(pts)//3,3))
                 # Run the common surface definition routine
                 self.setSurfaceDefinition(pts=pts,
-                                          conn=np.array(conn, 'intc'), 
+                                          conn=np.array(conn, 'intc'),
                                           faceSizes=faceSizes)
 
             # Check if all supplied family names were actually
@@ -766,7 +767,7 @@ class USMesh(object):
             if self.comm.rank == 0:
                 if usedFams < surfaceFamilies:
                     missing = list(surfaceFamilies - usedFams)
-                    Warning("Not all specified surface families that " 
+                    Warning("Not all specified surface families that "
                             "were given were found the CGNS file. "
                             "The families not found are %s."%(repr(missing)))
                 if len(usedFams) == 0:
@@ -788,7 +789,7 @@ class USMesh(object):
 
         Symmetry planes are specified throught 'symmetryPlanes' option, which
         has the form
-        
+
         'symmetryPlanes':[[[x1,y1, z1],[dir_x1, dir_y1, dir_z1]],[[x2,y2, z2],[dir_x2, dir_y2, dir_z2]],...]
 
         Examples
@@ -882,35 +883,35 @@ class USMesh(object):
                     # actual symmetry planes. This could be done, but
                     # since plane elemination code is in python and
                     # slow, we'll just defer this and make the user
-                    # supply the symmetry planes. 
-                    
+                    # supply the symmetry planes.
+
                     raise Error("Automatic determine of symmetry surfaces is "
                                 "not supported for unstructured CGNS. Please "
                                 "specify the symmetry planes using the "
                                 "'symmetryPlanes' option. See the _setSymmetryConditions()"
                                " documentation string for the option prototype.")
-                    
+
                 # Check if all supplied family names were actually
                 # used. The user probably wants to know if a family
                 # name was specified incorrectly.
                 if self.comm.rank == 0:
                     if usedFams < symmFamilies:
                         missing = list(symmFamilies - usedFams)
-                        Warning("Not all specified symm families that " 
+                        Warning("Not all specified symm families that "
                                 "were given were found the CGNS file. "
                                 "The families not found are %s."%(repr(missing)))
 
             elif self.meshType.lower() in ['openfoam', 'plot3d']:
 
                 # We could probably implement this at some point, but
-                # it is not critical 
+                # it is not critical
 
                 raise Error("Automatic determine of symmetry surfaces is "
                             "not supported for OpenFoam or Plot3d meshes. Please "
                             "specify the symmetry planes using the "
                             "'symmetryPlanes' option. See the _setSymmetryConditions()"
                             " documentation string for the option prototype.")
-            
+
             # Now we have a list of planes. We have to reduce them to the
             # set of independent planes. This is tricky since you can have
             # have to different normals belonging to the same physical
@@ -945,13 +946,13 @@ class USMesh(object):
                     curPlane = planes[i]
                     # Loop over remainder to check:
                     for j in range(i+1, len(planes)):
-                        if checkPlane(curPlane[0], curPlane[1], 
+                        if checkPlane(curPlane[0], curPlane[1],
                                       planes[j][0], planes[j][1]):
                             flagged[j] = 1
 
             # Before we return, reset the point for each plane to be as
             # close to the origin as possible. This will help slightly
-            # with the numerics. 
+            # with the numerics.
 
             pts = []
             normals = []
@@ -966,7 +967,7 @@ class USMesh(object):
 
                 normals.append(n)
                 pts.append(pstar)
-            
+
         normals = self.comm.bcast(np.array(normals))
         pts = self.comm.bcast(np.array(pts))
 
@@ -976,17 +977,17 @@ class USMesh(object):
             print ('|           Point                        Normal          |')
             for i in range(len(pts)):
                 print ('| (%7.3f %7.3f %7.3f)    (%7.3f %7.3f %7.3f) |'%(
-                    np.real(pts[i][0]), np.real(pts[i][1]), np.real(pts[i][2]), 
+                    np.real(pts[i][0]), np.real(pts[i][1]), np.real(pts[i][2]),
                     np.real(normals[i][0]), np.real(normals[i][1]), np.real(normals[i][2])))
             print ('+--------------------------------------------------------+')
-               
-        # Now set the data into fortran. 
+
+        # Now set the data into fortran.
         self.warp.setsymmetryplanes(pts.T, normals.T)
 
 # =========================================================================
 #                  Local OpenFoam Functions
 # =========================================================================
-            
+
     def _computeOFConn(self):
 
         '''
@@ -1048,7 +1049,7 @@ class USMesh(object):
 
         # Read in the volume points
         self.OFData['x0'] = ofm.readVolumeMeshPoints(self.OFData)
-        
+
         # Read the face info for the mesh
         self.OFData['faces'] = ofm.readFaceInfo(self.OFData)
 
@@ -1061,7 +1062,7 @@ class USMesh(object):
         # Create the internal structures for volume mesh
         x0 = self.OFData['x0']
         surfaceNodes = np.zeros(len(x0), 'intc') # this isn't used internally any more
-               
+
         self.warp.createcommongrid(x0.T)
 
 
@@ -1087,7 +1088,7 @@ class USMesh(object):
             self.warp.gridinput.evalmode = self.warp.gridinput.eval_fast
         elif o['evalMode'].lower() == 'exact':
             self.warp.gridinput.evalmode = self.warp.gridinput.eval_exact
-        
+
     def _checkOptions(self, solverOptions):
         """ Check the solver options against the default ones and add
         option iff it is NOT in solverOptions """
@@ -1099,7 +1100,7 @@ class USMesh(object):
                 self.solverOptionsDefault[key] = solverOptions[key]
 
         # Print a couple of warnings about aExp and bExp which are not
-        # fully implemented. 
+        # fully implemented.
         if self.comm.rank == 0:
             if self.solverOptions['aExp'] != 3.0 or self.solverOptions['bExp'] != 5.0:
                 Warning('The aExp and bExp options are currently not implemented '
@@ -1124,7 +1125,7 @@ class USMesh(object):
         shp = strArray.shape
         arr = strArray.reshape((shp[1],shp[0]), order='F')
         tmp = []
-        
+
         for i in range(arr.shape[1]):
             tmp.append("")
             for j in range(arr.shape[0]):

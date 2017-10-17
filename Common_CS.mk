@@ -24,7 +24,7 @@ endif
 #      *                                                                *
 #      ******************************************************************
 
-.SUFFIXES: .o .f .F .f90 .F90 
+.SUFFIXES: .o .f .F .f90 .F90
 
 #      ******************************************************************
 #      *                                                                *
@@ -45,6 +45,7 @@ MAKE_CLEAN_ARGUMENTS = *~ *.o *.mod *.il *.stb c_* *.so
 
 FF90_ALL_FLAGS   = -I$(MODDIR) -I. \
 		$(CGNS_INCLUDE_FLAGS) \
+		$(CGNS_VERSION_FLAG) \
 		$(FF90_GEN_FLAGS) \
 		$(FF90_OPT_FLAGS) \
 		$(PETSC_INCLUDE_FLAGS) \
@@ -55,4 +56,3 @@ CC_ALL_FLAGS = -I$(MODDIR) -I. \
 		$(CC_GEN_FLAGS) \
 		$(CC_OPT_FLAGS) \
 		$(PETSC_INCLUDE_FLAGS)
-

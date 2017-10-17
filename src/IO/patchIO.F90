@@ -11,7 +11,6 @@ subroutine processStructuredPatches
   use CGNSGrid
 
   implicit none
-  include 'cgnslib_f.h'
 
   ! Working variables
   integer(kind=intType) :: nPatch
@@ -25,7 +24,7 @@ subroutine processStructuredPatches
   end do
 
   ! Now we can allocate the required space
-  if (.not. allocated(surfaceSizes)) then 
+  if (.not. allocated(surfaceSizes)) then
      allocate(surfaceSizes(2, nPatch))
      allocate(surfaceNames(nPatch))
      allocate(surfaceIsWall(nPatch))
@@ -52,7 +51,7 @@ subroutine processStructuredPatches
         end if
 
         ! Determine if we have a symmetry
-        if (BCTypeName(bocoType) == 'BCSymmetryPlane') then 
+        if (BCTypeName(bocoType) == 'BCSymmetryPlane') then
            surfaceIsSymm(nPatch) = .True.
         end if
 
@@ -64,7 +63,7 @@ subroutine processStructuredPatches
         il = ptRange(1, 2) - ptRange(1, 1) + 1 ! Pts in I
         jl = ptRange(2, 2) - ptRange(2, 1) + 1 ! Pts in j
         kl = ptRange(3, 2) - ptRange(3, 1) + 1 ! Pts in K
-           
+
         if (ptRange(1,1) ==  ptRange(1,2)) then ! iMin/iMax
            surfaceSizes(:, nPatch) = (/jl, kl/)
         else if (ptRange(2,1) == ptRange(2,2)) then ! jMin/jmax
@@ -78,18 +77,17 @@ subroutine processStructuredPatches
 end subroutine processStructuredPatches
 
 subroutine processUnstructuredPatches
-  
+
   ! This subroutine does the required preprocessing that converts all
   ! the boundary condition information into a connected surface mesh
   ! suitable for use in the unstructured mesh warping algorithm. We
   ! essentially need to create cgnsGrid.wallConn, cgnsGrid.wallPts,
   ! cgnsGrid.patchName and wallPtr. Unlike the structured code above,
-  ! wallPts and wallConn are not yet allocated and set. 
+  ! wallPts and wallConn are not yet allocated and set.
 
   use CGNSGrid
 
   implicit none
-  include 'cgnslib_f.h'
 
   ! Working variables
   integer(kind=intType) :: nPatch, i, k
@@ -103,10 +101,10 @@ subroutine processUnstructuredPatches
   do zone = 1, size(zones)
      do boco=1, size(zones(zone)%bocos)
         bocoType = zones(zone)%bocos(boco)%type
-     
+
         ! this is a wall surface, so count the patch
         nPatch = nPatch + 1
-           
+
         ! Now determine how many points we will have and the size
         ! we need need for the connectivity
 
@@ -122,7 +120,7 @@ subroutine processUnstructuredPatches
   end do
 
   ! Now we can allocate the required space
-  if (.not. allocated(surfaceNames)) then 
+  if (.not. allocated(surfaceNames)) then
      allocate(surfaceNames(nPatch))
      allocate(surfacePoints(nConn*3))
      allocate(surfaceConn(nConn))
@@ -151,7 +149,7 @@ subroutine processUnstructuredPatches
   nElem = 0
 
   do zone = 1, size(zones)
-     do boco=1, size(zones(zone)%bocos) 
+     do boco=1, size(zones(zone)%bocos)
         bocoType = zones(zone)%bocos(boco)%type
         nPatch = nPatch + 1
 
@@ -161,11 +159,11 @@ subroutine processUnstructuredPatches
              BCTypeName(bocoType) == 'BCWall' .or. &
              BCTypeName(bocoType) == 'BCWallViscousHeatFlux' .or. &
              BCTypeName(bocoType) == 'BCWallViscousIsothermal') then
-           surfaceIsWall(nPatch) = .True. 
+           surfaceIsWall(nPatch) = .True.
         end if
 
         ! Determine if we have a symmetry condition
-        if (BCTypeName(bocoType) == 'BCSymmetryPlane') then 
+        if (BCTypeName(bocoType) == 'BCSymmetryPlane') then
            surfaceIsSymm(nPatch) = .True.
         end if
 
@@ -175,22 +173,22 @@ subroutine processUnstructuredPatches
         elemPtr => zones(zone)%bocos(boco)%elemPtr
         do i=1, zones(zone)%bocos(boco)%nBCElem
            nodesPerElem = elemPtr(i+1) - elemPtr(i)
-           
+
            do k=elemPtr(i), elemPtr(i+1)-1
               nConn = nConn + 1
               surfacePoints(3*nConn-2:3*nConn) = zones(zone)%bocos(boco)%elemNodes(:, k)
-              surfaceConn(nConn) = cumPts + zones(zone)%bocos(boco)%elemConn(k) 
+              surfaceConn(nConn) = cumPts + zones(zone)%bocos(boco)%elemConn(k)
            end do
            nElem = nElem + 1
            surfacePtr(nElem + 1) = surfacePtr(nElem) + nodesPerElem
         end do
         cumPts = nConn
-        
+
         ! Now many more elements did we add?
         surfacePatchPtr(nPatch + 1) = nElem + 1
      end do
   end do
- 
+
 end subroutine processUnstructuredPatches
 
 
@@ -204,12 +202,12 @@ subroutine averageNormal(pts, conn, faceSizes, nPts, nConn, nFaceSizes, avgNorm)
   integer(kind=intType), intent(in) :: conn(nConn), faceSizes(nFaceSizes)
   integer(kind=intType), intent(in) :: nPts, nConn, nFaceSizes
   real(kind=realType), intent(out) :: avgNorm(3)
-  
+
   ! Working
   integer(kind=intType) :: i, j, nAvg, curElem, n
   real(kind=realType) :: elemPts(3,10) ! Take up to 10 sized polygon
   real(kind=realType), dimension(3) :: p1, p2, p3, a, b, c
- 
+
   ! Determine the average normal for the patch defined by pts, conn
   ! and face sizes.
 
@@ -224,14 +222,14 @@ subroutine averageNormal(pts, conn, faceSizes, nPts, nConn, nFaceSizes, avgNorm)
         elemPts(:, j) = pts(3*n-2 : 3*n)
         curElem = curElem + 1
      end do
-        
+
      ! Check triangles
      do j=0, faceSizes(i)-3
 
         p1 = elemPts(:, 1+j)
         p2 = elemPts(:, 2+j)
         p3 = elemPts(:, 3+j)
-        
+
         a = p3 - p2
         b = p1 - p2
 
@@ -242,7 +240,7 @@ subroutine averageNormal(pts, conn, faceSizes, nPts, nConn, nFaceSizes, avgNorm)
 
         c = c / sqrt(c(1)**2 + c(2)**2 + c(3)**2)
 
-        ! Now add to the 
+        ! Now add to the
         avgNorm = avgNorm + c
         nAvg = nAvg + 1
      end do
@@ -255,42 +253,42 @@ subroutine averageNormal(pts, conn, faceSizes, nPts, nConn, nFaceSizes, avgNorm)
 end subroutine averageNormal
 
 subroutine deallocatePatchIO
-  
+
   use CGNSGrid
 
   implicit none
-  
+
      ! Delete the surface-stuff in the cgns grid
-     if (allocated(surfacePoints)) then 
+     if (allocated(surfacePoints)) then
         deallocate(surfacePoints)
      end if
 
-     if (allocated(surfaceConn)) then 
+     if (allocated(surfaceConn)) then
         deallocate(surfaceConn)
      end if
 
-     if (allocated(surfaceSizes)) then 
+     if (allocated(surfaceSizes)) then
         deallocate(surfaceSizes)
      end if
 
-     if (allocated(surfacePtr)) then 
+     if (allocated(surfacePtr)) then
         deallocate(surfacePtr)
      end if
 
-     if (allocated(surfacePatchPtr)) then 
+     if (allocated(surfacePatchPtr)) then
         deallocate(surfacePatchPtr)
      end if
 
-     if (allocated(surfaceNames)) then 
+     if (allocated(surfaceNames)) then
         deallocate(surfaceNames)
      end if
 
 
-     if (allocated(surfaceIsWall)) then 
+     if (allocated(surfaceIsWall)) then
         deallocate(surfaceIsWall)
      end if
 
-     if (allocated(surfaceIsSymm)) then 
+     if (allocated(surfaceIsSymm)) then
         deallocate(surfaceIsSymm)
      end if
 
