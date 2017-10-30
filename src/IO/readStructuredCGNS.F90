@@ -12,11 +12,11 @@ subroutine readStructuredCGNS(cg)
   ! Working
   integer(kind=intType) :: i, j, k, ii, istart, iend, localsize, iProc, iZone, offset
   integer(kind=intType):: ierr, base, nZones, nNodes
-  integer(kind=cgsize_t) :: dims(9), npts
+  integer(kind=cgsize_t) :: dims(9), npts, tmp(3,2)
   integer(kind=intType) :: start(3)
   character(len=maxCGNSNameLen) :: bocoName, famName, coorName(3), zoneName
-  integer(kind=intType) :: nbocos, bocotype, pts(3, 2), boco
-  integer(kind=intType) :: ptset_type, normalIndex(3), datatype, ndataset
+  integer(kind=intType) :: nbocos, bocotype,  boco
+  integer(kind=intType) :: ptset_type, normalIndex(3), datatype, ndataset,  pts(3,2)
   integer(kind=intType) :: coorDataType(3)
   integer(kind=cgsize_t) :: normalListFlag
   real(kind=8)   ::  data_double(6)
@@ -77,7 +77,7 @@ subroutine readStructuredCGNS(cg)
         call cg_nbocos_f(cg, base, iZone, nbocos, ierr)
         if (ierr .eq. ERROR) call cg_error_exit_f
         allocate(zones(iZone)%bocos(nbocos))
-
+        
         bocoLoop1: do boco=1, nbocos
 
            ! Nullify elemPtr, elemConn and elemNodes since we won't have any
@@ -90,13 +90,13 @@ subroutine readStructuredCGNS(cg)
                 ndataset, ierr)
            if (ierr .eq. CG_ERROR) call cg_error_exit_f
 
-           call cg_boco_read_f(cg, base, iZone, boco, pts, data_double, ierr)
+           call cg_boco_read_f(cg, base, iZone, boco, tmp, data_double, ierr)
            if (ierr .eq. CG_ERROR) call cg_error_exit_f
-
+           pts = int(tmp, intType)
            ! Save the boco info
            zones(iZone)%bocos(boco)%name = boconame
            zones(iZone)%bocos(boco)%type = bocoType
-           zones(iZone)%bocos(boco)%ptRange = pts
+           zones(iZone)%bocos(boco)%ptRange =  pts
            zones(iZone)%bocos(boco)%family = ""
 
            ! Read family  name if possible
@@ -165,11 +165,11 @@ subroutine readStructuredCGNS(cg)
            end if
         end do
 
-        call cg_coord_read_f(cg, base, iZone, "CoordinateX", RealDouble, start, dims(1:3), coorX, ierr)
+        call cg_coord_read_f(cg, base, iZone, "CoordinateX", RealDouble, int(start, cgsize_t), dims(1:3), coorX, ierr)
         if (ierr .eq. CG_ERROR) call cg_error_exit_f
-        call cg_coord_read_f(cg, base, iZone, "CoordinateY", RealDouble, start, dims(1:3), coorY, ierr)
+        call cg_coord_read_f(cg, base, iZone, "CoordinateY", RealDouble, int(start, cgsize_t), dims(1:3), coorY, ierr)
         if (ierr .eq. CG_ERROR) call cg_error_exit_f
-        call cg_coord_read_f(cg, base, iZone, "CoordinateZ", RealDouble, start, dims(1:3), coorZ, ierr)
+        call cg_coord_read_f(cg, base, iZone, "CoordinateZ", RealDouble, int(start, cgsize_t), dims(1:3), coorZ, ierr)
         if (ierr .eq. CG_ERROR) call cg_error_exit_f
 
         ! Now interlace the packing
