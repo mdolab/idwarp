@@ -38,7 +38,7 @@ from mpi4py import MPI
 from .MExt import MExt
 import pywarpustruct
 from petsc4py import PETSc
-try: 
+try:
     from cgnsutilities import cgns_utils as cs
 except:
     cs = None
@@ -89,7 +89,7 @@ class MultiUSMesh(object):
     to interact with an structured or unstructured CFD solver though a
     variety of interface functions.
     """
-    def __init__(self, CGNSFile, optionsDict, comm=None):
+    def __init__(self, CGNSFile, optionsDict, comm=None, dtype='d'):
         """
         Create the MultiUSMesh object.
 
@@ -127,6 +127,9 @@ class MultiUSMesh(object):
 
         # Get rank of the current proc
         self.myID = self.comm.Get_rank()
+
+        # Store scalar type
+        self.dtype = dtype
 
         # Only the root processor will take the combined CGNS file
         # and explode it by instance.
@@ -221,7 +224,10 @@ class MultiUSMesh(object):
                 optionsDict[zoneName]['gridFile'] = '_'+zoneName + '.cgns'
 
                 # Initialize a pyWarp instance with the current options
-                currMesh = pywarpustruct.USMesh(options=optionsDict[zoneName], comm=self.comm)
+                if self.dtype == 'd':
+                    currMesh = pywarpustruct.USMesh(options=optionsDict[zoneName], comm=self.comm)
+                elif self.dtype == 'D':
+                    currMesh = pywarpustruct.USMesh_C(options=optionsDict[zoneName], comm=self.comm)
 
             else:
 
@@ -266,7 +272,10 @@ class MultiUSMesh(object):
                 }
 
                 # Initialize a pyWarp instance with the current options
-                currMesh = pywarpustruct.USMesh(options=dummyOptions, comm=self.comm)
+                if self.dtype == 'd':
+                    currMesh = pywarpustruct.USMesh(options=dummyOptions, comm=self.comm)
+                elif self.dtype == 'D':
+                    currMesh = pywarpustruct.USMesh_C(options=dummyOptions, comm=self.comm)
 
                 # Initialize a dummy surface in the background mesh
                 '''
@@ -310,7 +319,7 @@ class MultiUSMesh(object):
             # but we will delete them as soon as we call self.setExternalMeshIndices().
             self.meshes.append(currMesh)
 
-                
+
         # Now the root proc can remove the temporary grid files
         if self.myID == 0:
             for zoneName in zoneNames:
@@ -340,7 +349,7 @@ class MultiUSMesh(object):
                 raise NameError('pyWarpMulti surface is not initialized. Run self.setSurfaceDefinition first.')
 
         # Initialize the array of points
-        pts = np.zeros((self.numSurfNodes,3))
+        pts = np.zeros((self.numSurfNodes,3),dtype=self.dtype)
 
         # Loop over every instance to get their contributions
         for instanceID,mesh in enumerate(self.meshes):
@@ -406,7 +415,7 @@ class MultiUSMesh(object):
         #   each ind entry.
         # - So we create masks so that we can take pieces from the full volume vector and
         #   send them to each instance.
-        
+
         # Print log
         if self.myID == 0:
             print('')
@@ -421,7 +430,7 @@ class MultiUSMesh(object):
         # node vector returned by pyWarpMulti when we call self.getSolverGrid().
         # This will allow us to delete all pyWarp instances related to the background nodes
         # since they will remain unchanged.
-        self.defaultSolverGrid = np.zeros(self.numVolNodes)
+        self.defaultSolverGrid = np.zeros(self.numVolNodes, dtype=self.dtype)
 
         # Loop over every instance
         for instanceID,mesh in enumerate(self.meshes):
@@ -561,7 +570,7 @@ class MultiUSMesh(object):
         conn = conn.flatten()
 
         ### We will take the cgnsBlockIDs given by ADflow and convert them into instance IDs.
-        
+
         # Initialize array to store ID of the instance that has each cell
         self.instanceIDs = np.ones(numElems)*(-1)
 
@@ -630,7 +639,7 @@ class MultiUSMesh(object):
 
             # Currently, the indices in currConn refer to the full set of points. We need to
             # update these connectivities so that the point to the filtered set of points (currPts).
-            
+
             # Loop over every mapping:
             for filteredID,fullID in enumerate(filtered2fullMap):
 
@@ -727,7 +736,7 @@ class MultiUSMesh(object):
         """
 
         # Initialize array to hold seeds of all surface point of this proc
-        dXs = np.zeros((self.numSurfNodes,3))
+        dXs = np.zeros((self.numSurfNodes,3),dtype=self.dtype)
 
         # Loop over all instances
         for instanceID,mesh in enumerate(self.meshes):
@@ -846,7 +855,7 @@ class MultiUSMesh(object):
             if self.myID == 0:
                 print('')
                 print(' Done')
-            
+
         # Print log
         if self.myID == 0:
             print('')
@@ -897,7 +906,7 @@ class MultiUSMesh(object):
         # ALL VOLUME SEEDS
 
         # Initialize list to gather volume seeds of all instances
-        dXv = np.zeros(self.numVolNodes)
+        dXv = np.zeros(self.numVolNodes,dtype=self.dtype)
 
         # Loop over every mesh object to get a slice of the surface seeds array
         for instanceID,mesh in enumerate(self.meshes):
