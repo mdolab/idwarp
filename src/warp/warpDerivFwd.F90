@@ -26,7 +26,7 @@ subroutine warpDerivFwd(Xsdot, cDof, Xvdot, meshDOF)
   call EChk(ierr, __FILE__, __LINE__)
 
   do i=1, cdof
-     call VecSetValues(dXs, 1, (/iStart+i-1/), XsDot(i), INSERT_VALUES, ierr)
+     call VecSetValues(dXs, 1, [iStart+i-1], [XsDot(i)], INSERT_VALUES, ierr)
      call EChk(ierr, __FILE__, __LINE__)
   end do
 

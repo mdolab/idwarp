@@ -42,13 +42,13 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
 
   i = 1
   do ii=istart,iend-1
-     call VecSetValues(Xs, 1, (/ii/), pts(i), &
+     call VecSetValues(Xs, 1, [ii], [pts(i)], &
           INSERT_VALUES, ierr)
      call EChk(ierr, __FILE__, __LINE__)
      i = i + 1
   end do
 
-  call VecAssemblyBegin(Xs, ierr) 
+  call VecAssemblyBegin(Xs, ierr)
   call EChk(ierr, __FILE__, __LINE__)
   call VecAssemblyEnd(Xs, ierr)
   call EChk(ierr, __FILE__, __LINE__)
@@ -59,7 +59,7 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
 
   Call VecDuplicate(XsLocal, dXsLocal, ierr)
   call EChk(ierr, __FILE__, __LINE__)
-  ! For now we just have a single tree....we may have more in the future. 
+  ! For now we just have a single tree....we may have more in the future.
   allocate(mytrees(1))
   mytrees(1)%tp => myCreateTree(uniquePts, link, faceSizes, faceConn)
 
@@ -69,8 +69,8 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
   !
   ! There are few different things that can happen here:
   !
-  ! 1. No restartFile is supplied so we do the Wi estimate and loadbalance 
-  !    as per usual 
+  ! 1. No restartFile is supplied so we do the Wi estimate and loadbalance
+  !    as per usual
   ! 2. Restart file is supplied but doesn't exist, so we save what we found
   ! 3. Load balance file name is supplied and exists. Load and check a few
   !    If they don't match, do regular dry run
@@ -86,7 +86,7 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
   costs = zero
 
   ! Get the ownership ranges for common grid vector, we need that to
-  ! determine where to write things. 
+  ! determine where to write things.
   allocate(cumNodesProc(0:nProc))
 
   call VecGetOwnershipRanges(commonGridVec, cumNodesProc, ierr)
@@ -95,7 +95,7 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
   ! Divide that by 3 since that includes the 3 dof per popint
   cumNodesProc =  cumNodesProc / 3
 
-  if (trim(restartFile) == "") then 
+  if (trim(restartFile) == "") then
      loadFile = .False.
      recompute = .True.
      saveFile = .False.
@@ -108,10 +108,10 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
      call MPI_bcast(fileExists, 1, MPI_LOGICAL, 0, warp_comm_world, ierr)
      call EChk(ierr, __FILE__, __LINE__)
 
-     if (.not. fileExists) then 
-        ! Can't load, file doesn't exist. Recompute. 
+     if (.not. fileExists) then
+        ! Can't load, file doesn't exist. Recompute.
         loadFile = .False.
-        recompute = .True. 
+        recompute = .True.
         saveFile = .True.
      else
         ! File exists so we can try to load it. Recompute is still
@@ -122,18 +122,18 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
      end if
   end if
 
-  if (loadFile) then 
-     if (myid == 0) then 
+  if (loadFile) then
+     if (myid == 0) then
         print *, 'Loading restart file...'
      end if
 
      ! Read from the restartFile. We can do this in parallel.
      call mpi_file_open(warp_comm_world, trim(restartFile), &
-          MPI_MODE_RDONLY, & 
-          MPI_INFO_NULL, fileHandle, ierr) 
+          MPI_MODE_RDONLY, &
+          MPI_INFO_NULL, fileHandle, ierr)
      call EChk(ierr, __FILE__, __LINE__)
 
-     if (myid == 0) then 
+     if (myid == 0) then
         ! Write the number of nodes
         call MPI_file_read(fileHandle, pointsInFile, 1, &
              MPI_INTEGER4, MPI_STATUS_IGNORE, ierr)
@@ -143,18 +143,18 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
      call MPI_bcast(pointsInFile, 1, MPI_INTEGER4, 0, warp_comm_world, ierr)
      call EChk(ierr, __FILE__, __LINE__)
 
-     if (pointsInFile /= cumNodesProc(nProc)) then 
-        if (myid == 0) then 
+     if (pointsInFile /= cumNodesProc(nProc)) then
+        if (myid == 0) then
            print *, 'Number of points in restart file are different...'
         end if
 
-        ! The file is bad...different number of points. 
+        ! The file is bad...different number of points.
         call mpi_file_close(fileHandle, ierr)
         call EChk(ierr, __FILE__, __LINE__)
 
         ! Use fortran to delete the file, since mpi_file_delete
         ! doesn't actually work
-        if (myid == 0) then 
+        if (myid == 0) then
            open(unit=9, iostat=stat, file=trim(restartFile), status='old')
            if (stat == 0) close(9, status='delete')
         end if
@@ -184,10 +184,10 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
         call mpi_file_close(fileHandle, ierr)
         call EChk(ierr, __FILE__, __LINE__)
 
-        ! It is *still* possible that the data is bad. We will check 
-        ! 1/100th of the number of points to see. 
+        ! It is *still* possible that the data is bad. We will check
+        ! 1/100th of the number of points to see.
 
-        if (myid == 0) then 
+        if (myid == 0) then
            print *, 'Checking restart file...'
         end if
 
@@ -203,7 +203,7 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
               call getWiEstimate(mytrees(1)%tp, mytrees(1)%tp%root, r, tmp)
            end do
            ! Do a relative check:
-           if (1 - tmp/denomenator0(j) > eps) then 
+           if (1 - tmp/denomenator0(j) > eps) then
               localBadFile = .True.
               print *,myid, j, tmp, denomenator0(j), eps
               exit wiLoop_check
@@ -216,15 +216,15 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
         call EChk(ierr, __FILE__, __LINE__)
 
         ! It was bad-somehow, so we need to recompute anyway.
-        if (globalBadFile) then 
+        if (globalBadFile) then
            recompute = .True.
            saveFile = .True.
-           if (myid == 0) then 
+           if (myid == 0) then
               print *, 'Restart file not accurate...'
            end if
 
            ! Also toast the file, since it is useless to us
-           if (myid == 0) then 
+           if (myid == 0) then
               open(unit=9, iostat=stat, file=trim(restartFile), status='old')
               if (stat == 0) close(9, status='delete')
            end if
@@ -232,8 +232,8 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
      end if
   end if
 
-  if (recompute) then 
-     if (myid == 0) then 
+  if (recompute) then
+     if (myid == 0) then
         print *, 'Computing Denomenator Estimate...'
      end if
 
@@ -251,7 +251,7 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
      ! integer is scaled by the "brute force" cost, so each individual
      ! cost will be less than 1.0
 
-     if (myid == 0) then 
+     if (myid == 0) then
         print *, 'Load Balancing...'
      end if
 
@@ -272,18 +272,18 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
   call EChk(ierr, __FILE__, __LINE__)
 
   ! Save the data to the restartFile if required
-  if (saveFile) then 
-     if (myid == 0) then 
+  if (saveFile) then
+     if (myid == 0) then
         print *, 'Saving restart file...'
      end if
 
-     ! Write to the file. We can do this in parallel. 
+     ! Write to the file. We can do this in parallel.
      call mpi_file_open(warp_comm_world, trim(restartFile), &
-          MPI_MODE_WRONLY + MPI_MODE_CREATE, & 
-          MPI_INFO_NULL, fileHandle, ierr) 
+          MPI_MODE_WRONLY + MPI_MODE_CREATE, &
+          MPI_INFO_NULL, fileHandle, ierr)
      call EChk(ierr, __FILE__, __LINE__)
 
-     if (myid == 0) then 
+     if (myid == 0) then
         ! Write the number of nodes
         call MPI_file_write(fileHandle, cumNodesProc(nProc), 1, &
              MPI_INTEGER4, MPI_STATUS_IGNORE, ierr)
@@ -352,7 +352,7 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
   averageCost = totalCost / nProc
 
   ! Next we loop over our own cost array to determine the indicies
-  ! in *global* ordering where the "breaks" should be. 
+  ! in *global* ordering where the "breaks" should be.
   call vecGetOwnershipRange(commonGridVec, iStart, iEnd, ierr)
   call EChk(ierr, __FILE__, __LINE__)
 
@@ -384,7 +384,7 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
   end do
 
   ! Make sure the last proc has the right end...
-  if (myid == nProc-1) then 
+  if (myid == nProc-1) then
      procSplitsLocal(nProc) = iStart/3 + nVol
   end if
   ! Communicate to all procs. We use MPI_MAX to overwrite the original zeros of the break points.
@@ -419,9 +419,9 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
 
   ! Now we know the break-points of the splits, we can create a vec
   ! scatter that converts between the "common" and "warping"
-  ! ordering (the repartitioned) ordering. 
+  ! ordering (the repartitioned) ordering.
   call ISCreateStride(warp_comm_world, newDOFProc, procSplits(myid), 1, IS1, ierr)
-  call EChk(ierr, __FILE__, __LINE__)  
+  call EChk(ierr, __FILE__, __LINE__)
 
   call ISCreateStride(warp_comm_world, newDOFProc, procSplits(myid), 1, IS2, ierr)
   call EChk(ierr, __FILE__, __LINE__)
@@ -501,7 +501,7 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
   deallocate( cumNodesProc)
   deallocate(costs, procEndCosts, procSplits, procSplitsLocal, denomenator0Copy)
 
-  if (myid == 0) then 
+  if (myid == 0) then
      print *, 'Finished Mesh Initialization.'
   end if
   initializationSet = 1
@@ -513,7 +513,7 @@ subroutine setSymmetryPlanes(pts, normals, n)
   use constants
   use gridData
 
-  ! Set the symmetry plane information. 
+  ! Set the symmetry plane information.
 
   real(kind=realType), dimension(3, n), intent(in) :: pts, normals
   integer(kind=intType), intent(in) :: n
@@ -521,7 +521,7 @@ subroutine setSymmetryPlanes(pts, normals, n)
   real(kind=realType) :: ptstar(3), r(3)
   integer(kind=intType) :: kk
   ! Loops have be applied recursively so for each symmetry plane, we
-  ! multiply the number of iterations by 2. 
+  ! multiply the number of iterations by 2.
   nLoop = 2**(n)
 
   allocate(symmPts(3, n), symmNormals(3, n))
@@ -549,10 +549,10 @@ subroutine getMirrorPt(pt, r, kk)
   r = pt
 
   ! This is the slick implementation. See below for logically expanded
-  ! form. 
+  ! form.
 
   do j=1, size(symmPts, 2)
-     if (mod(kk-1, 2**j) >= 2**(j-1)) then 
+     if (mod(kk-1, 2**j) >= 2**(j-1)) then
         ! Need to mirror about the jth plane
         d = r - symmPts(:, j)
         n = symmNormals(:, j)
@@ -567,11 +567,11 @@ subroutine getMirrorPt(pt, r, kk)
   !    call mirror(r, symmPts(:, 1), symmNormals(:, 1))
   ! end if
 
-  ! if (mod(kk-1, 4) >= 2) then 
+  ! if (mod(kk-1, 4) >= 2) then
   !    call mirror(r, symmPts(:, 2), symmNormals(:, 2))
   ! end if
 
-  ! if (mod(kk-1, 8) >= 4) then 
+  ! if (mod(kk-1, 8) >= 4) then
   !    call mirror(r, symmPts(:, 3), symmNormals(:, 3))
   ! end if
 
@@ -592,7 +592,7 @@ subroutine getMirrorNumerator(num, kk)
   real(kind=realType) ::  n(3), dp
 
   do j=1, size(symmPts, 2)
-     if (mod(kk-1, 2**j) >= 2**(j-1)) then 
+     if (mod(kk-1, 2**j) >= 2**(j-1)) then
         ! Need to mirror about the jth plane
         n = symmNormals(:, j)
         dp = num(1)*n(1) + num(2)*n(2) + num(3)*n(3)
@@ -650,12 +650,12 @@ subroutine getMirrorNumerator_d(numd, kk)
   integer(kind=intType) :: j
 
   do j=1, size(symmPts, 2)
-     if (mod(kk-1, 2**j) >= 2**(j-1)) then 
+     if (mod(kk-1, 2**j) >= 2**(j-1)) then
         ! Need to mirror about the jth plane
         n = symmnormals(:, j)
         dpd = n(1)*numd(1) + n(2)*numd(2) + n(3)*numd(3)
         numd = numd - two*n*dpd
      END IF
   END DO
-  
+
 end subroutine getMirrorNumerator_d
