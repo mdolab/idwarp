@@ -1,21 +1,21 @@
 module gridData
-  ! 
+  !
   ! A module to hold the data structures for the grid data
   !
 
   use constants
-  implicit none
-  save
 
 #ifndef USE_TAPENADE
 
-#include "include/petscversion.h"
-#if PETSC_VERSION_MINOR > 5
+#include <petscversion.h>
+#if PETSC_VERSION_GE(3,8,0)
+#include <petsc/finclude/petsc.h>
+  use petsc
+  implicit none
+#else
+  implicit none
 #include "petsc/finclude/petsc.h"
 #include "petsc/finclude/petscvec.h90"
-#else
-#include "include/finclude/petsc.h"
-#include "include/finclude/petscvec.h90"
 #endif
 
   ! Volume grid vecs
@@ -75,7 +75,7 @@ module plot3dSurface
   use constants
   implicit none
   save
-  
+
   real(kind=realType), dimension(:, :), allocatable :: pts
   integer(kind=intType), dimension(:, :), allocatable :: conn
 end module plot3dSurface
