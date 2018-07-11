@@ -1,6 +1,6 @@
 
 ############################################################
-# DO NOT USE THIS SCRIPT AS A REFERENCE FOR HOW TO USE pywarpustruct
+# DO NOT USE THIS SCRIPT AS A REFERENCE FOR HOW TO USE IDWarp
 # THIS SCRIPT USES PRIVATE INTERNAL FUNCTIONALITY THAT IS
 # SUBJECT TO CHANGE!!
 ############################################################
@@ -14,9 +14,9 @@ import numpy
 from petsc4py import PETSc
 from mdo_regression_helper import *
 if 'complex' in sys.argv:
-    from pywarpustruct import USMesh_C as USMesh
+    from idwarp import USMesh_C as USMesh
 else:
-    from pywarpustruct import USMesh
+    from idwarp import USMesh
 
 from mpi4py import MPI
 

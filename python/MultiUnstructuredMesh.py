@@ -225,9 +225,9 @@ class MultiUSMesh(object):
 
                 # Initialize a pyWarp instance with the current options
                 if self.dtype == 'd':
-                    currMesh = pywarpustruct.USMesh(options=optionsDict[zoneName], comm=self.comm)
+                    currMesh = idwarp.USMesh(options=optionsDict[zoneName], comm=self.comm)
                 elif self.dtype == 'D':
-                    currMesh = pywarpustruct.USMesh_C(options=optionsDict[zoneName], comm=self.comm)
+                    currMesh = idwarp.USMesh_C(options=optionsDict[zoneName], comm=self.comm)
 
             else:
 
@@ -273,9 +273,9 @@ class MultiUSMesh(object):
 
                 # Initialize a pyWarp instance with the current options
                 if self.dtype == 'd':
-                    currMesh = pywarpustruct.USMesh(options=dummyOptions, comm=self.comm)
+                    currMesh = idwarp.USMesh(options=dummyOptions, comm=self.comm)
                 elif self.dtype == 'D':
-                    currMesh = pywarpustruct.USMesh_C(options=dummyOptions, comm=self.comm)
+                    currMesh = idwarp.USMesh_C(options=dummyOptions, comm=self.comm)
 
                 # Initialize a dummy surface in the background mesh
                 '''
