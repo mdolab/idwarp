@@ -26,6 +26,6 @@ class USMesh_C(USMesh):
             debug = kwargs['debug']
 
         curDir = os.path.dirname(os.path.realpath(__file__))
-        self.warp = MExt.MExt('warpustruct_cs', [curDir], debug=debug)._module
+        self.warp = MExt.MExt('idwarp_cs', [curDir], debug=debug)._module
         USMesh.__init__(self, *args, **kwargs)
         self.dtype = 'D'

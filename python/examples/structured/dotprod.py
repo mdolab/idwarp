@@ -1,6 +1,6 @@
-# this is a simple script to test the pyWarpUstruct module
+# this is a simple script to test the IDWarp module
 from mpi4py import MPI
-from pywarpustruct import USMesh
+from idwarp import USMesh
 
 options = {
     'fileType':'CGNS',
