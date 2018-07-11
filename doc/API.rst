@@ -1,8 +1,8 @@
-.. _pyWarpUstruct_API:
+.. _IDWarp_API:
 
 API
 ---
-.. currentmodule:: pywarpustruct.python.UnstructuredMesh
+.. currentmodule:: idwarp.python.UnstructuredMesh
 
-.. autoclass:: pywarpustruct.python.UnstructuredMesh.USMesh
+.. autoclass:: idwarp.python.UnstructuredMesh.USMesh
     :members: 

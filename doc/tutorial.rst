@@ -4,11 +4,11 @@ Tutorial
 ========
 
 This is a short tutorial explaining how to get started with
-pyWarpUStruct. We will start by presenting a simple stand-alone
+IDWarp. We will start by presenting a simple stand-alone
 warping script and explaining the various parts. ::
 
   from mpi4py import MPI
-  from pywarpustruct import USMesh
+  from idwarp import USMesh
 
   options = {
     'gridFile':'../../input_files/o_mesh.cgns',
@@ -51,7 +51,7 @@ warping script and explaining the various parts. ::
 The first two lines of code imports mpi4py and the mesh warping module ::
 
   from mpi4py import MPI
-  from pywarpustruct import USMesh
+  from idwarp import USMesh
 
 The next chunk lists the options for warping. The following table
 explains the various options.
@@ -78,7 +78,7 @@ Parameter                                  Type       Default                   
 												  a list of families. 
 
 `symmetryPlanes`                        `list`      `None`                                        This is sort of a "last-resort" option. It is used to overwrite and explicitly define symmetry conditions
-                                                                                                  pyWarpUStruct is to use. It is the only method for specifying symmetry for unstructured CGNS files and OpenFOAM files. 
+                                                                                                  IDWarp is to use. It is the only method for specifying symmetry for unstructured CGNS files and OpenFOAM files. 
 												  For the 'symmetrySurfaces' option to be active, 'symmetryPlanes' must be None. If 'symmetryPlanes' is not 'None' it
 												  is expected to be a list of the following form: [ [[x1, y1, z1], [nx1, ny1, nz1]], [[x2, y2, z2], [nx2, ny2, nz2]] ]. 
 												  The previous example defines two symmetry planes using a point-normal approach. The first plane is defined by pt=(x1,y1,z1) with 
