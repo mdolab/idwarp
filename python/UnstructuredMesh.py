@@ -478,11 +478,11 @@ class USMesh(object):
             the solverVec flag.
         """
 
-        dXvWarp = np.zeros(self.warp.griddata.warpmeshdof)
+        dXvWarp = np.zeros(self.warp.griddata.warpmeshdof, dtype=self.dtype)
         self.warpMesh()
         self.warp.warpderivfwd(np.ravel(dXs), dXvWarp)
         if solverVec:
-            dXv = np.zeros(self.warp.griddata.solvermeshdof)
+            dXv = np.zeros(self.warp.griddata.solvermeshdof, dtype=self.dtype)
             self.warp.warp_to_solver_grid(dXvWarp, dXv)
             return dXv
         else:
@@ -495,7 +495,7 @@ class USMesh(object):
 
         if dXv is None:
             np.random.seed(randomSeed) # 'Random' seed to ensure runs are same
-            dXvWarp = np.random.random(self.warp.griddata.warpmeshdof)
+            dXvWarp = np.random.random(self.warp.griddata.warpmeshdof, dtype=self.dtype)
         else:
             if solverVec:
                 dXvWarp = np.zeros(self.warp.griddata.warpmeshdof, self.dtype)
@@ -822,7 +822,7 @@ class USMesh(object):
 
                     fullConn = self.warp.cgnsgrid.surfaceconn-1
                     fullPts = self.warp.cgnsgrid.surfacepoints
-                    
+
                     nPatch = self.warp.cgnsgrid.getnpatch()
                     fullPatchNames = []
                     for i in range(nPatch):

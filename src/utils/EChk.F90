@@ -1,16 +1,17 @@
 subroutine EChk(ierr, file, line)
 
   ! Check if ierr that resulted from a petsc or MPI call is in fact an
-  ! error. 
+  ! error.
   use precision
-
+#include <petscversion.h>
+#if PETSC_VERSION_GE(3,8,0)
+#include <petsc/finclude/petsc.h>
+  use petsc
   implicit none
-
-#include "include/petscversion.h"
-#if PETSC_VERSION_MINOR > 5
-#include "petsc/finclude/petsc.h"
 #else
-#include "include/finclude/petsc.h"
+  implicit none
+#include "petsc/finclude/petsc.h"
+#include "petsc/finclude/petscvec.h90"
 #endif
 
   integer(kind=intType),intent(in) :: ierr
@@ -26,11 +27,10 @@ subroutine EChk(ierr, file, line)
      write(*,901) "Error at line: ",line," in file: ",file
      print *,'================================================================='
 
-     call MPI_Abort(petsc_comm_world,ierr)
+     call MPI_Abort(petsc_comm_world,1, ierr)
      stop ! Just in case
   end if
 
 900 format(A,I2,A,I2)
 901 format(A,I5,A,A)
 end subroutine EChk
-
