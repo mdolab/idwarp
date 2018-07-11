@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# pyWarpUstruct documentation build configuration file, created by
+# IDWarp documentation build configuration file, created by
 # sphinx-quickstart on Thu Jul  9 16:26:28 2015.
 #
 # This file is execfile()d with the current directory set to its
@@ -43,7 +43,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'pyWarpUstruct'
+project = u'IDWarp'
 copyright = u'2015, mdolab'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -179,7 +179,7 @@ html_static_path = ['_static']
 #html_file_suffix = None
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'pyWarpUstructdoc'
+htmlhelp_basename = 'IDWarp'
 
 
 # -- Options for LaTeX output ---------------------------------------------
@@ -199,7 +199,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-  ('index', 'pyWarpUstruct.tex', u'pyWarpUstruct Documentation',
+  ('index', 'IDWarp.tex', u'IDWarp Documentation',
    u'mdolab', 'manual'),
 ]
 
@@ -229,7 +229,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'pywarpustruct', u'pyWarpUstruct Documentation',
+    ('index', 'idwarp', u'IDWarp Documentation',
      [u'mdolab'], 1)
 ]
 
@@ -243,8 +243,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-  ('index', 'pyWarpUstruct', u'pyWarpUstruct Documentation',
-   u'mdolab', 'pyWarpUstruct', 'One line description of project.',
+  ('index', 'IDWWarp', u'IDWarp Documentation',
+   u'mdolab', 'IDWarp', 'One line description of project.',
    'Miscellaneous'),
 ]
 

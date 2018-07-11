@@ -1,11 +1,11 @@
 !    -*- f90 -*-
 ! Note: the context of this file is case sensitive.
 #ifdef USE_COMPLEX
-python module warpustruct_cs ! in 
+python module idwarp_cs ! in 
 #else
-python module warpustruct ! in 
+python module idwarp ! in 
 #endif
-    interface  ! in :warpustruct
+    interface  ! in :idwarp
 
        subroutine initpetsc(comm)
          integer(kind=inttype) :: comm
@@ -161,7 +161,7 @@ python module warpustruct ! in
          integer(kind=inttype) :: eval_fast = 1
        end module gridinput
 
-       module griddata ! in :warpustruct:../modules/gridData.f90
+       module griddata ! in :idwarp:../modules/gridData.f90
          use constants
          integer(kind=inttype) :: warpmeshdof
          integer(kind=inttype) :: solvermeshdof
@@ -207,9 +207,9 @@ python module warpustruct ! in
        
     end interface 
 #ifdef USE_COMPLEX
-end python module warpustruct_cs
+end python module idwarp_cs
 #else
-end python module warpustruct
+end python module idwarp
 #endif
 
 ! This file was auto-generated with f2py (version:2).

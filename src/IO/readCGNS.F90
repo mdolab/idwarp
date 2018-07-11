@@ -54,7 +54,7 @@ subroutine readCGNS(cgns_file)
      if (ierr .eq. CG_ERROR) call cg_error_exit_f
 
      if (nbases .gt. 1) then
-        print *, ' ** Warning: pyWarpUstruct only reads the first base in a cgns file'
+        print *, ' ** Warning: IDWarp only reads the first base in a cgns file'
      end if
 
      base = 1_intType

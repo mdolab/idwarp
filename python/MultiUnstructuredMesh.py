@@ -36,7 +36,7 @@ import numpy as np
 from pprint import pprint
 from mpi4py import MPI
 from .MExt import MExt
-import pywarpustruct
+import idwarp
 from petsc4py import PETSc
 try: 
     from cgnsutilities import cgns_utils as cs
@@ -49,7 +49,7 @@ class Error(Exception):
     was a expliclty raised exception.
     """
     def __init__(self, message):
-        msg = '\n+'+'-'*78+'+'+'\n' + '| pyWarpUstruct Error: '
+        msg = '\n+'+'-'*78+'+'+'\n' + '| IDWarp Error: '
         i = 22
         for word in message.split():
             if len(word) + i + 1 > 78: # Finish line and start new one
@@ -67,7 +67,7 @@ class Warning(object):
     Format a warning message
     """
     def __init__(self, message):
-        msg = '\n+'+'-'*78+'+'+'\n' + '| pyWarpUstruct Warning: '
+        msg = '\n+'+'-'*78+'+'+'\n' + '| IDWarp Warning: '
         i = 24
         for word in message.split():
             if len(word) + i + 1 > 78: # Finish line and start new one
@@ -98,11 +98,11 @@ class MultiUSMesh(object):
         CGNSFile: string -> file name of the CGNS file. This CGNS file should be generated with
         cgns_utils combine, so that the domain names have the appropriate convention. That is,
         domains will have the same name as their original files. Domains that share the same name
-        will be grouped to make a pyWarp instance.
+        will be grouped to make an IDWarp instance.
 
         optionsDict: dictionary of dictionaries -> Dictionary containing dictionaries that will
-        be used to initialize multiple pyWarp instances. The keys are domain names and the
-        values are dictionaries of standard pyWarp options that will be applied to this domain.
+        be used to initialize multiple IDWarp instances. The keys are domain names and the
+        values are dictionaries of standard IDWarp options that will be applied to this domain.
         The domains of the full CGNS file that do not have a corresponding entry in optionsDict will
         not be warped. For instance, if the CGNS file has the domains wing.00000, wing.00001, and wing.00002
         associated with a wing mesh that we want to warp, then optionsDict should have an entry for 'wing'.
@@ -132,7 +132,7 @@ class MultiUSMesh(object):
         # and explode it by instance.
         if self.myID == 0:
 
-            # Initialize list to store the block IDs that belong to each pyWarp instance.
+            # Initialize list to store the block IDs that belong to each IDWarp instance.
             # For example, suppose that our combined CGNS file has 21 blocks.
             # Blocks 1 to 5 belong to the fuselage
             # Blocks 6 to 12 belong to the wing
@@ -198,7 +198,7 @@ class MultiUSMesh(object):
         # The nearfield mesh names will be the keys of the options dictionary.
         nearfieldNames = optionsDict.keys()
 
-        # Initialize list of pyWarp instances
+        # Initialize list of IDWarp instances
         self.meshes = []
 
         # Initialize list to hold indices of the background zones
@@ -220,8 +220,8 @@ class MultiUSMesh(object):
                 # Remember that we should use the temporary grid file.
                 optionsDict[zoneName]['gridFile'] = '_'+zoneName + '.cgns'
 
-                # Initialize a pyWarp instance with the current options
-                currMesh = pywarpustruct.USMesh(options=optionsDict[zoneName], comm=self.comm)
+                # Initialize an IDWarp instance with the current options
+                currMesh = idwarp.USMesh(options=optionsDict[zoneName], comm=self.comm)
 
             else:
 
@@ -240,11 +240,11 @@ class MultiUSMesh(object):
                 # volNodes is a flattened vector that contains the background
                 # mesh volume nodes that belong to the current proc.
 
-                # Let's try using pyWarp's CGNS loader to extract the bakground nodes.
-                # However, we will have to trick pyWarp in order to do this, since it
+                # Let's try using IDWarp's CGNS loader to extract the bakground nodes.
+                # However, we will have to trick IDWarp in order to do this, since it
                 # expects a surface mesh in the file.
                 # So we will make a copy of the background mesh file, assign an arbitrary
-                # wall surface, and then load it with pyWarp
+                # wall surface, and then load it with IDWarp
 
                 # Only the root proc will modify the input file
                 if self.myID == 0:
@@ -265,8 +265,8 @@ class MultiUSMesh(object):
                     'warpType':'unstructured',
                 }
 
-                # Initialize a pyWarp instance with the current options
-                currMesh = pywarpustruct.USMesh(options=dummyOptions, comm=self.comm)
+                # Initialize a IDWarp instance with the current options
+                currMesh = idwarp.USMesh(options=dummyOptions, comm=self.comm)
 
                 # Initialize a dummy surface in the background mesh
                 '''
@@ -337,7 +337,7 @@ class MultiUSMesh(object):
         # Check if the user already set the surface definition
         if self.numSurfNodes is None:
             if self.comm.Get_rank() == 0:
-                raise NameError('pyWarpMulti surface is not initialized. Run self.setSurfaceDefinition first.')
+                raise NameError('IDWarpMulti surface is not initialized. Run self.setSurfaceDefinition first.')
 
         # Initialize the array of points
         pts = np.zeros((self.numSurfNodes,3))
@@ -369,7 +369,7 @@ class MultiUSMesh(object):
         # Check if the user already set the surface definition
         if self.numSurfNodes is None:
             if self.comm.Get_rank() == 0:
-                raise NameError('pyWarpMulti surface is not initialized. Run self.setSurfaceDefinition first.')
+                raise NameError('IDWarpMulti surface is not initialized. Run self.setSurfaceDefinition first.')
 
         # Loop over every mesh object to get a slice of the surface point array
         for instanceID,mesh in enumerate(self.meshes):
@@ -410,7 +410,7 @@ class MultiUSMesh(object):
         # Print log
         if self.myID == 0:
             print('')
-            print('Mapping solver volume nodes to pyWarpMulti volume nodes')
+            print('Mapping solver volume nodes to IDWarpMulti volume nodes')
 
         # Save the number of volume nodes
         self.numVolNodes = len(ind)
@@ -418,8 +418,8 @@ class MultiUSMesh(object):
         # Here we will initialize a vector of volume nodes.
         # We will populate this volume node vector with the current mesh state, including
         # the background mesh nodes. We will use this vector to initialize any new volume
-        # node vector returned by pyWarpMulti when we call self.getSolverGrid().
-        # This will allow us to delete all pyWarp instances related to the background nodes
+        # node vector returned by IDWarpMulti when we call self.getSolverGrid().
+        # This will allow us to delete all IDWarp instances related to the background nodes
         # since they will remain unchanged.
         self.defaultSolverGrid = np.zeros(self.numVolNodes)
 
@@ -509,7 +509,7 @@ class MultiUSMesh(object):
         """This is the master function that determines the definition of the
         surface to be used for the mesh movement. This surface may be
         supplied from an external solver (such as ADflow) or it may be
-        generated by pyWarpUStruct internally.
+        generated by IDWarp internally.
 
         Parameters
         ----------
@@ -523,7 +523,7 @@ class MultiUSMesh(object):
         cgnsBlockIDs : int Array size (N)
             Block ID, in CGNS ordering, that contains each element.
         distTol: Distance tolerance to flag that a given surface node does not
-                 belong to the current pyWarp surface definition in the current proc.
+                 belong to the current IDWarp surface definition in the current proc.
 
         Ney Secco 2017-02
         """
@@ -531,15 +531,15 @@ class MultiUSMesh(object):
         # Here is the main logic of this function:
         # - Each proc receives a set of surface patch from ADflow
         # - cgnsBlockIDs indicates which CGNS block contains each surface patch
-        # - We stored the CGNS block IDs that belong to each pyWarp instance at the
+        # - We stored the CGNS block IDs that belong to each IDWarp instance at the
         #   initialization method.
         # - So we can use the CGNS block ID to separate ADflow surface patches per
-        #   pyWarp instance.
+        #   IDWarp instance.
 
         # Print log
         if self.myID == 0:
             print('')
-            print('Mapping solver surface nodes to pyWarpMulti volume nodes')
+            print('Mapping solver surface nodes to IDWarp volume nodes')
 
         # Check if the user executed self.setExternalMeshIndices first to remove background meshes
         if self.backgroundInstanceIDs is not None:
@@ -568,7 +568,7 @@ class MultiUSMesh(object):
         # Now we use the block ID bounds of each instance to flag the instance IDs
         for ii in range(len(self.meshes)):
 
-            # Get indices of the first and last CGNS block that belongs to the current pyWarp instance
+            # Get indices of the first and last CGNS block that belongs to the current IDWarp instance
             indexStart = self.cgnsBlockIntervals[ii][0]
             indexEnd = self.cgnsBlockIntervals[ii][1]
 
@@ -579,7 +579,7 @@ class MultiUSMesh(object):
         ### We will send the connectivity subsets to each instance
 
         # We will need to create subgroups of points and connectivities to each instance since
-        # pyWarp cannot receive points that are not connected to any element.
+        # IDWarp cannot receive points that are not connected to any element.
 
         # Initialize lists that will map the full set of nodes to each subgroup of nodes
         self.filtered2fullMaps = []
@@ -599,7 +599,7 @@ class MultiUSMesh(object):
                 # Get the size of the current element
                 elemFaceSize = faceSizes[elemID]
 
-                # Check if the current element belongs to the current pyWarp instance
+                # Check if the current element belongs to the current IDWarp instance
                 if self.instanceIDs[elemID] == ii:
 
                     # Store its faceSize
@@ -638,7 +638,7 @@ class MultiUSMesh(object):
                 # with the new ID
                 currConn[currConn == fullID] = filteredID
 
-            # Now we finally can set surface definition of the current pyWarp instance
+            # Now we finally can set surface definition of the current IDWarp instance
             self.meshes[ii].setSurfaceDefinition(currPts, currConn, currFaceSizes)
 
             # Save the mapping for future uses
@@ -666,15 +666,15 @@ class MultiUSMesh(object):
         -------
         volNodesList, list of 1D numpy arrays, real: These are the local volume nodes (in a flat 1D array)
         of each instance. That is, volNodesList[i] has the volume nodes stored in the local proc for
-        the i-th pyWarp instance.
+        the i-th IDWarp instance.
 
-        numCoorTotal: The total number of coordinates, across all procs and pyWarp instances.
+        numCoorTotal: The total number of coordinates, across all procs and IDWarp instances.
 
         Ney Secco 2017-02
         """
 
         # Initialize list to hold volume nodes (in the current proc) of all instances.
-        # That is, volNodesList[i] gives the volume nodes of the i-th pyWarp instance that belong
+        # That is, volNodesList[i] gives the volume nodes of the i-th IDWarp instance that belong
         # to the current proc.
         volNodesList = []
 
@@ -682,7 +682,7 @@ class MultiUSMesh(object):
         # of all volume mesh.
         numCoorTotal = 0
 
-        # Loop over the multiple CGNS files to initialize the corresponding pyWarp instances
+        # Loop over the multiple CGNS files to initialize the corresponding IDWarp instances
         for currMesh in self.meshes:
 
             # Get volume nodes.
@@ -693,7 +693,7 @@ class MultiUSMesh(object):
             # Store the nodes of the current instance in the list
             volNodesList.append(volNodes)
 
-            # Get number of coordinates on the current processor, for the current pyWarp instance.
+            # Get number of coordinates on the current processor, for the current IDWarp instance.
             numCoor = len(volNodes)
 
             # Each processor needs to know how many coordinates are in the other processors.
@@ -713,7 +713,7 @@ class MultiUSMesh(object):
         used in this function are done at warpDeriv, so in theory you
         could save time by just saving the output of warpDeriv.
 
-        Here we accumulate all seeds coming from each pyWarp instance
+        Here we accumulate all seeds coming from each IDWarp instance
 
         Returns
         -------
@@ -742,7 +742,7 @@ class MultiUSMesh(object):
 
     def warpMesh(self):
         """
-        This calls the mesh warping method for each pyWarp instance.
+        This calls the mesh warping method for each IDWarp instance.
 
         This will update the volume coordinates internally in each instance.
 
@@ -755,7 +755,7 @@ class MultiUSMesh(object):
         # Print log
         if self.myID == 0:
             print('')
-            print('Starting pyWarpMulti mesh warping')
+            print('Starting IDWarpMulti mesh warping')
 
         # Set mesh counter
         meshCounter = 1
@@ -782,7 +782,7 @@ class MultiUSMesh(object):
         # Print log
         if self.myID == 0:
             print('')
-            print('pyWarpMulti successfully warped all instances!')
+            print('IDWarpMulti successfully warped all instances!')
             print('')
 
     def warpDeriv(self, dXv):
@@ -822,7 +822,7 @@ class MultiUSMesh(object):
         # Print log
         if self.myID == 0:
             print('')
-            print('Starting pyWarpMulti reverse AD')
+            print('Starting IDWarpMulti reverse AD')
 
         #---------------------------------------------------
         # RUN REVERSE AD ON EACH INSTANCE
@@ -850,7 +850,7 @@ class MultiUSMesh(object):
         # Print log
         if self.myID == 0:
             print('')
-            print('pyWarpMulti successfully finished reverse AD on all instances!')
+            print('IDWarpMulti successfully finished reverse AD on all instances!')
             print('')
 
         # Get derivative seeds
@@ -890,7 +890,7 @@ class MultiUSMesh(object):
         # Print log
         if self.myID == 0:
             print('')
-            print('Starting pyWarpMulti forward AD')
+            print('Starting IDWarpMulti forward AD')
 
         #---------------------------------------------------
         # SPLIT SURFACE SEEDS ACROSS ALL INSTANCES AND GATHER
@@ -924,7 +924,7 @@ class MultiUSMesh(object):
         # Print log
         if self.myID == 0:
             print('')
-            print('pyWarpMulti successfully finished forward AD on all instances!')
+            print('IDWarpMulti successfully finished forward AD on all instances!')
             print('')
 
         #---------------------------------------------------
@@ -985,7 +985,7 @@ class MultiUSMesh(object):
 
         # Assign baseName if user provided none
         if baseName is None:
-            baseName = 'pyWarpMulti'
+            baseName = 'IDWarpMulti'
 
         # Loop over all instances to write their meshes
         for instanceID,mesh in enumerate(self.meshes):
@@ -1016,7 +1016,7 @@ class MultiUSMesh(object):
                 print(' Options of mesh',meshCounter,'of',len(self.meshes))
                 print('')
                 print('+---------------------------------------+')
-                print('|     All pyWarpUstruct Options:        |')
+                print('|     All IDWarp Options:               |')
                 print('+---------------------------------------+')
                 pprint(mesh.solverOptions)
                 print('')
