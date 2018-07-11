@@ -10,7 +10,7 @@ import os, sys, argparse
 import mdo_regression_helper as reg
 
 # define scripts to run:
-module_name = 'pywarpustruct'
+module_name = 'idwarp'
 
 # Get the optional commandline arguments:
 parser = argparse.ArgumentParser()
