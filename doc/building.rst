@@ -1,13 +1,13 @@
-.. _pyWarpUstruct_building:
+.. _IDWarp_building:
 
 Building
 --------
 
-All the core computations in :ref:`pyWarpUstruct` are coded in Fortran.  It
+All the core computations in :ref:`IDWarp` are coded in Fortran.  It
 is therefore necessary to build this library before using
-:ref:`pyWarpUstruct`.
+:ref:`IDWarp`.
 
-To see a list of architectures that :ref:`pyWarpUstruct` has been known to
+To see a list of architectures that :ref:`IDWarp` has been known to
 compile on run::
    
    make
@@ -22,8 +22,8 @@ attempt a build using ::
 If everything was successful, the following lines will be printed to
 the screen (near the end)::
 
-   Testing if module warpustruct can be imported...
-   Module warpustruct was successfully imported.
+   Testing if module idwarp can be imported...
+   Module idwarp was successfully imported.
 
 If you don't see this, it will be necessary modify the configure
 options in the config file. 

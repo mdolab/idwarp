@@ -335,7 +335,7 @@ subroutine readUnstructuredCGNS(cg)
            ! We only allow ElementRange and ElementList...its just too
            ! hard to figure out what is going on with the point types.
            if (ptSetType == PointRange .or. ptSetType == pointList) then
-              print *, 'pyWarpUStruct cannot handle boundary conditions &
+              print *, 'IDWarp cannot handle boundary conditions &
                    &defined by "PointRange" or "PointList". Please use &
                    &boundary conditions defined by "ElementRange" or "ElementList" &
                    &instead'

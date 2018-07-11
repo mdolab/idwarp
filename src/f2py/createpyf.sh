@@ -6,4 +6,4 @@ IO_FILES="../IO/createGrid.F90 ../IO/patchIO.F90 ../IO/readStructuredCGNS.F90  .
 
 WARP_FILES="../warp/getCommonVolumeCoordinates.F90 ../warp/getdXs.F90 ../warp/getSurfaceCoordinates.F90 ../warp/getVolumeCoordinates.F90 ../warp/initializeWarping.F90 ../warp/setdXs.F90 ../warp/setExternalMeshIndices.F90 ../warp/setSurfaceCoordinates.F90 ../warp/warpDeriv.F90 ../warp/warpMesh.F90"
 
-f2py -m warpustruct -h test.pyf $IO_FILES $MODULE_FILES  $WARP_FILES
+f2py -m idwarp -h test.pyf $IO_FILES $MODULE_FILES  $WARP_FILES
