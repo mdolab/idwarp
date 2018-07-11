@@ -17,8 +17,8 @@ clean:
 makelib:
 	@echo "        creating library ..."
 	@echo
-	$(AR) $(AR_FLAGS) libwarpustruct_cs.a $(OBJDIR)/*.o
+	$(AR) $(AR_FLAGS) libidwarp_cs.a $(OBJDIR)/*.o
 	@echo
-	@echo "        library libwarpustruct_cs.a created."
+	@echo "        library libidwarp_cs.a created."
 	@echo
 

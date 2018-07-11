@@ -1,6 +1,6 @@
 
 ############################################################
-# DO NOT USE THIS SCRIPT AS A REFERENCE FOR HOW TO USE pywarpustruct
+# DO NOT USE THIS SCRIPT AS A REFERENCE FOR HOW TO USE IDWarp
 # THIS SCRIPT USES PRIVATE INTERNAL FUNCTIONALITY THAT IS
 # SUBJECT TO CHANGE!!
 ############################################################
@@ -12,7 +12,7 @@ from __future__ import print_function
 import sys,os,copy
 import numpy
 from mdo_regression_helper import *
-from pywarpustruct import USMesh
+from idwarp import USMesh
 from mpi4py import MPI
 
 # First thing we will do is define a complete set of default options

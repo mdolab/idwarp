@@ -3,7 +3,7 @@ import sys,os
 from mpi4py import MPI
 from pygeo import *
 from pyspline import *
-from pywarpustruct import *
+from idwarp import *
 import numpy
 gcomm = MPI.COMM_WORLD
 
