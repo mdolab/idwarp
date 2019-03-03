@@ -1,6 +1,1 @@
-input_files/symm_block.cgns filter=lfs diff=lfs merge=lfs -text
-input_files/symm_block_unstructured.cgns filter=lfs diff=lfs merge=lfs -text
-input_files/ahmedBodyMesh filter=lfs diff=lfs merge=lfs -text
-input_files/co_mesh.cgns filter=lfs diff=lfs merge=lfs -text
-input_files/mdo_tutorial_face_bcs.cgns filter=lfs diff=lfs merge=lfs -text
-input_files/o_mesh.cgns filter=lfs diff=lfs merge=lfs -text
+*.cgns filter=lfs diff=lfs merge=lfs -text
