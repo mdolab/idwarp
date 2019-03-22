@@ -16,7 +16,7 @@ You can then view the built documentation in the `_build` folder.
 Citation
 --------
 
-IDWarp is based on the theroy presented in "A fast mesh deformation method using explicit interpolation".
+IDWarp is based on the theory presented in "A fast mesh deformation method using explicit interpolation".
 For more background, theory, and figures, see the original [journal article](https://doi.org/10.1016/j.jcp.2011.09.021).
 
 
