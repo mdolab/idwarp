@@ -17,3 +17,6 @@ Citation
 
 IDWarp is based on the theory presented in [this journal article](https://doi.org/10.1016/j.jcp.2011.09.021).
 
+License
+-------
+Copyright 2019 MDO Lab. See the LICENSE file for details.
