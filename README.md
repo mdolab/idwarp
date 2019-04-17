@@ -6,8 +6,7 @@ IDWarp uses an inverse distance method to modify the location of mesh volume nod
 Documentation
 -------------
 
-Please see the [documentation](http://mdolab.engin.umich.edu/doc/packages/idwarp/doc/index.html) for installation details and API documentation.
-This link requires credentials currently only available to MDO Lab members.
+Please see the [documentation](http://mdolab.engin.umich.edu/docs/packages/idwarp/doc/index.html) for installation details and API documentation.
 
 To locally build the documentation, enter the `doc` folder and enter `make html` in terminal.
 You can then view the built documentation in the `_build` folder.
