@@ -665,7 +665,7 @@ class USMesh(object):
                 fullConn = self.warp.cgnsgrid.surfaceconn-1
                 fullPts = self.warp.cgnsgrid.surfacepoints
 
- 		nPatch = self.warp.cgnsgrid.getnpatch()
+                nPatch = self.warp.cgnsgrid.getnpatch()
                 fullPatchNames = []
                 for i in range(nPatch):
                     fullPatchNames.append(self.warp.cgnsgrid.getsurf(i+1).strip().lower())
