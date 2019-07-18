@@ -725,7 +725,7 @@ Contains
     open(unit=7, file=fileName, status='replace')
 101 format('ZONE T="Level ',I2, '"')
     do lvl=1, tp%maxDepth-1
-       write(7, 101), lvl
+       write(7, 101) lvl
        call writeLevel(tp, tp%root, lvl)
     end do
     close(7)
