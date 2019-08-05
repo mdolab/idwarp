@@ -27,7 +27,7 @@ subroutine EChk(ierr, file, line)
      write(*,901) "Error at line: ",line," in file: ",file
      print *,'================================================================='
 
-     call MPI_Abort(petsc_comm_world,1, ierr)
+     call MPI_Abort(petsc_comm_world,ierr, jerr)
      stop ! Just in case
   end if
 
