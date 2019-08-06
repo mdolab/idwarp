@@ -77,7 +77,7 @@ def test1():
 
     new_coords = coords0.copy()
     # Do a stretch:
-    for i in xrange(len(coords0)):
+    for i in range(len(coords0)):
         length = coords0[i,2]
         new_coords[i,0] += .05*length
 
@@ -108,7 +108,7 @@ def test1():
     else:
                
         # add a complex perturbation on all surface nodes simultaneously:
-        for i in xrange(len(coords0)):
+        for i in range(len(coords0)):
             new_coords[i,:] += h*1j
 
         # Reset the newly computed surface coordiantes
@@ -156,7 +156,7 @@ def test2():
 
     new_coords = coords0.copy()
     # Do a shearing sweep deflection:
-    for i in xrange(len(coords0)):
+    for i in range(len(coords0)):
         span = coords0[i,2]
         new_coords[i,0] += .05*span
 
@@ -189,7 +189,7 @@ def test2():
     else:
         
         # add a complex perturbation on all surface nodes simultaneously:
-        for i in xrange(len(coords0)):
+        for i in range(len(coords0)):
             new_coords[i,:] += h*1j
 
         # Reset the newly computed surface coordiantes
@@ -233,7 +233,7 @@ def test3():
 
     new_coords = coords0.copy()
     # Do a shearing sweep deflection:
-    for i in xrange(len(coords0)):
+    for i in range(len(coords0)):
         span = coords0[i,2]
         new_coords[i,0] += .05*span
 
@@ -266,7 +266,7 @@ def test3():
     else:
         
         # add a complex perturbation on all surface nodes simultaneously:
-        for i in xrange(len(coords0)):
+        for i in range(len(coords0)):
             new_coords[i,:] += h*1j
 
         # Reset the newly computed surface coordiantes

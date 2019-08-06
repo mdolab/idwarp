@@ -22,7 +22,7 @@ mesh = USMesh(options=options, comm=MPI.COMM_WORLD)
 coords0 = mesh.getSurfaceCoordinates()
 
 new_coords = coords0.copy()
-for i in xrange(len(coords0)):
+for i in range(len(coords0)):
     new_coords[i, :] *= 1.1
 
 # Reset the newly computed surface coordiantes

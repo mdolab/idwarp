@@ -124,7 +124,7 @@ def doubleRampAngle(val,geo):
 def length(val, geo):
     C = geo.extractCoef('bodyAxis')
 
-    for i in xrange(len(C)):
+    for i in range(len(C)):
         #print 'C',i,C[i,0],val[i]
         C[i,0] = val[i]
         
@@ -135,7 +135,7 @@ def length(val, geo):
 def angleVars(val, geo):
     C = geo.extractCoef('localBodyAxis')
 
-    for i in xrange(len(C)):
+    for i in range(len(C)):
         C[i,2] = val[i]        
     # end
     geo.restoreCoef(C, 'localBodyAxis')

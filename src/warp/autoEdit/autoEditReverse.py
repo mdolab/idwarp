@@ -65,7 +65,7 @@ for f in os.listdir(DIR_ORI):
                 line_mod = line.lstrip() # Strip out Left-hand leading spaces
 
                 found_ignore = False
-                for i in xrange(nIgnores):
+                for i in range(nIgnores):
                     if line_mod.find(LINE_IGNORE[i]) >=0:
                         found_ignore = True
                     # end if
@@ -73,7 +73,7 @@ for f in os.listdir(DIR_ORI):
 
                 if not found_ignore:
 
-                    for i in xrange(nEdits):
+                    for i in range(nEdits):
                         if line_mod[0:len(LINE_ID[i])] == LINE_ID[i]:
                             line_mod = string.replace(line_mod, STR_OLD[i], STR_NEW[i])
                         # end if
