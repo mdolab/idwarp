@@ -1,4 +1,5 @@
 # this is a simple script to test the IDWarp module
+from __future__ import print_function
 from mpi4py import MPI
 from idwarp import USMesh
 
@@ -47,7 +48,7 @@ dXsb = mesh.getdXs()
 dotProd = 0.0
 dotProd += np.sum(dXvWarpd * dXvWarpb)
 dotProd -= np.sum(dXsb * dXsd)
-print 'dotProd should be zero:', dotProd
-print
+print('dotProd should be zero:', dotProd)
+print()
 
-print mesh.getdXs()
+print(mesh.getdXs())
