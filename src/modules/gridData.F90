@@ -38,7 +38,6 @@ module gridData
   Vec solverGridVec
   VecScatter common_to_solver
   VecScatter common_to_warp
-  VecScatter common_to_dxs
 #endif
 
   ! Pointers into the grid vecs
