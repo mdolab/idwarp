@@ -31,9 +31,9 @@ install:
 
 script:
   # Real tests
-  - docker exec -it ". \$HOME/.bashrc_mdolab && cd $DOCKER_WORKING_DIR/python/reg_tests && python run_reg_tests.py -nodiff"
+  - docker exec -it app ". \$HOME/.bashrc_mdolab && cd $DOCKER_WORKING_DIR/python/reg_tests && python run_reg_tests.py -nodiff"
   # Complex tests
-  - docker exec -it ". \$HOME/.bashrc_mdolab && cd $DOCKER_WORKING_DIR/python/reg_tests && export PETSC_ARCH=complex-opt-$COMPILERS-$PETSCVERSION && python run_reg_tests_cs.py -nodiff"
+  - docker exec -it app ". \$HOME/.bashrc_mdolab && cd $DOCKER_WORKING_DIR/python/reg_tests && export PETSC_ARCH=complex-opt-$COMPILERS-$PETSCVERSION && python run_reg_tests_cs.py -nodiff"
   
 
 after_script:
