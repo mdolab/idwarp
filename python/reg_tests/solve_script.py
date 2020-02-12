@@ -95,7 +95,7 @@ def test1():
     if MPI.COMM_WORLD.rank == 0:
         print('Sum of dxs:')
         reg_write(val,1e-8,1e-8)
-        
+
     if MPI.COMM_WORLD.rank == 0:
         print('Verifying Warp Deriv')
     mesh.verifyWarpDeriv(dXv_warp,solverVec=False,dofStart=0,dofEnd=10,h=1e-9)
@@ -136,7 +136,7 @@ def test2():
     # Reset the newly computed surface coordiantes
     mesh.setSurfaceCoordinates(new_coords)
     mesh.warpMesh()
-    
+
     # Get the sum of the warped coordinates
     #vCoords = mesh.getSolverGrid()
     vCoords = mesh.getWarpGrid()
@@ -157,7 +157,7 @@ def test2():
     if MPI.COMM_WORLD.rank == 0:
         print('Sum of dxs:')
         reg_write(val,1e-8,1e-8)
-        
+
     if MPI.COMM_WORLD.rank == 0:
         print('Verifying Warp Deriv')
     mesh.verifyWarpDeriv(dXv_warp,solverVec=False,dofStart=0,dofEnd=5)
@@ -194,7 +194,7 @@ def test3():
     # Reset the newly computed surface coordiantes
     mesh.setSurfaceCoordinates(new_coords)
     mesh.warpMesh()
-    
+
     # Get the sum of the warped coordinates
     #vCoords = mesh.getSolverGrid()
     vCoords = mesh.getWarpGrid()
@@ -215,7 +215,7 @@ def test3():
     if MPI.COMM_WORLD.rank == 0:
         print('Sum of dxs:')
         reg_write(val,1e-8,1e-8)
-        
+
     if MPI.COMM_WORLD.rank == 0:
         print('Verifying Warp Deriv')
     mesh.verifyWarpDeriv(dXv_warp,solverVec=False,dofStart=0,dofEnd=5)
@@ -253,7 +253,7 @@ def test4():
     # Reset the newly computed surface coordiantes
     mesh.setSurfaceCoordinates(new_coords)
     mesh.warpMesh()
-    
+
     # Get the sum of the warped coordinates
     #vCoords = mesh.getSolverGrid()
     vCoords = mesh.getWarpGrid()
@@ -274,7 +274,7 @@ def test4():
     if MPI.COMM_WORLD.rank == 0:
         print('Sum of dxs:')
         reg_write(val,1e-8,1e-8)
-        
+
     if MPI.COMM_WORLD.rank == 0:
         print('Verifying Warp Deriv')
     mesh.verifyWarpDeriv(dXv_warp,solverVec=False,dofStart=0,dofEnd=5)
@@ -313,7 +313,7 @@ def test5():
     # Reset the newly computed surface coordiantes
     mesh.setSurfaceCoordinates(new_coords)
     mesh.warpMesh()
-    
+
     # Get the sum of the warped coordinates
     #vCoords = mesh.getSolverGrid()
     vCoords = mesh.getWarpGrid()
@@ -334,14 +334,17 @@ def test5():
     if MPI.COMM_WORLD.rank == 0:
         print('Sum of dxs:')
         reg_write(val,1e-8,1e-8)
-        
+
     if MPI.COMM_WORLD.rank == 0:
         print('Verifying Warp Deriv')
     mesh.verifyWarpDeriv(dXv_warp,solverVec=False,dofStart=0,dofEnd=5, h=1e-10)
 
 if __name__ == '__main__':
     if len(sys.argv) == 1:
-        test1()
+        try:
+            test1()
+        except ModuleNotFoundError:
+            print('WARNING: Test 1 skipped due to ModuleNotFoundError. Is OpenFoam installed?')
         test2()
         test3()
         test4()
@@ -349,7 +352,10 @@ if __name__ == '__main__':
     else:
         # Run individual ones
         if 'test1' in sys.argv:
-            test1()
+            try:
+                test1()
+            except ModuleNotFoundError:
+                print('WARNING: Test 1 skipped due to ModuleNotFoundError. Is OpenFoam installed?')
         if 'test2' in sys.argv:
             test2()
         if 'test3' in sys.argv:

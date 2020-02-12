@@ -7,16 +7,9 @@ module gridData
 
 #ifndef USE_TAPENADE
 
-#include <petscversion.h>
-#if PETSC_VERSION_GE(3,8,0)
 #include <petsc/finclude/petsc.h>
   use petsc
   implicit none
-#else
-  implicit none
-#include "petsc/finclude/petsc.h"
-#include "petsc/finclude/petscvec.h90"
-#endif
 
   ! Volume grid vecs
   Vec Xv, Xv0, dXv, XvLocal
@@ -38,7 +31,6 @@ module gridData
   Vec solverGridVec
   VecScatter common_to_solver
   VecScatter common_to_warp
-  VecScatter common_to_dxs
 #endif
 
   ! Pointers into the grid vecs

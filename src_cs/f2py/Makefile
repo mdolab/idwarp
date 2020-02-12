@@ -50,7 +50,7 @@ all:
 # Clean up temporary files
 	-rm *.o
 	-rm *.c
-	-rm .f2py_f2cmap
+	-rm -f .f2py_f2cmap
 clean:
 	@echo "        Making clean in f2py... "
 	rm -f $(MAKE_CLEAN_ARGUMENTS)
