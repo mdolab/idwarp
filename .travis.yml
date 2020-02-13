@@ -19,7 +19,7 @@ before_install:
   - docker run -t -d 
         --name app
         --mount "type=bind,src=$(pwd),target=$DOCKER_MOUNT_DIR"
-        mdolab/public:current
+        mdolab/public:$DOCKER_TAG
         /bin/bash
 
 install:
