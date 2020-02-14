@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.com/mdolab/idwarp.svg?branch=master)](https://travis-ci.com/mdolab/idwarp)
+
 IDWarp
 ====================================================
 
