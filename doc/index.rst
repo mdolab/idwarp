@@ -17,6 +17,7 @@ multi-block, overset and unstructured meshes.
 
    building
    tutorial
+   options
    API
 
 
