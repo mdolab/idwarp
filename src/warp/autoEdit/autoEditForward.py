@@ -13,7 +13,6 @@ Written by Andre C. Marta          Last updated: Apr 6, 2007
 
 # Import modules
 
-from __future__ import print_function
 import os, sys
 import string
 

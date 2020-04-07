@@ -8,7 +8,6 @@
 # ======================================================================
 #         Imports
 # ======================================================================
-from __future__ import print_function
 import sys,os,copy
 import numpy
 from mdo_regression_helper import *

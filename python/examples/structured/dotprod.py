@@ -1,5 +1,4 @@
 # this is a simple script to test the IDWarp module
-from __future__ import print_function
 from mpi4py import MPI
 from idwarp import USMesh
 

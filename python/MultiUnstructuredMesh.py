@@ -23,8 +23,6 @@ History
 -------
     v. 1.0 - Initial Class Creation (JPJ, 2017)
 """
-from __future__ import print_function
-from __future__ import division
 # =============================================================================
 # Imports
 # =============================================================================
