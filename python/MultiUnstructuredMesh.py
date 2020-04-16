@@ -23,8 +23,6 @@ History
 -------
     v. 1.0 - Initial Class Creation (JPJ, 2017)
 """
-from __future__ import print_function
-from __future__ import division
 # =============================================================================
 # Imports
 # =============================================================================
@@ -36,7 +34,7 @@ import numpy as np
 from pprint import pprint
 from mpi4py import MPI
 from .MExt import MExt
-import idwarp
+from . import idwarp
 from petsc4py import PETSc
 try:
     from cgnsutilities import cgns_utils as cs

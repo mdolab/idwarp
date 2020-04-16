@@ -25,7 +25,7 @@ mesh = USMesh(options=options, comm=MPI.COMM_WORLD)
 coords0 = mesh.getSurfaceCoordinates()
 
 new_coords = coords0.copy()
-for i in xrange(len(coords0)):
+for i in range(len(coords0)):
     span = coords0[i,2]
     new_coords[i,0] += .05*span
     new_coords[i,1] += .05*span

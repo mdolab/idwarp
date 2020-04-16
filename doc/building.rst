@@ -63,7 +63,7 @@ Now open ``config/config.mk`` which should look like::
 
   # Define potentially different python, python-config and f2py executables:
   PYTHON = python
-  PYTHON-CONFIG = python-config
+  PYTHON-CONFIG = python3-config # use python-config for python 2
   F2PY = f2py
 
 It will most likely be necessary to modify the ``CGNS_INCLUDE_FLAGS``

@@ -21,8 +21,6 @@ History
 -------
 	v. 1.0 - Initial Class Creation (CAM, 2014)
 """
-from __future__ import print_function
-from __future__ import division
 # =============================================================================
 # Imports
 # =============================================================================

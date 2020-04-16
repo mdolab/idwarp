@@ -36,15 +36,15 @@ LINE_IGNORE = []
 FILE_IGNORE = ['griddata_d.F90']
 # Some feedback
 
-print "Directory of input source files  :", DIR_ORI
-print "Directory of output source files :", DIR_MOD
+print("Directory of input source files  :", DIR_ORI)
+print("Directory of output source files :", DIR_MOD)
 
 for f in os.listdir(DIR_ORI):
     if not f in FILE_IGNORE:
         if f.endswith(EXT):
             # open original file in read mode
             file_object_ori = open(DIR_ORI + '/' + f,'r')
-            print "\nParsing input file", file_object_ori.name
+            print("\nParsing input file", file_object_ori.name)
 
             # read to whole file to string and reposition the pointer
             # at the first byte for future reading
@@ -65,7 +65,7 @@ for f in os.listdir(DIR_ORI):
                 line_mod = line.lstrip() # Strip out Left-hand leading spaces
 
                 found_ignore = False
-                for i in xrange(nIgnores):
+                for i in range(nIgnores):
                     if line_mod.find(LINE_IGNORE[i]) >=0:
                         found_ignore = True
                     # end if
@@ -73,7 +73,7 @@ for f in os.listdir(DIR_ORI):
 
                 if not found_ignore:
 
-                    for i in xrange(nEdits):
+                    for i in range(nEdits):
                         if line_mod[0:len(LINE_ID[i])] == LINE_ID[i]:
                             line_mod = string.replace(line_mod, STR_OLD[i], STR_NEW[i])
                         # end if
@@ -92,6 +92,6 @@ for f in os.listdir(DIR_ORI):
             file_object_mod.close()
 
             # success message
-            print " Modified file saved", file_object_mod.name
+            print(" Modified file saved", file_object_mod.name)
 
 
