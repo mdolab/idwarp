@@ -2,7 +2,7 @@
 
 API
 ---
-.. currentmodule:: idwarp.python.UnstructuredMesh
+.. currentmodule:: python.UnstructuredMesh
 
-.. autoclass:: idwarp.python.UnstructuredMesh.USMesh
+.. autoclass:: python.UnstructuredMesh.USMesh
     :members: 
