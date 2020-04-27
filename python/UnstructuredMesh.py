@@ -1035,7 +1035,7 @@ class USMesh(object):
         """
 
         # first import the helper utilities
-        from openfoammeshreader import of_mesh_utils as ofm
+        from pyofm import pyOFM as ofm
 
         # Copy the reference points file to points to ensure
         # consistant starting point
