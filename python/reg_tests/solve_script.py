@@ -39,6 +39,7 @@ def printHeader(testName):
         print('| Test Name: ' + '%-66s'%testName + '|')
         print('+' + '-'*78 + '+')
 
+# NOTE: we no longer run test1 in idwarp. test1 has been moved to pyofm and will be tested from there.
 def test1():
     # Test the Ahmed body openfoam mesh
     sys.stdout.flush()
@@ -340,21 +341,23 @@ def test5():
 
 if __name__ == '__main__':
     if len(sys.argv) == 1:
-        try:
-            test1()
-        except ModuleNotFoundError:
-            print('WARNING: Test 1 skipped due to ModuleNotFoundError. Is OpenFoam installed?')
+        # NOTE: commented out test1. test1 has been moved to pyofom and will be tested from there.
+        #try:
+        #    test1()
+        #except ModuleNotFoundError:
+        #    print('WARNING: Test 1 skipped due to ModuleNotFoundError. Is OpenFoam installed?')
         test2()
         test3()
         test4()
         test5()
     else:
         # Run individual ones
-        if 'test1' in sys.argv:
-            try:
-                test1()
-            except ModuleNotFoundError:
-                print('WARNING: Test 1 skipped due to ModuleNotFoundError. Is OpenFoam installed?')
+        # NOTE: commented out test1. test1 has been moved to pyofom and will be tested from there.
+        #if 'test1' in sys.argv:
+        #    try:
+        #        test1()
+        #    except ModuleNotFoundError:
+        #        print('WARNING: Test 1 skipped due to ModuleNotFoundError. Is OpenFoam installed?')
         if 'test2' in sys.argv:
             test2()
         if 'test3' in sys.argv:

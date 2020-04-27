@@ -9,55 +9,6 @@
  'cornerAngle': 30.0,
  'errTol': 0.0005,
  'evalMode': 'fast',
- 'fileType': 'openfoam',
- 'gridFile': '/home/gaetan/hg/pywarpustruct/python/input_files/ahmedBodyMesh',
- 'restartFile': None,
- 'specifiedSurfaces': None,
- 'symmTol': 1e-06,
- 'symmetryPlanes': [[[0, 0, 0], [0, 1, 0]]],
- 'symmetrySurfaces': None,
- 'useRotations': True,
- 'zeroCornerRotations': True}
-#------------------------------#
- Total Volume Nodes :     22915 
-#------------------------------#
-
-+------------------------------------------------------------------------------+
-| pyWarpUstruct Warning: Using internally generated pyWarpUStruct surfaces. If |
-| this mesh object is to be used with an external solver, ensure the mesh      |
-| object is passed to the solver immediatedly after it is created. The         |
-| external solver must then call 'setExternalMeshIndices()' and                |
-| 'setSurfaceDefinition()' routines.                                           |
-+------------------------------------------------------------------------------+
-
-+-------------------- Symmetry Planes -------------------+
-|           Point                        Normal          |
-| (  0.000   0.000   0.000)    (  0.000   1.000   0.000) |
-+--------------------------------------------------------+
-#--------------------------------#
- Unique Surface Nodes :      3652 
-#--------------------------------#
- Computing Denomenator Estimate...
- Load Balancing...
- Finished Mesh Initialization.
-Sum of vCoords Inital:
-@value     26501.1051526058 1e-08 1e-08
-Sum of vCoords Warped:
-@value    26754.64596317404 1e-08 1e-08
-Computing Warp Deriv
-Sum of dxs:
-@value    31939.67520934215 1e-08 1e-08
-+---------------------------------------+
-|     All pyWarpUstruct Options:        |
-+---------------------------------------+
-{'LdefFact': 1.0,
- 'aExp': 3.0,
- 'alpha': 0.25,
- 'bExp': 5.0,
- 'bucketSize': 8,
- 'cornerAngle': 30.0,
- 'errTol': 0.0005,
- 'evalMode': 'fast',
  'fileType': 'cgns',
  'gridFile': '../input_files/co_mesh.cgns',
  'restartFile': None,
