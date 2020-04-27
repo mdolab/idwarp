@@ -46,6 +46,7 @@ def printHeader(testName):
 
 h = 1e-40
 
+# NOTE: we no longer run test1 in idwarp. test1 has been moved to pyofm and will be tested from there.
 def test1():
     # Test the Ahmed body openfoam mesh
     sys.stdout.flush()
@@ -283,14 +284,16 @@ def test3():
 
 if __name__ == '__main__':
     if len(sys.argv) == 1 or(len(sys.argv) == 2 and 'complex' in sys.argv):
-        test1()
+        # NOTE: commented out test1. test1 has been moved to pyofom and will be tested from there.
+        #test1()
         test2()
         test3()
 
     else:
         # Run individual ones
-        if 'test1' in sys.argv:
-            test1()
+        # NOTE: commented out test1. test1 has been moved to pyofom and will be tested from there.
+        #if 'test1' in sys.argv:
+        #    test1()
         if 'test2' in sys.argv:
             test2()
         if 'test3' in sys.argv:
