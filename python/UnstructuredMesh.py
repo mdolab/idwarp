@@ -1034,8 +1034,10 @@ class USMesh(object):
             The directory containing the openFOAM Mesh files
         """
 
-        # first import the helper utilities
-        from pyofm import pyOFM as ofm
+        # import the pyOFM repo
+        from pyofm import PYOFM
+
+        ofm = PYOFM(comm=self.comm)
 
         # Copy the reference points file to points to ensure
         # consistant starting point
@@ -1046,22 +1048,24 @@ class USMesh(object):
             raise Error('USMesh: Unable to copy %s to %s.'%(self.OFData['refPointsFile'], self.OFData['pointsFile']))
 
         # Read in the volume points
-        self.OFData['x0'] = ofm.readVolumeMeshPoints(self.OFData)
+        self.OFData['x0'] = ofm.readVolumeMeshPoints()
 
         # Read the face info for the mesh
-        self.OFData['faces'] = ofm.readFaceInfo(self.OFData)
+        self.OFData['faces'] = ofm.readFaceInfo()
 
         # Read the boundary info
-        self.OFData['boundaries'] = ofm.readBoundaryInfo(self.OFData,self.OFData['faces'])
+        self.OFData['boundaries'] = ofm.readBoundaryInfo(self.OFData['faces'])
 
         # Read the cell info for the mesh
-        self.OFData['owner'],self.OFData['neighbour'] = ofm.readCellInfo(self.OFData)
+        self.OFData['owner'],self.OFData['neighbour'] = ofm.readCellInfo()
 
         # Create the internal structures for volume mesh
         x0 = self.OFData['x0']
         surfaceNodes = np.zeros(len(x0), 'intc') # this isn't used internally any more
 
         self.warp.createcommongrid(x0.T)
+
+        ofm = None
 
 
 # =========================================================================
