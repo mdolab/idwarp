@@ -56,7 +56,7 @@ all:
 
 	$(FF90) -shared $(PYTHON_OBJECTS) $(LINKER_ALL_FLAGS) -o idwarp.so
 	$(PYTHON) importTest.py
-	mv idwarp.so ../../python
+	mv idwarp.so ../../idwarp
 
 # Clean up temporary files
 	-rm *.o
