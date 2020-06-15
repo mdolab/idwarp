@@ -1042,10 +1042,12 @@ class USMesh(object):
         # Copy the reference points file to points to ensure
         # consistant starting point
         self.OFData = ofm.getFileNames(caseDir,comm=self.comm)
-        try:
-            shutil.copyfile(self.OFData['refPointsFile'], self.OFData['pointsFile'])
-        except:
-            raise Error('USMesh: Unable to copy %s to %s.'%(self.OFData['refPointsFile'], self.OFData['pointsFile']))
+        # NOTE: comment out the copying of points_orig to points here because it should 
+        # be done in the pyDAFoam layer
+        #try:
+        #    shutil.copyfile(self.OFData['refPointsFile'], self.OFData['pointsFile'])
+        #except:
+        #    raise Error('USMesh: Unable to copy %s to %s.'%(self.OFData['refPointsFile'], self.OFData['pointsFile']))
 
         # Read in the volume points
         self.OFData['x0'] = ofm.readVolumeMeshPoints()
