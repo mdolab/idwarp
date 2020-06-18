@@ -1,0 +1,250 @@
++---------------------------------------+
+|     All pyWarpUstruct Options:        |
++---------------------------------------+
+{'LdefFact': 1.0,
+ 'aExp': 3.0,
+ 'alpha': 0.25,
+ 'bExp': 5.0,
+ 'bucketSize': 8,
+ 'cornerAngle': 30.0,
+ 'errTol': 0.0005,
+ 'evalMode': 'fast',
+ 'fileType': 'cgns',
+ 'gridFile': '../input_files/co_mesh.cgns',
+ 'restartFile': None,
+ 'specifiedSurfaces': None,
+ 'symmTol': 1e-06,
+ 'symmetryPlanes': None,
+ 'symmetrySurfaces': None,
+ 'useRotations': True,
+ 'zeroCornerRotations': True}
+  -> Reading CGNS File: ../input_files/co_mesh.cgns
+    -> Number of Zones:           4
+#------------------------------#
+ Total Volume Nodes :    151900 
+#------------------------------#
+
++------------------------------------------------------------------------------+
+| pyWarpUstruct Warning: Using internally generated pyWarpUStruct surfaces. If |
+| this mesh object is to be used with an external solver, ensure the mesh      |
+| object is passed to the solver immediatedly after it is created. The         |
+| external solver must then call 'setExternalMeshIndices()' and                |
+| 'setSurfaceDefinition()' routines.                                           |
++------------------------------------------------------------------------------+
+
++-------------------- Symmetry Planes -------------------+
+|           Point                        Normal          |
+| (  0.000  -0.000  -0.000)    ( -0.000   0.000   1.000) |
++--------------------------------------------------------+
+#--------------------------------#
+ Unique Surface Nodes :      3881 
+#--------------------------------#
+ Computing Denomenator Estimate...
+ Load Balancing...
+ Finished Mesh Initialization.
+Sum of vCoords Inital:
+@value    498810.0295599414 1e-08 1e-08
+Sum of vCoords Warped:
+@value    511335.5431903581 1e-08 1e-08
+Computing Warp Deriv
+Sum of dxs:
+@value    205483.1981170009 1e-08 1e-08
+Verifying Warp Deriv
+ Welcome to verifyWarpDeriv
+ Checking            5  degrees of freedom
+ Doing centered differnce with h:   9.9999999999999995E-007
+ Running AD Version
+DOF:    0 OrigVal: -0.233091541304E-04 AD:  17.1758529206     FD:  17.1758519303     Err(%):-0.5765777340E-05
+DOF:    1 OrigVal: -0.277555756156E-16 AD: -410.784702283     FD: -410.784716632     Err(%): 0.3493027564E-05
+DOF:    2 OrigVal:   0.00000000000     AD:-0.477235280836     FD:-0.477235293495     Err(%): 0.2652549170E-05
+DOF:    3 OrigVal:  0.101817780270E-02 AD:  5.51555168972     FD:  5.51554953030     Err(%):-0.3915156885E-04
+DOF:    4 OrigVal: -0.277555756156E-16 AD: -695.363921249     FD: -695.363946475     Err(%): 0.3627661644E-05
+DOF:    5 OrigVal:  0.208297391190E-01 AD:  2.63317985680     FD:  2.63317989177     Err(%): 0.1327951957E-05
++---------------------------------------+
+|     All pyWarpUstruct Options:        |
++---------------------------------------+
+{'LdefFact': 1.0,
+ 'aExp': 3.0,
+ 'alpha': 0.25,
+ 'bExp': 5.0,
+ 'bucketSize': 8,
+ 'cornerAngle': 30.0,
+ 'errTol': 0.0005,
+ 'evalMode': 'fast',
+ 'fileType': 'cgns',
+ 'gridFile': '../input_files/o_mesh.cgns',
+ 'restartFile': None,
+ 'specifiedSurfaces': None,
+ 'symmTol': 1e-06,
+ 'symmetryPlanes': None,
+ 'symmetrySurfaces': None,
+ 'useRotations': True,
+ 'zeroCornerRotations': True}
+  -> Reading CGNS File: ../input_files/o_mesh.cgns
+    -> Number of Zones:          79
+#------------------------------#
+ Total Volume Nodes :     37615 
+#------------------------------#
+
++------------------------------------------------------------------------------+
+| pyWarpUstruct Warning: Using internally generated pyWarpUStruct surfaces. If |
+| this mesh object is to be used with an external solver, ensure the mesh      |
+| object is passed to the solver immediatedly after it is created. The         |
+| external solver must then call 'setExternalMeshIndices()' and                |
+| 'setSurfaceDefinition()' routines.                                           |
++------------------------------------------------------------------------------+
+
++-------------------- Symmetry Planes -------------------+
+|           Point                        Normal          |
+| (  0.000  -0.000  -0.000)    ( -0.000   0.000   1.000) |
++--------------------------------------------------------+
+#--------------------------------#
+ Unique Surface Nodes :      1239 
+#--------------------------------#
+ Computing Denomenator Estimate...
+ Load Balancing...
+ Finished Mesh Initialization.
+Sum of vCoords Inital:
+@value    613569.8891866968 1e-08 1e-08
+Sum of vCoords Warped:
+@value    626765.9276076123 1e-08 1e-08
+Computing Warp Deriv
+Sum of dxs:
+@value    52726.61691684423 1e-08 1e-08
+Verifying Warp Deriv
+ Welcome to verifyWarpDeriv
+ Checking            5  degrees of freedom
+ Doing centered differnce with h:   9.9999999999999995E-007
+ Running AD Version
+DOF:    0 OrigVal:  0.277372517670E-01 AD:  37.7709446404     FD:  37.7709446532     Err(%): 0.3404234781E-07
+DOF:    1 OrigVal: -0.466645120007E-01 AD:  15.0230079541     FD:  15.0230079087     Err(%):-0.3023226495E-06
+DOF:    2 OrigVal:   0.00000000000     AD: -18.3406672297     FD: -18.3406669855     Err(%):-0.1331451278E-05
+DOF:    3 OrigVal:  0.810425014665E-02 AD:  29.5917781041     FD:  29.5917780882     Err(%):-0.5368225200E-07
+DOF:    4 OrigVal: -0.262209872942E-01 AD: -18.8825073304     FD: -18.8825073196     Err(%):-0.5723583676E-07
+DOF:    5 OrigVal:   0.00000000000     AD: -18.1866527158     FD: -18.1866527724     Err(%): 0.3115565911E-06
++---------------------------------------+
+|     All pyWarpUstruct Options:        |
++---------------------------------------+
+{'LdefFact': 1.0,
+ 'aExp': 3.0,
+ 'alpha': 0.25,
+ 'bExp': 5.0,
+ 'bucketSize': 8,
+ 'cornerAngle': 30.0,
+ 'errTol': 0.0005,
+ 'evalMode': 'fast',
+ 'fileType': 'cgns',
+ 'gridFile': '../input_files/mdo_tutorial_face_bcs.cgns',
+ 'restartFile': None,
+ 'specifiedSurfaces': None,
+ 'symmTol': 1e-06,
+ 'symmetryPlanes': [[[0, 0, 0], [0, 0, 1]]],
+ 'symmetrySurfaces': None,
+ 'useRotations': True,
+ 'zeroCornerRotations': True}
+  -> Reading CGNS File: ../input_files/mdo_tutorial_face_bcs.cgns
+    -> Number of Zones:           1
+#------------------------------#
+ Total Volume Nodes :    158457 
+#------------------------------#
+
++------------------------------------------------------------------------------+
+| pyWarpUstruct Warning: Using internally generated pyWarpUStruct surfaces. If |
+| this mesh object is to be used with an external solver, ensure the mesh      |
+| object is passed to the solver immediatedly after it is created. The         |
+| external solver must then call 'setExternalMeshIndices()' and                |
+| 'setSurfaceDefinition()' routines.                                           |
++------------------------------------------------------------------------------+
+
++-------------------- Symmetry Planes -------------------+
+|           Point                        Normal          |
+| (  0.000   0.000   0.000)    (  0.000   0.000   1.000) |
++--------------------------------------------------------+
+#--------------------------------#
+ Unique Surface Nodes :      3881 
+#--------------------------------#
+ Computing Denomenator Estimate...
+ Load Balancing...
+ Finished Mesh Initialization.
+Sum of vCoords Inital:
+@value    3198303.754755335 1e-08 1e-08
+Sum of vCoords Warped:
+@value      3259645.9807859 1e-08 1e-08
+Computing Warp Deriv
+Sum of dxs:
+@value    205083.3301401152 1e-08 1e-08
+Verifying Warp Deriv
+ Welcome to verifyWarpDeriv
+ Checking            5  degrees of freedom
+ Doing centered differnce with h:   9.9999999999999995E-007
+ Running AD Version
+DOF:    0 OrigVal:  0.344108144756E-10 AD:  38.3960793455     FD:  38.3960797061     Err(%): 0.9389686590E-06
+DOF:    1 OrigVal: -0.236961426481E-06 AD: -559.744436903     FD: -559.744436747     Err(%):-0.2782569623E-07
+DOF:    2 OrigVal:   0.00000000000     AD: -18.3231940357     FD: -18.3231941247     Err(%): 0.4854002691E-06
+DOF:    3 OrigVal:  0.547700767590E-01 AD: -35.4790262372     FD: -35.4790264367     Err(%): 0.5621669402E-06
+DOF:    4 OrigVal: -0.235853510364E-06 AD: -956.661871568     FD: -956.661873424     Err(%): 0.1940149683E-06
+DOF:    5 OrigVal:  0.935098870910E-01 AD:  26.5281725177     FD:  26.5281723406     Err(%):-0.6675073981E-06
++---------------------------------------+
+|     All pyWarpUstruct Options:        |
++---------------------------------------+
+{'LdefFact': 1.0,
+ 'aExp': 3.0,
+ 'alpha': 0.25,
+ 'bExp': 5.0,
+ 'bucketSize': 8,
+ 'cornerAngle': 30.0,
+ 'errTol': 0.0005,
+ 'evalMode': 'fast',
+ 'fileType': 'cgns',
+ 'gridFile': '../input_files/symm_block.cgns',
+ 'restartFile': None,
+ 'specifiedSurfaces': None,
+ 'symmTol': 1e-06,
+ 'symmetryPlanes': None,
+ 'symmetrySurfaces': None,
+ 'useRotations': True,
+ 'zeroCornerRotations': True}
+  -> Reading CGNS File: ../input_files/symm_block.cgns
+    -> Number of Zones:           3
+#------------------------------#
+ Total Volume Nodes :    103428 
+#------------------------------#
+
++------------------------------------------------------------------------------+
+| pyWarpUstruct Warning: Using internally generated pyWarpUStruct surfaces. If |
+| this mesh object is to be used with an external solver, ensure the mesh      |
+| object is passed to the solver immediatedly after it is created. The         |
+| external solver must then call 'setExternalMeshIndices()' and                |
+| 'setSurfaceDefinition()' routines.                                           |
++------------------------------------------------------------------------------+
+
++-------------------- Symmetry Planes -------------------+
+|           Point                        Normal          |
+| (  0.000   0.000   0.000)    (  0.000   1.000   0.000) |
+| (  0.000   0.000   0.000)    (  0.000   0.000  -1.000) |
+| (  0.000   0.000   0.000)    ( -1.000   0.000   0.000) |
++--------------------------------------------------------+
+#--------------------------------#
+ Unique Surface Nodes :      1951 
+#--------------------------------#
+ Computing Denomenator Estimate...
+ Load Balancing...
+ Finished Mesh Initialization.
+Sum of vCoords Inital:
+@value    1772626.679902143 1e-08 1e-08
+Sum of vCoords Warped:
+@value    1785588.527425706 1e-08 1e-08
+Computing Warp Deriv
+Sum of dxs:
+@value    32295.31100101105 1e-08 1e-08
+Verifying Warp Deriv
+ Welcome to verifyWarpDeriv
+ Checking            5  degrees of freedom
+ Doing centered differnce with h:   1.0000000000000000E-010
+ Running AD Version
+DOF:    0 OrigVal:   1.10000000000     AD:  2.87055669475     FD:  2.86938666987     Err(%):-0.4076781968E-01
+DOF:    1 OrigVal:   0.00000000000     AD:  1.88269575176     FD:  1.88143477302     Err(%):-0.6699973525E-01
+DOF:    2 OrigVal:   0.00000000000     AD:  2.61198372778     FD:  2.63322409383     Err(%): 0.8098960716    
+DOF:    3 OrigVal:   1.10000000000     AD:  2.88621881905     FD:  2.88504902062     Err(%):-0.4053869854E-01
+DOF:    4 OrigVal:  0.624000000000E-01 AD:  1.89116899242     FD:  1.88990801610     Err(%):-0.6669931953E-01
+DOF:    5 OrigVal:   0.00000000000     AD:  2.61332356901     FD:  2.63456397035     Err(%): 0.8094838610    
