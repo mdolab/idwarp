@@ -34,7 +34,6 @@ import numpy as np
 from pprint import pprint
 from mpi4py import MPI
 from .MExt import MExt
-from . import idwarp
 from petsc4py import PETSc
 try:
     from cgnsutilities import cgns_utils as cs
@@ -116,6 +115,14 @@ class MultiUSMesh(object):
         # Assign communicator if we do not have one yet
         if comm is None:
             comm = MPI.COMM_WORLD
+
+        # Check if warp has already been set if this is this has been
+        # interhited to complex version
+        try:
+            self.warp
+        except AttributeError:
+            curDir = os.path.dirname(os.path.realpath(__file__))
+            self.warp = MExt('idwarp', [curDir], debug=debug)._module
 
         # Store communicator
         self.comm = comm
@@ -223,9 +230,9 @@ class MultiUSMesh(object):
 
                 # Initialize a pyWarp instance with the current options
                 if self.dtype == 'd':
-                    currMesh = idwarp.USMesh(options=optionsDict[zoneName], comm=self.comm)
+                    currMesh = self.warp.USMesh(options=optionsDict[zoneName], comm=self.comm)
                 elif self.dtype == 'D':
-                    currMesh = idwarp.USMesh_C(options=optionsDict[zoneName], comm=self.comm)
+                    currMesh = self.warp.USMesh_C(options=optionsDict[zoneName], comm=self.comm)
 
             else:
 
@@ -271,9 +278,9 @@ class MultiUSMesh(object):
 
                 # Initialize a pyWarp instance with the current options
                 if self.dtype == 'd':
-                    currMesh = idwarp.USMesh(options=dummyOptions, comm=self.comm)
+                    currMesh = self.warp.USMesh(options=dummyOptions, comm=self.comm)
                 elif self.dtype == 'D':
-                    currMesh = idwarp.USMesh_C(options=dummyOptions, comm=self.comm)
+                    currMesh = self.warp.USMesh_C(options=dummyOptions, comm=self.comm)
 
                 # Initialize a dummy surface in the background mesh
                 '''
