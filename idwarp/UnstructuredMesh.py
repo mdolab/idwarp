@@ -1025,8 +1025,13 @@ class USMesh(object):
         return  faceSizes, faceConn, pts
 
     def _readOFGrid(self, caseDir):
-        """Read in the mesh points and connectivity from the polyMesh
-        directory
+        """
+        Read in the mesh points and connectivity from the polyMesh
+        directory.
+
+        NOTE: To ensure a consistant starting point in DAFoam. One needs to copy 
+        points_orig to points in pyDAFoam before initializing USMesh. This function 
+        will no longer perform this copying!
 
         Parameters
         ----------
@@ -1042,10 +1047,6 @@ class USMesh(object):
         # Copy the reference points file to points to ensure
         # consistant starting point
         self.OFData = ofm.getFileNames(caseDir,comm=self.comm)
-        try:
-            shutil.copyfile(self.OFData['refPointsFile'], self.OFData['pointsFile'])
-        except:
-            raise Error('USMesh: Unable to copy %s to %s.'%(self.OFData['refPointsFile'], self.OFData['pointsFile']))
 
         # Read in the volume points
         self.OFData['x0'] = ofm.readVolumeMeshPoints()
