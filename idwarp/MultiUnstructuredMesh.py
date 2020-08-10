@@ -116,8 +116,7 @@ class MultiUSMesh(object):
         if comm is None:
             comm = MPI.COMM_WORLD
 
-        # Check if warp has already been set if this is this has been
-        # interhited to complex version
+        # Check if warp has already been set by the complex version
         try:
             self.warp
         except AttributeError:
@@ -228,7 +227,7 @@ class MultiUSMesh(object):
                 # Remember that we should use the temporary grid file.
                 optionsDict[zoneName]['gridFile'] = '_'+zoneName + '.cgns'
 
-                # Initialize a pyWarp instance with the current options
+                # Initialize an IDWarp instance with the current options
                 if self.dtype == 'd':
                     currMesh = self.warp.USMesh(options=optionsDict[zoneName], comm=self.comm)
                 elif self.dtype == 'D':
@@ -276,7 +275,7 @@ class MultiUSMesh(object):
                     'warpType':'unstructured',
                 }
 
-                # Initialize a pyWarp instance with the current options
+                # Initialize an IDWarp instance with the current options
                 if self.dtype == 'd':
                     currMesh = self.warp.USMesh(options=dummyOptions, comm=self.comm)
                 elif self.dtype == 'D':
