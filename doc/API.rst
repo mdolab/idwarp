@@ -2,7 +2,9 @@
 
 API
 ---
-.. currentmodule:: idwarp.UnstructuredMesh
 
-.. autoclass:: idwarp.UnstructuredMesh.USMesh
-    :members: 
+.. toctree::
+   :maxdepth: 1
+
+   USMesh
+   MultiUSMesh
