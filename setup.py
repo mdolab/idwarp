@@ -45,9 +45,9 @@ setup(name='idwarp',
           'idwarp': ['*.so']
       },
       install_requires=[
-            'numpy>=1.16.4',
-            'petsc4py>=3.11.0',
-            'mpi4py>=3.0.2',
+            'numpy>=1.16',
+            'petsc4py>=3.11',
+            'mpi4py>=3.0',
       ],
       classifiers=[
         "Operating System :: Linux",
