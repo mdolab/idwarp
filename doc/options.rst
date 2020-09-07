@@ -3,7 +3,7 @@
 Options
 =======
 
-Here are a list of options currently available in IDWarp.
+Here are the options currently available in IDWarp.
 
 ======================================  ==========  ===========================================   ================================================================================================================================================================================
 Parameter                                  Type       Default                                       Description
