@@ -10,12 +10,6 @@ services:
 
 import: mdolab/.github:travis-docker-tags.yml
 
-env:
-  global:
-    - REPO_NAME=$(basename $TRAVIS_REPO_SLUG)
-    - DOCKER_WORKING_DIR=/home/mdolabuser/repos/$REPO_NAME
-    - DOCKER_MOUNT_DIR=/home/mdolabuser/travis/$REPO_NAME
-
 before_install:
   - docker pull mdolab/public:$DOCKER_TAG
   # run Docker, key is we mount the current Travis directory into Docker to access content of repo
