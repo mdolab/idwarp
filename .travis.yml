@@ -27,7 +27,7 @@ script:
   - docker exec -it app /bin/bash -c ". \$HOME/.bashrc_mdolab && cd $DOCKER_WORKING_DIR/reg_tests && python run_reg_tests.py -nodiff"
   # Complex tests
   - docker exec -it app /bin/bash -c ". \$HOME/.bashrc_mdolab && cd $DOCKER_WORKING_DIR/reg_tests && export PETSC_ARCH=complex-opt-\$COMPILERS-\$PETSCVERSION && python run_reg_tests_cs.py -nodiff"
-  
+
 
 after_script:
   - docker rm -f app
