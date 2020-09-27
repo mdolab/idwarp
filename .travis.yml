@@ -1,26 +1,20 @@
-os:
-  - linux
+os: linux
+language: generic
 
 branches:
   only:
   - master
 
-language: generic
-
 services:
   - docker
+
+import: mdolab/.github:travis-docker-tags.yml
+
 env:
   global:
-    - REPO_NAME=idwarp
+    - REPO_NAME=$(basename $TRAVIS_REPO_SLUG)
     - DOCKER_WORKING_DIR=/home/mdolabuser/repos/$REPO_NAME
     - DOCKER_MOUNT_DIR=/home/mdolabuser/travis/$REPO_NAME
-  jobs:
-    - DOCKER_TAG=c7-gcc-ompi-latest
-    - DOCKER_TAG=c7-intel-impi-latest
-    - DOCKER_TAG=u18-gcc-ompi-latest
-    - DOCKER_TAG=u18-gcc-ompi-stable
-    - DOCKER_TAG=u20-gcc-ompi-latest
-    - DOCKER_TAG=u20-gcc-ompi-stable
 
 before_install:
   - docker pull mdolab/public:$DOCKER_TAG
@@ -41,9 +35,6 @@ install:
       docker exec -it app /bin/bash -c ". \$HOME/.bashrc_mdolab && cd $DOCKER_WORKING_DIR && cp config/defaults/config.LINUX_INTEL_OPENMPI.mk config/config.mk";
     else
       docker exec -it app /bin/bash -c ". \$HOME/.bashrc_mdolab && cd $DOCKER_WORKING_DIR && cp config/defaults/config.LINUX_GFORTRAN_OPENMPI.mk config/config.mk";
-      if [[ "$DOCKER_TAG" == *"py2"* ]]; then
-        docker exec -it app /bin/bash -c ". \$HOME/.bashrc_mdolab && cd $DOCKER_WORKING_DIR && sed -i 's/python3-config/python-config/g' config/config.mk";
-      fi
     fi
   
   # Compile real and complex builds
