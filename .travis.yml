@@ -8,16 +8,15 @@ branches:
 services:
   - docker
 
-import: mdolab/.github:travis-docker-tags.yml
+env:
+  global:
+    - DOCKER_REPO=public
 
-before_install:
-  - docker pull mdolab/public:$DOCKER_TAG
-  # run Docker, key is we mount the current Travis directory into Docker to access content of repo
-  - docker run -t -d 
-        --name app
-        --mount "type=bind,src=$(pwd),target=$DOCKER_MOUNT_DIR"
-        mdolab/public:$DOCKER_TAG
-        /bin/bash
+import:
+  - mdolab/.github:travis-docker-tags.yml
+  - mdolab/.github:travis-before-install.yml
+
+
 
 install:
   # We thrown away the existing repo in Docker, and copy the new one in-place
