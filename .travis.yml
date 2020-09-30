@@ -1,7 +1,8 @@
 import:
-  - mdolab/.github:travis-env.yml
-  - mdolab/.github:travis-before-install.yml
-  - mdolab/.github:travis-install.yml
+  - mdolab/.github:travis/jobs-env.yml
+  - mdolab/.github:travis/before-install.yml
+  - mdolab/.github:travis/install.yml
+  - mdolab/.github:travis/script.yml
 
 env:
   global:
@@ -10,12 +11,15 @@ env:
     - INTEL_CONFIG=config/defaults/config.LINUX_INTEL_OPENMPI.mk
 
 script:
-  # Download input files for regression testing
-  - docker exec -it app /bin/bash -c ". $BASHRC && cd $DOCKER_WORKING_DIR/input_files && ./get-input-files.sh"
-  # Real tests
-  - docker exec -it app /bin/bash -c ". $BASHRC && cd $DOCKER_WORKING_DIR/reg_tests && python run_reg_tests.py -nodiff"
-  # Complex tests
-  - docker exec -it app /bin/bash -c ". $BASHRC && cd $DOCKER_WORKING_DIR/reg_tests && export PETSC_ARCH=complex-opt-\$COMPILERS-\$PETSCVERSION && python run_reg_tests_cs.py -nodiff"
+  - |
+    if [ $TEST_TYPE == "docker" ]; then
+      # Download input files for regression testing
+      docker exec -it app /bin/bash -c ". $BASHRC && cd $DOCKER_WORKING_DIR/input_files && ./get-input-files.sh"
+      # Real tests
+      docker exec -it app /bin/bash -c ". $BASHRC && cd $DOCKER_WORKING_DIR/reg_tests && python run_reg_tests.py -nodiff"
+      # Complex tests
+      docker exec -it app /bin/bash -c ". $BASHRC && cd $DOCKER_WORKING_DIR/reg_tests && export PETSC_ARCH=complex-opt-\$COMPILERS-\$PETSCVERSION && python run_reg_tests_cs.py -nodiff"
+    fi
 
 
 after_script:
