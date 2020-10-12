@@ -9,7 +9,7 @@ env:
     - DOCKER_REPO=public
     - GCC_CONFIG=config/defaults/config.LINUX_GFORTRAN_OPENMPI.mk
     - INTEL_CONFIG=config/defaults/config.LINUX_INTEL_OPENMPI.mk
-    - HAS_COMPLEX=true
+    - SEPARATE_COMPLEX_BUILD=true
 
 script:
   - |
