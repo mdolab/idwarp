@@ -762,7 +762,7 @@ class MultiUSMesh(object):
         """
 
         # Get proc ID
-        myID = self.comm.Get_rank()
+        self.myID = self.comm.Get_rank()
 
         # Print log
         if self.myID == 0:
@@ -829,7 +829,7 @@ class MultiUSMesh(object):
         """
 
         # Get proc rank
-        myID = self.comm.Get_rank()
+        self.myID = self.comm.Get_rank()
 
         # Print log
         if self.myID == 0:
@@ -897,7 +897,7 @@ class MultiUSMesh(object):
         """
 
         # Get proc ID
-        myID = self.comm.Get_rank()
+        self.myID = self.comm.Get_rank()
 
         # Print log
         if self.myID == 0:
