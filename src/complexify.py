@@ -277,7 +277,6 @@ def write_output(filename, lines):
     try:
         g = open(newname, "w")
     except IOError as err:
-        f.close()
         print("{} could not be opened: {}".format(newname, err))
         return 1
     for line in lines:
