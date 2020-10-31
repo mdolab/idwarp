@@ -33,7 +33,7 @@ from mpi4py import MPI
 from .MExt import MExt
 
 try:
-    from cgnsutilities import cgns_utils as cs
+    from cgnsutilities import cgnsutilities as cs
 except ImportError:
     cs = None
 
