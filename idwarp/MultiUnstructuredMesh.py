@@ -124,7 +124,7 @@ class MultiUSMesh(object):
             self.warp
         except AttributeError:
             curDir = os.path.dirname(os.path.realpath(__file__))
-            self.warp = MExt("idwarp", [curDir], debug=debug)._module
+            self.warp = MExt("idwarp", [curDir])._module
 
         # Store communicator
         self.comm = comm
