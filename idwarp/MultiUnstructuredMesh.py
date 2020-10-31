@@ -1025,7 +1025,7 @@ class MultiUSMesh(object):
         for mesh in self.meshes():
             if self.comm.rank == 0:
                 print("")
-                print(" Options of mesh", meshCounter, "of", len(self.meshes))
+                print(" Options of mesh", mesh, "of", len(self.meshes))
                 print("")
                 print("+---------------------------------------+")
                 print("|     All IDWarp Options:               |")
