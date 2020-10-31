@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 import sys
 
-name = 'idwarp'
+name = "idwarp"
 print("Testing if module %s can be imported..." % name)
 import_cmd = "import %s" % name
 try:

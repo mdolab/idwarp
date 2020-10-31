@@ -3,15 +3,14 @@ import re
 
 __version__ = re.findall(
     r"""__version__ = ["']+([0-9\.]*)["']+""",
-    open('idwarp/__init__.py').read(),
+    open("idwarp/__init__.py").read(),
 )[0]
 
-setup(name='idwarp',
-      version=__version__,
-
-
-      description="idwarp is a package deforming volume meshes with derivatives for optimization",
-      long_description="""
+setup(
+    name="idwarp",
+    version=__version__,
+    description="idwarp is a package deforming volume meshes with derivatives for optimization",
+    long_description="""
             
       # IDWarp
       [![Build Status](https://travis-ci.com/mdolab/idwarp.svg?branch=master)](https://travis-ci.com/mdolab/idwarp)
@@ -32,25 +31,20 @@ setup(name='idwarp',
 
       IDWarp is based on the theory presented in [this journal article](https://doi.org/10.1016/j.jcp.2011.09.021).
       """,
-      long_description_content_type="text/markdown",
-      keywords='mesh-warping warping mesh mesh-deformation optimization',
-      author='',
-      author_email='',
-      url='https://github.com/mdolab/idwarp',
-      license='Apache License Version 2.0',
-      packages=[
-          'idwarp',
-      ],
-      package_data={
-          'idwarp': ['*.so']
-      },
-      install_requires=[
-            'numpy>=1.16',
-            'petsc4py>=3.11',
-            'mpi4py>=3.0',
-      ],
-      classifiers=[
-        "Operating System :: Linux",
-        "Programming Language :: Python, Fortran"]
-      )
-
+    long_description_content_type="text/markdown",
+    keywords="mesh-warping warping mesh mesh-deformation optimization",
+    author="",
+    author_email="",
+    url="https://github.com/mdolab/idwarp",
+    license="Apache License Version 2.0",
+    packages=[
+        "idwarp",
+    ],
+    package_data={"idwarp": ["*.so"]},
+    install_requires=[
+        "numpy>=1.16",
+        "petsc4py>=3.11",
+        "mpi4py>=3.0",
+    ],
+    classifiers=["Operating System :: Linux", "Programming Language :: Python, Fortran"],
+)

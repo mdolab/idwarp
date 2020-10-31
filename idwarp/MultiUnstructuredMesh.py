@@ -35,50 +35,57 @@ from pprint import pprint
 from mpi4py import MPI
 from .MExt import MExt
 from petsc4py import PETSc
+
 try:
     from cgnsutilities import cgns_utils as cs
 except:
     cs = None
+
 
 class Error(Exception):
     """
     Format the error message in a box to make it clear this
     was a expliclty raised exception.
     """
+
     def __init__(self, message):
-        msg = '\n+'+'-'*78+'+'+'\n' + '| IDWarp Error: '
+        msg = "\n+" + "-" * 78 + "+" + "\n" + "| IDWarp Error: "
         i = 22
         for word in message.split():
-            if len(word) + i + 1 > 78: # Finish line and start new one
-                msg += ' '*(78-i)+'|\n| ' + word + ' '
-                i = 1 + len(word)+1
+            if len(word) + i + 1 > 78:  # Finish line and start new one
+                msg += " " * (78 - i) + "|\n| " + word + " "
+                i = 1 + len(word) + 1
             else:
-                msg += word + ' '
-                i += len(word)+1
-        msg += ' '*(78-i) + '|\n' + '+'+'-'*78+'+'+'\n'
+                msg += word + " "
+                i += len(word) + 1
+        msg += " " * (78 - i) + "|\n" + "+" + "-" * 78 + "+" + "\n"
         print(msg)
         Exception.__init__(self)
+
 
 class Warning(object):
     """
     Format a warning message
     """
+
     def __init__(self, message):
-        msg = '\n+'+'-'*78+'+'+'\n' + '| IDWarp Warning: '
+        msg = "\n+" + "-" * 78 + "+" + "\n" + "| IDWarp Warning: "
         i = 24
         for word in message.split():
-            if len(word) + i + 1 > 78: # Finish line and start new one
-                msg += ' '*(78-i)+'|\n| ' + word + ' '
-                i = 1 + len(word)+1
+            if len(word) + i + 1 > 78:  # Finish line and start new one
+                msg += " " * (78 - i) + "|\n| " + word + " "
+                i = 1 + len(word) + 1
             else:
-                msg += word + ' '
-                i += len(word)+1
-        msg += ' '*(78-i) + '|\n' + '+'+'-'*78+'+'+'\n'
+                msg += word + " "
+                i += len(word) + 1
+        msg += " " * (78 - i) + "|\n" + "+" + "-" * 78 + "+" + "\n"
         print(msg)
+
 
 # =============================================================================
 # UnstructuredMesh class
 # =============================================================================
+
 
 class MultiUSMesh(object):
     """
@@ -86,7 +93,8 @@ class MultiUSMesh(object):
     to interact with an structured or unstructured CFD solver though a
     variety of interface functions.
     """
-    def __init__(self, CGNSFile, optionsDict, comm=None, dtype='d'):
+
+    def __init__(self, CGNSFile, optionsDict, comm=None, dtype="d"):
         """
         Create the MultiUSMesh object.
 
@@ -109,8 +117,7 @@ class MultiUSMesh(object):
 
         # Check if cs was imported correctly:
         if cs is None:
-            raise Error('cgns_utils could not be loaded correctly. MultiUSMesh '
-                        'requires cgns_utils to function.')
+            raise Error("cgns_utils could not be loaded correctly. MultiUSMesh " "requires cgns_utils to function.")
 
         # Assign communicator if we do not have one yet
         if comm is None:
@@ -121,7 +128,7 @@ class MultiUSMesh(object):
             self.warp
         except AttributeError:
             curDir = os.path.dirname(os.path.realpath(__file__))
-            self.warp = MExt('idwarp', [curDir], debug=debug)._module
+            self.warp = MExt("idwarp", [curDir], debug=debug)._module
 
         # Store communicator
         self.comm = comm
@@ -164,8 +171,8 @@ class MultiUSMesh(object):
             grids, zoneNames = cs.explodeByZoneName(combined_file)
 
             # Save temporary grid files with the exploded zones
-            for grid,zoneName in zip(grids,zoneNames):
-                grid.writeToCGNS('_'+zoneName+'.cgns')
+            for grid, zoneName in zip(grids, zoneNames):
+                grid.writeToCGNS("_" + zoneName + ".cgns")
 
                 # Store the number of blocks in each zone
                 self.cgnsBlockIntervals.append([blockCounter, blockCounter + len(grid.blocks)])
@@ -173,7 +180,7 @@ class MultiUSMesh(object):
                 # Count the number of nodes (here is degrees of freedom or nodes*3
                 totalNodes = 0
                 for blk in grid.blocks:
-                    totalNodes += blk.dims[0]*blk.dims[1]*blk.dims[2]*3
+                    totalNodes += blk.dims[0] * blk.dims[1] * blk.dims[2] * 3
 
                 # Store the number of volume nodes in each zone
                 self.cgnsVolNodeIntervals.append([nodeCounter, nodeCounter + totalNodes])
@@ -183,7 +190,6 @@ class MultiUSMesh(object):
 
                 # Update node counter
                 nodeCounter = nodeCounter + totalNodes
-
 
             # Delete grids to free space
             del grids
@@ -212,25 +218,24 @@ class MultiUSMesh(object):
         self.backgroundInstanceIDs = []
 
         # Loop over all zones that we found in the combined CGNS file
-        for zoneNumber,zoneName in enumerate(zoneNames):
+        for zoneNumber, zoneName in enumerate(zoneNames):
 
             # Check if the zone belongs to a nearfield mesh
             if zoneName in nearfieldNames:
 
-
-                #------------------------------------------------------
+                # ------------------------------------------------------
                 # READING NEARFIELD MESHES (The ones that will be warped)
                 #
 
                 # Assign the name of the temporary CGNS file to the options.
                 # This is the file that contains the mesh o a single component.
                 # Remember that we should use the temporary grid file.
-                optionsDict[zoneName]['gridFile'] = '_'+zoneName + '.cgns'
+                optionsDict[zoneName]["gridFile"] = "_" + zoneName + ".cgns"
 
                 # Initialize an IDWarp instance with the current options
-                if self.dtype == 'd':
+                if self.dtype == "d":
                     currMesh = self.warp.USMesh(options=optionsDict[zoneName], comm=self.comm)
-                elif self.dtype == 'D':
+                elif self.dtype == "D":
                     currMesh = self.warp.USMesh_C(options=optionsDict[zoneName], comm=self.comm)
 
             else:
@@ -238,12 +243,12 @@ class MultiUSMesh(object):
                 # We have a background mesh
 
                 # Regenerate the temporary filename for the background grid
-                bgFile = '_'+zoneName + '.cgns'
+                bgFile = "_" + zoneName + ".cgns"
 
-                #------------------------------------------------------
+                # ------------------------------------------------------
                 # READING BACKGROUND MESHES
 
-                #=========================================================#
+                # =========================================================#
                 # THIS IS A MESSY (HOPEFULLY TEMPORARY) WAY OF LOADING THE
                 # BACKGROUND MESH NODES. IF YOU COME UP WITH A BETTER WAY
                 # TO GET volNodes, PLEASE ADD IT HERE.
@@ -260,29 +265,29 @@ class MultiUSMesh(object):
                 if self.myID == 0:
 
                     # Make a copy of the background mesh file
-                    os.system('cp '+bgFile+' tmp_bg_file.cgns')
+                    os.system("cp " + bgFile + " tmp_bg_file.cgns")
 
                     # Create a temporary BC file
-                    with open('tmp_bcdata.dat','w') as fid:
-                        fid.write('1 iLow BCwall wall\n')
+                    with open("tmp_bcdata.dat", "w") as fid:
+                        fid.write("1 iLow BCwall wall\n")
 
                     # Use CGNS utils to modify the BCs
-                    os.system('cgns_utils overwritebc tmp_bg_file.cgns tmp_bcdata.dat')
+                    os.system("cgns_utils overwritebc tmp_bg_file.cgns tmp_bcdata.dat")
 
                 # Create dummy set of options just to load the CGNS file
                 dummyOptions = {
-                    'gridFile':'tmp_bg_file.cgns',
-                    'warpType':'unstructured',
+                    "gridFile": "tmp_bg_file.cgns",
+                    "warpType": "unstructured",
                 }
 
                 # Initialize an IDWarp instance with the current options
-                if self.dtype == 'd':
+                if self.dtype == "d":
                     currMesh = self.warp.USMesh(options=dummyOptions, comm=self.comm)
-                elif self.dtype == 'D':
+                elif self.dtype == "D":
                     currMesh = self.warp.USMesh_C(options=dummyOptions, comm=self.comm)
 
                 # Initialize a dummy surface in the background mesh
-                '''
+                """
                 if self.myID == 0:
                     print('===========================================')
                     print('ATTENTION: This is a dummy initialization for background mesh warping.')
@@ -296,44 +301,42 @@ class MultiUSMesh(object):
                 if self.myID == 0:
                     print('Dummy initialization is Done!')
                     print('===========================================')
-                '''
+                """
                 if self.myID == 0:
-                    print('===========================================')
-                    print('ATTENTION: This is a dummy initialization for background mesh warping.')
+                    print("===========================================")
+                    print("ATTENTION: This is a dummy initialization for background mesh warping.")
 
                 currMesh._setInternalSurface()
 
                 if self.myID == 0:
-                    print('Dummy initialization is Done!')
-                    print('===========================================')
+                    print("Dummy initialization is Done!")
+                    print("===========================================")
 
                 # The root proc can remove the temporary files
                 if self.myID == 0:
 
                     # Make a copy of the background mesh file
-                    os.system('rm tmp_bg_file.cgns')
-                    os.system('rm tmp_bcdata.dat')
+                    os.system("rm tmp_bg_file.cgns")
+                    os.system("rm tmp_bcdata.dat")
 
                 # Store the ID of this zone
                 self.backgroundInstanceIDs.append(zoneNumber)
-
 
             # Append the instance to the list.
             # We will store even the background mesh instances for now,
             # but we will delete them as soon as we call self.setExternalMeshIndices().
             self.meshes.append(currMesh)
 
-
         # Now the root proc can remove the temporary grid files
         if self.myID == 0:
             for zoneName in zoneNames:
-                os.system('rm _'+zoneName+'.cgns')
+                os.system("rm _" + zoneName + ".cgns")
 
-        #------------------------------------------------------
+        # ------------------------------------------------------
         # Initialize other fields for completness
-        self.numSurfNodes = None # How many solver surface nodes we have in the current proc, for all instances
-        self.numVolNodes = None # How many solver volume nodes we have in the current proc, for all instances
-        self.cgnsVolNodeMasks = [] # Mask used to filter which volume nodes given by the solver belong to each instance
+        self.numSurfNodes = None  # How many solver surface nodes we have in the current proc, for all instances
+        self.numVolNodes = None  # How many solver volume nodes we have in the current proc, for all instances
+        self.cgnsVolNodeMasks = []  # Mask used to filter which volume nodes given by the solver belong to each instance
 
     def getSurfaceCoordinates(self):
         """Returns all defined surface coordinates on this processor, with the Solver ordering
@@ -350,19 +353,19 @@ class MultiUSMesh(object):
         # Check if the user already set the surface definition
         if self.numSurfNodes is None:
             if self.comm.Get_rank() == 0:
-                raise NameError('IDWarpMulti surface is not initialized. Run self.setSurfaceDefinition first.')
+                raise NameError("IDWarpMulti surface is not initialized. Run self.setSurfaceDefinition first.")
 
         # Initialize the array of points
-        pts = np.zeros((self.numSurfNodes,3),dtype=self.dtype)
+        pts = np.zeros((self.numSurfNodes, 3), dtype=self.dtype)
 
         # Loop over every instance to get their contributions
-        for instanceID,mesh in enumerate(self.meshes):
+        for instanceID, mesh in enumerate(self.meshes):
 
             # Get current set of points
             currPts = self.meshes[instanceID].getSurfaceCoordinates()
 
             # Assign this set of points to the full one
-            pts[self.filtered2fullMaps[instanceID],:] = currPts
+            pts[self.filtered2fullMaps[instanceID], :] = currPts
 
         # Return set of points
         return pts
@@ -382,13 +385,13 @@ class MultiUSMesh(object):
         # Check if the user already set the surface definition
         if self.numSurfNodes is None:
             if self.comm.Get_rank() == 0:
-                raise NameError('IDWarpMulti surface is not initialized. Run self.setSurfaceDefinition first.')
+                raise NameError("IDWarpMulti surface is not initialized. Run self.setSurfaceDefinition first.")
 
         # Loop over every mesh object to get a slice of the surface point array
-        for instanceID,mesh in enumerate(self.meshes):
+        for instanceID, mesh in enumerate(self.meshes):
 
             # Extract set of points that belong to this instance
-            currPts = pts[self.filtered2fullMaps[instanceID],:]
+            currPts = pts[self.filtered2fullMaps[instanceID], :]
 
             # Set points to the current instance
             mesh.setSurfaceCoordinates(currPts)
@@ -422,8 +425,8 @@ class MultiUSMesh(object):
 
         # Print log
         if self.myID == 0:
-            print('')
-            print('Mapping solver volume nodes to IDWarpMulti volume nodes')
+            print("")
+            print("Mapping solver volume nodes to IDWarpMulti volume nodes")
 
         # Save the number of volume nodes
         self.numVolNodes = len(ind)
@@ -437,7 +440,7 @@ class MultiUSMesh(object):
         self.defaultSolverGrid = np.zeros(self.numVolNodes, dtype=self.dtype)
 
         # Loop over every instance
-        for instanceID,mesh in enumerate(self.meshes):
+        for instanceID, mesh in enumerate(self.meshes):
 
             # Get CGNS bounds of the current instance
             startIndex = self.cgnsVolNodeIntervals[instanceID][0]
@@ -445,7 +448,7 @@ class MultiUSMesh(object):
 
             # Create and store mask that will select the elements of the volume array that belong
             # to the current instance
-            currMask = (ind >= startIndex)*(ind < endIndex)
+            currMask = (ind >= startIndex) * (ind < endIndex)
 
             # Store the mask
             self.cgnsVolNodeMasks.append(currMask)
@@ -484,8 +487,8 @@ class MultiUSMesh(object):
 
         # Print log
         if self.myID == 0:
-            print(' Done!')
-            print('')
+            print(" Done!")
+            print("")
 
     def getSolverGrid(self):
         """Return the current grid in the order specified by
@@ -551,12 +554,12 @@ class MultiUSMesh(object):
 
         # Print log
         if self.myID == 0:
-            print('')
-            print('Mapping solver surface nodes to IDWarp volume nodes')
+            print("")
+            print("Mapping solver surface nodes to IDWarp volume nodes")
 
         # Check if the user executed self.setExternalMeshIndices first to remove background meshes
         if self.backgroundInstanceIDs is not None:
-            raise NameError('The user should run self.setExternalMeshIndices before self.setSurfaceDefinition.')
+            raise NameError("The user should run self.setExternalMeshIndices before self.setSurfaceDefinition.")
 
         ### Initial steps
 
@@ -565,7 +568,7 @@ class MultiUSMesh(object):
 
         # Check if we have the same number of CGNS indices
         if len(cgnsBlockIDs) != numElems:
-            raise ValueError('The user should provide block IDs for every element.')
+            raise ValueError("The user should provide block IDs for every element.")
 
         # Save the total number of surface nodes
         self.numSurfNodes = pts.shape[0]
@@ -576,7 +579,7 @@ class MultiUSMesh(object):
         ### We will take the cgnsBlockIDs given by ADflow and convert them into instance IDs.
 
         # Initialize array to store ID of the instance that has each cell
-        self.instanceIDs = np.ones(numElems)*(-1)
+        self.instanceIDs = np.ones(numElems) * (-1)
 
         # Now we use the block ID bounds of each instance to flag the instance IDs
         for ii in range(len(self.meshes)):
@@ -587,7 +590,7 @@ class MultiUSMesh(object):
 
             # Check which indices are defined within the range of cgns blocks.
             # Then we assign the current instance ID to the correponding cells
-            self.instanceIDs[(cgnsBlockIDs >= indexStart)*(cgnsBlockIDs < indexEnd)] = ii
+            self.instanceIDs[(cgnsBlockIDs >= indexStart) * (cgnsBlockIDs < indexEnd)] = ii
 
         ### We will send the connectivity subsets to each instance
 
@@ -619,14 +622,14 @@ class MultiUSMesh(object):
                     currFaceSizes.append(elemFaceSize)
 
                     # Store its connectivity
-                    currConn = currConn + conn[connPos:connPos+elemFaceSize].tolist()
+                    currConn = currConn + conn[connPos : connPos + elemFaceSize].tolist()
 
                 # Increment position counter for next iteration
                 connPos = connPos + elemFaceSize
 
             # Transform connectivities back to numpy array
-            currConn = np.array(currConn, dtype='intc').flatten()
-            currFaceSizes = np.array(currFaceSizes, dtype='intc')
+            currConn = np.array(currConn, dtype="intc").flatten()
+            currFaceSizes = np.array(currFaceSizes, dtype="intc")
 
             # Now we will use the filtered connectivities to gather only the points
             # that belong to the current instance
@@ -639,13 +642,13 @@ class MultiUSMesh(object):
             filtered2fullMap = list(set(currConn.tolist()))
 
             # Now we can extract the filtered points from the full array
-            currPts = pts[filtered2fullMap,:]
+            currPts = pts[filtered2fullMap, :]
 
             # Currently, the indices in currConn refer to the full set of points. We need to
             # update these connectivities so that the point to the filtered set of points (currPts).
 
             # Loop over every mapping:
-            for filteredID,fullID in enumerate(filtered2fullMap):
+            for filteredID, fullID in enumerate(filtered2fullMap):
 
                 # Find all elements of currConn that share the same fullID and replace them
                 # with the new ID
@@ -659,8 +662,8 @@ class MultiUSMesh(object):
 
         # Print log
         if self.myID == 0:
-            print('Done')
-            print('')
+            print("Done")
+            print("")
 
     '''
     def getWarpGrid(self, warp_to_common=True):
@@ -740,10 +743,10 @@ class MultiUSMesh(object):
         """
 
         # Initialize array to hold seeds of all surface point of this proc
-        dXs = np.zeros((self.numSurfNodes,3),dtype=self.dtype)
+        dXs = np.zeros((self.numSurfNodes, 3), dtype=self.dtype)
 
         # Loop over all instances
-        for instanceID,mesh in enumerate(self.meshes):
+        for instanceID, mesh in enumerate(self.meshes):
 
             # Get the surface seeds of the current instance
             curr_dXs = mesh.getdXs()
@@ -767,8 +770,8 @@ class MultiUSMesh(object):
 
         # Print log
         if self.myID == 0:
-            print('')
-            print('Starting IDWarpMulti mesh warping')
+            print("")
+            print("Starting IDWarpMulti mesh warping")
 
         # Set mesh counter
         meshCounter = 1
@@ -778,25 +781,25 @@ class MultiUSMesh(object):
 
             # Print log
             if self.myID == 0:
-                print('')
-                print(' warping mesh',meshCounter,'of',len(self.meshes))
+                print("")
+                print(" warping mesh", meshCounter, "of", len(self.meshes))
 
             # Warp current instance
             mesh.warpMesh()
 
             # Print log
             if self.myID == 0:
-                print('')
-                print(' Done')
+                print("")
+                print(" Done")
 
             # Increment counter
             meshCounter = meshCounter + 1
 
         # Print log
         if self.myID == 0:
-            print('')
-            print('IDWarpMulti successfully warped all instances!')
-            print('')
+            print("")
+            print("IDWarpMulti successfully warped all instances!")
+            print("")
 
     def warpDeriv(self, dXv):
         """Compute the warping derivative (dXv/dXs^T)*Vec (where vec is the
@@ -834,19 +837,19 @@ class MultiUSMesh(object):
 
         # Print log
         if self.myID == 0:
-            print('')
-            print('Starting IDWarpMulti reverse AD')
+            print("")
+            print("Starting IDWarpMulti reverse AD")
 
-        #---------------------------------------------------
+        # ---------------------------------------------------
         # RUN REVERSE AD ON EACH INSTANCE
 
         # Loop over all instances
-        for instanceID,mesh in enumerate(self.meshes):
+        for instanceID, mesh in enumerate(self.meshes):
 
             # Print log
             if self.myID == 0:
-                print('')
-                print(' Working on mesh',instanceID+1,'of',len(self.meshes))
+                print("")
+                print(" Working on mesh", instanceID + 1, "of", len(self.meshes))
 
             # Get current seeds
             curr_dXv = dXv[self.cgnsVolNodeMasks[instanceID]]
@@ -857,14 +860,14 @@ class MultiUSMesh(object):
 
             # Print log
             if self.myID == 0:
-                print('')
-                print(' Done')
+                print("")
+                print(" Done")
 
         # Print log
         if self.myID == 0:
-            print('')
-            print('IDWarpMulti successfully finished reverse AD on all instances!')
-            print('')
+            print("")
+            print("IDWarpMulti successfully finished reverse AD on all instances!")
+            print("")
 
         # Get derivative seeds
         dXs = self.getdXs()
@@ -902,23 +905,23 @@ class MultiUSMesh(object):
 
         # Print log
         if self.myID == 0:
-            print('')
-            print('Starting IDWarpMulti forward AD')
+            print("")
+            print("Starting IDWarpMulti forward AD")
 
-        #---------------------------------------------------
+        # ---------------------------------------------------
         # SPLIT SURFACE SEEDS ACROSS ALL INSTANCES AND GATHER
         # ALL VOLUME SEEDS
 
         # Initialize list to gather volume seeds of all instances
-        dXv = np.zeros(self.numVolNodes,dtype=self.dtype)
+        dXv = np.zeros(self.numVolNodes, dtype=self.dtype)
 
         # Loop over every mesh object to get a slice of the surface seeds array
-        for instanceID,mesh in enumerate(self.meshes):
+        for instanceID, mesh in enumerate(self.meshes):
 
             # Print log
             if self.myID == 0:
-                print('')
-                print(' Working on mesh',instanceID+1,'of',len(self.meshes))
+                print("")
+                print(" Working on mesh", instanceID + 1, "of", len(self.meshes))
 
             # Get current surface node forward AD seeds
             curr_dXs = dXs[self.filtered2fullMaps[instanceID]]
@@ -931,16 +934,16 @@ class MultiUSMesh(object):
 
             # Print log
             if self.myID == 0:
-                print('')
-                print(' Done')
+                print("")
+                print(" Done")
 
         # Print log
         if self.myID == 0:
-            print('')
-            print('IDWarpMulti successfully finished forward AD on all instances!')
-            print('')
+            print("")
+            print("IDWarpMulti successfully finished forward AD on all instances!")
+            print("")
 
-        #---------------------------------------------------
+        # ---------------------------------------------------
         # RETURNS
         return dXv
 
@@ -962,9 +965,9 @@ class MultiUSMesh(object):
 
         self.warp.verifywarpderiv(dXvWarp, dofStart, dofEnd, h)
     '''
-# ==========================================================================
-#                        Output Functionality
-# ==========================================================================
+    # ==========================================================================
+    #                        Output Functionality
+    # ==========================================================================
     def writeGrid(self, baseName=None):
         """
         Write the grids of each instance
@@ -989,8 +992,8 @@ class MultiUSMesh(object):
             grids, zoneNames = cs.explodeByZoneName(combined_file)
 
             # Save temporary grid files with the exploded zones
-            for grid,zoneName in zip(grids,zoneNames):
-                grid.writeToCGNS('_'+zoneName+'.cgns')
+            for grid, zoneName in zip(grids, zoneNames):
+                grid.writeToCGNS("_" + zoneName + ".cgns")
 
             # Delete grids to free space
             del grids
@@ -998,13 +1001,13 @@ class MultiUSMesh(object):
 
         # Assign baseName if user provided none
         if baseName is None:
-            baseName = 'IDWarpMulti'
+            baseName = "IDWarpMulti"
 
         # Loop over all instances to write their meshes
-        for instanceID,mesh in enumerate(self.meshes):
+        for instanceID, mesh in enumerate(self.meshes):
 
             # Generate a fileName
-            fileName = baseName + '_inst%03d.cgns'%(instanceID)
+            fileName = baseName + "_inst%03d.cgns" % (instanceID)
 
             # Call function to write the mesh of the current instance
             mesh.writeGrid(fileName)
@@ -1012,11 +1015,11 @@ class MultiUSMesh(object):
         # Now the root proc can remove the temporary grid files
         if self.myID == 0:
             for zoneName in zoneNames:
-                os.system('rm _'+zoneName+'.cgns')
+                os.system("rm _" + zoneName + ".cgns")
 
-# =========================================================================
-#                     Utility functions
-# =========================================================================
+    # =========================================================================
+    #                     Utility functions
+    # =========================================================================
 
     def _printCurrentOptions(self):
         """Prints a nicely formatted dictionary of all the current options to
@@ -1025,14 +1028,14 @@ class MultiUSMesh(object):
 
         for mesh in self.meshes():
             if self.comm.rank == 0:
-                print('')
-                print(' Options of mesh',meshCounter,'of',len(self.meshes))
-                print('')
-                print('+---------------------------------------+')
-                print('|     All IDWarp Options:               |')
-                print('+---------------------------------------+')
+                print("")
+                print(" Options of mesh", meshCounter, "of", len(self.meshes))
+                print("")
+                print("+---------------------------------------+")
+                print("|     All IDWarp Options:               |")
+                print("+---------------------------------------+")
                 pprint(mesh.solverOptions)
-                print('')
+                print("")
 
     def __del__(self):
         """Release all the mesh warping memory. This should be called
