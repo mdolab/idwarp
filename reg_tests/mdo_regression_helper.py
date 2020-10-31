@@ -3,7 +3,8 @@
 # relative tolerance. This information is used by the second function
 # when it takes in two such formatted strings and decides if they are
 # sufficiently close to be considered equal.
-import numpy, os
+import numpy
+import os
 
 REG_FILES_MATCH = 0
 REG_FILES_DO_NOT_MATCH = 1
@@ -126,7 +127,6 @@ def reg_file_comp(ref_file, comp_file):
 
 
 if __name__ == "__main__":
-    import numpy
 
     print("Single int write:")
     reg_write(1)
@@ -148,9 +148,9 @@ if __name__ == "__main__":
     str1 = "@value    3.141592653589793 1e-12 1e-12"
     str2 = "@value    3.141592653589999 1e-12 1e-12"
 
-    print("This comp should be True: ", reg_comp(str1, str2))
+    print("This comp should be True: ", _reg_str_comp(str1, str2))
 
     str1 = "@value    3.141592653589793 1e-12 1e-12"
     str2 = "@value    3.141592999999999 1e-12 1e-12"
 
-    print("This comp should be False: ", reg_comp(str1, str2))
+    print("This comp should be False: ", _reg_str_comp(str1, str2))

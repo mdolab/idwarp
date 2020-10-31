@@ -19,15 +19,13 @@ Developers:
 - Gaetan. K. W. Kenway (GKK)
 History
 -------
-	v. 1.0 - Initial Class Creation (CAM, 2014)
+    v. 1.0 - Initial Class Creation (CAM, 2014)
 """
 # =============================================================================
 # Imports
 # =============================================================================
 import os
-import re
 import shutil
-import copy
 import numpy as np
 from pprint import pprint
 from mpi4py import MPI
@@ -168,7 +166,7 @@ class USMesh(object):
         self.meshType = self.solverOptions["fileType"]
 
         # Determine how to read:
-        if not self.meshType == None:
+        if self.meshType is not None:
             if self.meshType.lower() == "cgns":
                 # Determine type of CGNS mesh we have:
                 self.warp.readcgns(fileName)
@@ -655,7 +653,6 @@ class USMesh(object):
 
         conn = []
         pts = []
-        patchNames = []
         faceSizes = []
 
         if self.meshType.lower() == "cgns":
@@ -1081,7 +1078,6 @@ class USMesh(object):
 
         # Create the internal structures for volume mesh
         x0 = self.OFData["x0"]
-        surfaceNodes = np.zeros(len(x0), "intc")  # this isn't used internally any more
 
         self.warp.createcommongrid(x0.T)
 
@@ -1115,7 +1111,7 @@ class USMesh(object):
         option iff it is NOT in solverOptions"""
 
         for key in self.solverOptionsDefault.keys():
-            if not key in solverOptions.keys():
+            if key not in solverOptions.keys():
                 solverOptions[key] = self.solverOptionsDefault[key]
             else:
                 self.solverOptionsDefault[key] = solverOptions[key]

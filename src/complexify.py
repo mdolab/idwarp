@@ -1,4 +1,9 @@
 #! /usr/local/bin/python
+import sys
+import os
+import glob
+import re
+from stat import *  # noqa: F403
 
 header_string = """
      ___________________________________
@@ -54,10 +59,6 @@ Wed Aug  9 21:16:49 PDT 2000:
 Mon Aug 14 19:53:53 PDT 2000:
 - changed explicit cast real() to cmplx()
 """
-
-import sys, os, glob
-import re
-from stat import *
 
 err = sys.stderr.write
 dbg = err
@@ -324,7 +325,7 @@ def join_lines(i, lines):
 def fix_line(line, implicit_found):
 
     # skip commented lines
-    if patt_comment.search(line) != None:
+    if patt_comment.search(line) is not None:
         return (line, implicit_found)
 
     # CHeck if we should keep the line.
@@ -336,7 +337,7 @@ def fix_line(line, implicit_found):
         return (line, implicit_found)
 
     # check if other lines need to be fixed
-    if patt_real.match(line) != None:
+    if patt_real.match(line) is not None:
         line = fix_real(line)
 
     ######################
@@ -344,41 +345,41 @@ def fix_line(line, implicit_found):
     # else: print( patt_realtype_s.search(line))
     ######################
 
-    if patt_double.match(line) != None:
+    if patt_double.match(line) is not None:
         line = fix_double(line)
 
-    if patt_implicit.match(line) != None:
+    if patt_implicit.match(line) is not None:
         implicit_found = 1
         line = fix_implicit(line)
 
-    ###if patt_inc.match(line) != None: line = fix_inc(line)
+    # if patt_inc.match(line) != None: line = fix_inc(line)
     if fix_relationals:
-        if patt_eq.search(line) != None:
+        if patt_eq.search(line) is not None:
             line = patt_eq.sub(r".ceq.", line)
-        if patt_ne.search(line) != None:
+        if patt_ne.search(line) is not None:
             line = patt_ne.sub(r".cne.", line)
 
     if fix_relationals == 2:  # only for MIPS Pro compiler
-        if patt_ge.search(line) != None:
+        if patt_ge.search(line) is not None:
             line = patt_ge.sub(r".cge.", line)
 
-    if patt_if.match(line) != None:
+    if patt_if.match(line) is not None:
         line = fix_if(line)
-    elif patt_logic_ass.match(line) != None:
+    elif patt_logic_ass.match(line) is not None:
         line = fix_logic_assignment(line)
 
-    if patt_intrinsic.match(line) != None:
+    if patt_intrinsic.match(line) is not None:
         line = fix_intrinsics(line)
 
-    if patt_mpi_stuff.search(line) != None:
+    if patt_mpi_stuff.search(line) is not None:
         line = fix_mpi_stuff(line)
 
     # Assume that this is not needed: CHECK
     # if patt_real_cast.search(line) != None: line = fix_real_cast(line)
     if fudge_format_statement:
-        if patt_format.match(line) != None:
+        if patt_format.match(line) is not None:
             line = fudge_format(line)
-        if patt_write.search(line) != None:
+        if patt_write.search(line) is not None:
             line = fudge_format(line)
 
     return (line, implicit_found)
@@ -561,7 +562,7 @@ def fix_intrinsics(line):
 
 def type_repl(match):
     precision = match.group(1)
-    if precision == None:
+    if precision is None:
         precision = "4"
     if eval(precision) == 8:
         type = "complex*16"  # double precision complex

@@ -1,6 +1,4 @@
 # this is a simple script to test the IDWarp module
-import sys
-import numpy
 from mpi4py import MPI
 from idwarp import USMesh
 

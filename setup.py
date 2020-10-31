@@ -11,7 +11,7 @@ setup(
     version=__version__,
     description="idwarp is a package deforming volume meshes with derivatives for optimization",
     long_description="""
-            
+
       # IDWarp
       [![Build Status](https://travis-ci.com/mdolab/idwarp.svg?branch=master)](https://travis-ci.com/mdolab/idwarp)
       [![Documentation Status](https://readthedocs.com/projects/mdolab-idwarp/badge/?version=latest)](https://mdolab-idwarp.readthedocs-hosted.com/en/latest/?badge=latest)

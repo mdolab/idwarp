@@ -1,4 +1,5 @@
 # this is a simple script to test the IDWarp module
+import numpy as np
 from mpi4py import MPI
 from idwarp import USMesh
 
@@ -33,8 +34,6 @@ mesh.warpMesh()
 
 # Write the new grid file.
 mesh.writeGrid("warped.cgns")
-
-import numpy as np
 
 np.random.seed(314)
 dXsd = np.random.random((1439, 3))

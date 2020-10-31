@@ -7,9 +7,11 @@
 # ======================================================================
 #         Imports
 # ======================================================================
-import sys, os, copy
+import sys
+import os
+import copy
 import numpy
-from mdo_regression_helper import *
+from mdo_regression_helper import reg_write
 from idwarp import USMesh
 from mpi4py import MPI
 

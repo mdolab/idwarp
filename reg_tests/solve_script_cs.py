@@ -7,10 +7,13 @@
 # ======================================================================
 #         Imports
 # ======================================================================
-import sys, os, copy
+import sys
+import os
+import copy
 import numpy
-from petsc4py import PETSc
-from mdo_regression_helper import *
+
+# from petsc4py import PETSc
+from mdo_regression_helper import reg_write
 
 if "complex" in sys.argv:
     from idwarp import USMesh_C as USMesh
@@ -96,7 +99,7 @@ def test1():
     # Create a dXv vector to do test the mesh warping with:
     dXv_warp = numpy.linspace(0, 1.0, mesh.warp.griddata.warpmeshdof)
 
-    if not "complex" in sys.argv:
+    if "complex" not in sys.argv:
 
         if MPI.COMM_WORLD.rank == 0:
             print("Computing Warp Deriv")
@@ -173,7 +176,7 @@ def test2():
     # Create a dXv vector to do test the mesh warping with:
     dXv_warp = numpy.linspace(0, 1.0, mesh.warp.griddata.warpmeshdof)
 
-    if not "complex" in sys.argv:
+    if "complex" not in sys.argv:
         if MPI.COMM_WORLD.rank == 0:
             print("Computing Warp Deriv")
         mesh.warpDeriv(dXv_warp, solverVec=False)
@@ -247,7 +250,7 @@ def test3():
     # Create a dXv vector to do test the mesh warping with:
     dXv_warp = numpy.linspace(0, 1.0, mesh.warp.griddata.warpmeshdof)
 
-    if not "complex" in sys.argv:
+    if "complex" not in sys.argv:
         if MPI.COMM_WORLD.rank == 0:
             print("Computing Warp Deriv")
         mesh.warpDeriv(dXv_warp, solverVec=False)

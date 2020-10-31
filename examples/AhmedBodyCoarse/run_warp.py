@@ -1,9 +1,9 @@
 # a basic script to run the case in this directory
-import sys, os
+import os
 from mpi4py import MPI
-from pygeo import *
-from pyspline import *
-from idwarp import *
+from pygeo import DVGeometry
+from pyspline import Curve
+from idwarp import USMesh
 import numpy
 
 gcomm = MPI.COMM_WORLD
@@ -32,7 +32,7 @@ z = [0.1, 0.1, 0.1, 0.1, 0.1]
 
 nLength = len(x)
 
-c1 = pySpline.Curve(x=x, y=y, z=z, k=2)
+c1 = Curve(x=x, y=y, z=z, k=2)
 DVGeo.addRefAxis("bodyAxis", curve=c1, axis="z")
 
 DVGeoChild = DVGeometry("./FFD/bodyFittedFFD.fmt", child=True)
@@ -46,7 +46,7 @@ z1 = [0.194, 0.194, 0.194, 0.13]
 
 nLengthChild = len(x1)
 
-c2 = pySpline.Curve(x=x1, y=y1, z=z1, k=2)
+c2 = Curve(x=x1, y=y1, z=z1, k=2)
 DVGeoChild.addRefAxis("localBodyAxis", curve=c2, axis="z")
 
 
@@ -149,7 +149,6 @@ def noseLength(val, geo):
     C = geo.extractCoef("bodyAxis")
 
     length = val[0]
-    currentLength = C[2, 0] - C[1, 0]
 
     C[1, 0] = C[2, 0] - length
 
@@ -186,7 +185,7 @@ DVGeoChild.addGeoDVGlobal(
 DVGeo.addChild(DVGeoChild)
 
 ptSetName = "allSurfs"
-freezeDict = {}  #'0':['jLow'],'1':['jLow'],'2':['jLow']}#'0':['jLow'],'1':['jHigh','jLow']}
+freezeDict = {}  # '0':['jLow'],'1':['jLow'],'2':['jLow']}#'0':['jLow'],'1':['jHigh','jLow']}
 DVGeo.addPointSet(coords0, ptSetName, faceFreeze=freezeDict)
 xDV = DVGeo.getValues()
 

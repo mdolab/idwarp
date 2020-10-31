@@ -13,7 +13,8 @@ Written by Andre C. Marta          Last updated: Apr 6, 2007
 
 # Import modules
 
-import os, sys
+import os
+import sys
 import string
 
 # Specify file extension
@@ -40,7 +41,7 @@ print("Directory of input source files  :", DIR_ORI)
 print("Directory of output source files :", DIR_MOD)
 
 for f in os.listdir(DIR_ORI):
-    if not f in FILE_IGNORE:
+    if f not in FILE_IGNORE:
         if f.endswith(EXT):
             # open original file in read mode
             file_object_ori = open(DIR_ORI + "/" + f, "r")

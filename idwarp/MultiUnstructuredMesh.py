@@ -27,18 +27,14 @@ History
 # Imports
 # =============================================================================
 import os
-import re
-import shutil
-import copy
 import numpy as np
 from pprint import pprint
 from mpi4py import MPI
 from .MExt import MExt
-from petsc4py import PETSc
 
 try:
     from cgnsutilities import cgns_utils as cs
-except:
+except ImportError:
     cs = None
 
 
