@@ -3,7 +3,6 @@ import sys
 import os
 import glob
 import re
-from stat import *  # noqa: F403
 
 header_string = """
      ___________________________________
