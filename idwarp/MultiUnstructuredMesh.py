@@ -90,7 +90,7 @@ class MultiUSMesh(object):
     variety of interface functions.
     """
 
-    def __init__(self, CGNSFile, optionsDict, comm=None, dtype="d"):
+    def __init__(self, CGNSFile, optionsDict, comm=None, dtype="d", debug=False):
         """
         Create the MultiUSMesh object.
 
@@ -124,16 +124,13 @@ class MultiUSMesh(object):
             self.warp
         except AttributeError:
             curDir = os.path.dirname(os.path.realpath(__file__))
-            self.warp = MExt("idwarp", [curDir])._module
+            self.warp = MExt("idwarp", [curDir], debug=debug)._module
 
         # Store communicator
         self.comm = comm
 
         # Store original file name
         self.CGNSFile = CGNSFile
-
-        # Get rank of the current proc
-        self.myID = self.comm.Get_rank()
 
         # Store scalar type
         self.dtype = dtype
@@ -761,9 +758,6 @@ class MultiUSMesh(object):
         Ney Secco 2017-02
         """
 
-        # Get proc ID
-        self.myID = self.comm.Get_rank()
-
         # Print log
         if self.myID == 0:
             print("")
@@ -827,9 +821,6 @@ class MultiUSMesh(object):
 
         Ney Secco 2017-03
         """
-
-        # Get proc rank
-        self.myID = self.comm.Get_rank()
 
         # Print log
         if self.myID == 0:
@@ -895,9 +886,6 @@ class MultiUSMesh(object):
 
         Ney Secco 2017-03
         """
-
-        # Get proc ID
-        self.myID = self.comm.Get_rank()
 
         # Print log
         if self.myID == 0:
@@ -1021,17 +1009,18 @@ class MultiUSMesh(object):
         """Prints a nicely formatted dictionary of all the current options to
         the stdout on the root processor
         """
-
+        meshCounter = 0
         for mesh in self.meshes():
             if self.comm.rank == 0:
                 print("")
-                print(" Options of mesh", mesh, "of", len(self.meshes))
+                print(" Options of mesh", meshCounter, "of", len(self.meshes))
                 print("")
                 print("+---------------------------------------+")
                 print("|     All IDWarp Options:               |")
                 print("+---------------------------------------+")
                 pprint(mesh.solverOptions)
                 print("")
+            meshCounter += 1
 
     def __del__(self):
         """Release all the mesh warping memory. This should be called
