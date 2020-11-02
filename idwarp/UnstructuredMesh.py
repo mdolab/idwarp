@@ -19,59 +19,63 @@ Developers:
 - Gaetan. K. W. Kenway (GKK)
 History
 -------
-	v. 1.0 - Initial Class Creation (CAM, 2014)
+    v. 1.0 - Initial Class Creation (CAM, 2014)
 """
 # =============================================================================
 # Imports
 # =============================================================================
 import os
-import re
 import shutil
-import copy
 import numpy as np
 from pprint import pprint
 from mpi4py import MPI
 from .MExt import MExt
+
 
 class Error(Exception):
     """
     Format the error message in a box to make it clear this
     was a expliclty raised exception.
     """
+
     def __init__(self, message):
-        msg = '\n+'+'-'*78+'+'+'\n' + '| IDWarp Error: '
+        msg = "\n+" + "-" * 78 + "+" + "\n" + "| IDWarp Error: "
         i = 22
         for word in message.split():
-            if len(word) + i + 1 > 78: # Finish line and start new one
-                msg += ' '*(78-i)+'|\n| ' + word + ' '
-                i = 1 + len(word)+1
+            if len(word) + i + 1 > 78:  # Finish line and start new one
+                msg += " " * (78 - i) + "|\n| " + word + " "
+                i = 1 + len(word) + 1
             else:
-                msg += word + ' '
-                i += len(word)+1
-        msg += ' '*(78-i) + '|\n' + '+'+'-'*78+'+'+'\n'
+                msg += word + " "
+                i += len(word) + 1
+        msg += " " * (78 - i) + "|\n" + "+" + "-" * 78 + "+" + "\n"
         print(msg)
         Exception.__init__(self)
+
 
 class Warning(object):
     """
     Format a warning message
     """
+
     def __init__(self, message):
-        msg = '\n+'+'-'*78+'+'+'\n' + '| IDWarp Warning: '
+        msg = "\n+" + "-" * 78 + "+" + "\n" + "| IDWarp Warning: "
         i = 24
         for word in message.split():
-            if len(word) + i + 1 > 78: # Finish line and start new one
-                msg += ' '*(78-i)+'|\n| ' + word + ' '
-                i = 1 + len(word)+1
+            if len(word) + i + 1 > 78:  # Finish line and start new one
+                msg += " " * (78 - i) + "|\n| " + word + " "
+                i = 1 + len(word) + 1
             else:
-                msg += word + ' '
-                i += len(word)+1
-        msg += ' '*(78-i) + '|\n' + '+'+'-'*78+'+'+'\n'
+                msg += word + " "
+                i += len(word) + 1
+        msg += " " * (78 - i) + "|\n" + "+" + "-" * 78 + "+" + "\n"
         print(msg)
+
 
 # =============================================================================
 # UnstructuredMesh class
 # =============================================================================
+
 
 class USMesh(object):
     """
@@ -79,6 +83,7 @@ class USMesh(object):
     to interact with an structured or unstructured CFD solver though a
     variety of interface functions.
     """
+
     def __init__(self, options=None, comm=None, debug=False):
         """
         Create the USMesh object.
@@ -109,40 +114,42 @@ class USMesh(object):
             self.warp
         except AttributeError:
             curDir = os.path.dirname(os.path.realpath(__file__))
-            self.warp = MExt('idwarp', [curDir], debug=debug)._module
+            self.warp = MExt("idwarp", [curDir], debug=debug)._module
         if options is not None:
             self.solverOptions = options
         else:
-            raise Error("The 'options' keyword argument is *NOT* "
-                        "optional. An options dictionary must be passed upon "
-                        "creation of this object")
+            raise Error(
+                "The 'options' keyword argument is *NOT* "
+                "optional. An options dictionary must be passed upon "
+                "creation of this object"
+            )
 
         # Initialize PETSc if not done so
         self.warp.initpetsc(self.comm.py2f())
 
         # Set realtype of 'd'. 'D' is used in Complex and set in
         # UnstructuredMesh_C.py
-        self.dtype = 'd'
+        self.dtype = "d"
 
         # Defalut options for mesh warping
         self.solverOptionsDefault = {
-            'gridFile':None,
-            'fileType':'cgns',
-            'specifiedSurfaces':None,
-            'symmetrySurfaces':None,
-            'symmetryPlanes':None,
-            'aExp': 3.0,
-            'bExp': 5.0,
-            'LdefFact':1.0,
-            'alpha':0.25,
-            'errTol':0.0005,
-            'evalMode':'fast',
-            'symmTol':1e-6,
-            'useRotations':True,
-            'zeroCornerRotations':True,
-            'cornerAngle':30.0,
-            'restartFile':None,
-            'bucketSize':8,
+            "gridFile": None,
+            "fileType": "cgns",
+            "specifiedSurfaces": None,
+            "symmetrySurfaces": None,
+            "symmetryPlanes": None,
+            "aExp": 3.0,
+            "bExp": 5.0,
+            "LdefFact": 1.0,
+            "alpha": 0.25,
+            "errTol": 0.0005,
+            "evalMode": "fast",
+            "symmTol": 1e-6,
+            "useRotations": True,
+            "zeroCornerRotations": True,
+            "cornerAngle": 30.0,
+            "restartFile": None,
+            "bucketSize": 8,
         }
 
         # Set remaining default values
@@ -155,11 +162,11 @@ class USMesh(object):
         self.warpInitialized = False
         self.faceSizes = None
         self.meshType = None
-        fileName = self.solverOptions['gridFile']
-        self.meshType = self.solverOptions['fileType']
+        fileName = self.solverOptions["gridFile"]
+        self.meshType = self.solverOptions["fileType"]
 
         # Determine how to read:
-        if not self.meshType == None:
+        if self.meshType is not None:
             if self.meshType.lower() == "cgns":
                 # Determine type of CGNS mesh we have:
                 self.warp.readcgns(fileName)
@@ -169,8 +176,7 @@ class USMesh(object):
             elif self.meshType.lower() == "plot3d":
                 self.warp.readplot3d(fileName)
         else:
-            raise Error("Invalid input file type. valid options are: "
-                        "CGNS" or "OpenFOAM.")
+            raise Error("Invalid input file type. valid options are: " "CGNS" or "OpenFOAM.")
 
     def getSurfaceCoordinates(self):
         """Returns all defined surface coordinates on this processor
@@ -197,10 +203,12 @@ class USMesh(object):
             the array obtained from getSurfaceCoordinates()
         """
         if len(coordinates) != self.nSurf:
-            raise Error("Incorrect length of coordinates supplied to "
-                        "setSurfaceCoordinates on proc %d. Expected "
-                        "aray of length %d, received an array of length "
-                        "%d."%(self.comm.rank, self.nSurf, len(coordinates)))
+            raise Error(
+                "Incorrect length of coordinates supplied to "
+                "setSurfaceCoordinates on proc %d. Expected "
+                "aray of length %d, received an array of length "
+                "%d." % (self.comm.rank, self.nSurf, len(coordinates))
+            )
 
         self.warp.setsurfacecoordinates(np.ravel(coordinates))
 
@@ -243,10 +251,10 @@ class USMesh(object):
 
         # Call the fortran initialze warping command with  the
         # coordinates and the patch connectivity given to us.
-        if self.solverOptions['restartFile'] is None:
+        if self.solverOptions["restartFile"] is None:
             restartFile = ""
         else:
-            restartFile = self.solverOptions['restartFile']
+            restartFile = self.solverOptions["restartFile"]
 
         # The symmetry conditions but be set before initializing the
         # warping.
@@ -257,7 +265,7 @@ class USMesh(object):
         # Be careful with conn...need to increment by the offset from
         # the points.
         ptSizes = self.comm.allgather(len(pts))
-        offsets = np.zeros(len(ptSizes), 'intc')
+        offsets = np.zeros(len(ptSizes), "intc")
         offsets[1:] = np.cumsum(ptSizes)[:-1]
         allConn = np.hstack(self.comm.allgather(conn + offsets[self.comm.rank]))
 
@@ -275,13 +283,12 @@ class USMesh(object):
         uniquePts = uniquePts[ind]
 
         # Update the link array such that it points back to the original list.
-        inv = np.zeros_like(ind, 'intc')
-        rng = np.arange(len(ind)).astype('intc')
+        inv = np.zeros_like(ind, "intc")
+        rng = np.arange(len(ind)).astype("intc")
 
         inv[ind[rng]] = rng
-        link = inv[link-1] + 1
-        self.warp.initializewarping(np.ravel(pts), uniquePts.T, link,
-                                     allFaceSizes, allConn, restartFile)
+        link = inv[link - 1] + 1
+        self.warp.initializewarping(np.ravel(pts), uniquePts.T, link, allFaceSizes, allConn, restartFile)
         self.nSurf = len(pts)
         self.warpInitialized = True
 
@@ -304,12 +311,12 @@ class USMesh(object):
             # Extract out the data we want from the module. Note that
             # becuase we are in python, convert conn to 0 based.
             pts = self.warp.plot3dsurface.pts.T.copy()
-            conn = self.warp.plot3dsurface.conn.T.copy()-1
-            faceSizes = 4*np.ones(len(conn))
+            conn = self.warp.plot3dsurface.conn.T.copy() - 1
+            faceSizes = 4 * np.ones(len(conn))
         else:
             pts = np.zeros((0, 3))
             conn = np.zeros((0, 4))
-            faceSizes = 4*np.ones(0)
+            faceSizes = 4 * np.ones(0)
 
         # Run the regular setSurfaceDefinition routine. Note that only
         # the root proc has non-zero length arrays. That's ok.
@@ -385,8 +392,7 @@ class USMesh(object):
         openFOAM tecplot writer since the connectivity is only known
         in this ordering.
         """
-        return self.warp.getcommonvolumecoordinates(
-            self.warp.griddata.commonmeshdof)
+        return self.warp.getcommonvolumecoordinates(self.warp.griddata.commonmeshdof)
 
     def getdXs(self):
         """Return the current values in dXs. This is the result from a
@@ -486,13 +492,12 @@ class USMesh(object):
         else:
             return dXvWarp
 
-    def verifyWarpDeriv(self, dXv=None, solverVec=True, dofStart=0,
-                        dofEnd=10, h=1e-6, randomSeed=314):
+    def verifyWarpDeriv(self, dXv=None, solverVec=True, dofStart=0, dofEnd=10, h=1e-6, randomSeed=314):
         """Run an internal verification of the solid warping
         derivatives"""
 
         if dXv is None:
-            np.random.seed(randomSeed) # 'Random' seed to ensure runs are same
+            np.random.seed(randomSeed)  # 'Random' seed to ensure runs are same
             dXvWarp = np.random.random(self.warp.griddata.warpmeshdof, dtype=self.dtype)
         else:
             if solverVec:
@@ -503,9 +508,9 @@ class USMesh(object):
 
         self.warp.verifywarpderiv(dXvWarp, dofStart, dofEnd, h)
 
-# ==========================================================================
-#                        Output Functionality
-# ==========================================================================
+    # ==========================================================================
+    #                        Output Functionality
+    # ==========================================================================
     def writeGrid(self, fileName=None):
         """
         Write the current grid to the correct format
@@ -520,21 +525,20 @@ class USMesh(object):
             call will update the 'points' file.
         """
         mt = self.meshType.lower()
-        if mt in ['cgns', 'plot3d']:
+        if mt in ["cgns", "plot3d"]:
             if fileName is None:
-                raise Error('fileName is not optional for writeGrid with '
-                            'gridType of cgns or plot3d')
+                raise Error("fileName is not optional for writeGrid with " "gridType of cgns or plot3d")
 
-            if mt == 'cgns':
+            if mt == "cgns":
                 # Copy the default and then write
                 if self.comm.rank == 0:
-                    shutil.copy(self.solverOptions['gridFile'], fileName)
+                    shutil.copy(self.solverOptions["gridFile"], fileName)
                 self.warp.writecgns(fileName)
 
-            elif mt == 'plot3d':
+            elif mt == "plot3d":
                 self.warp.writeplot3d(fileName)
 
-        elif mt == 'openfoam':
+        elif mt == "openfoam":
             self._writeOpenFOAMVolumePoints(self.getCommonGrid())
 
     def writeOFGridTecplot(self, fileName):
@@ -548,30 +552,29 @@ class USMesh(object):
             Filename to use. Should end in .dat for tecplot ascii file.
         """
         if not self.OFData:
-            Warning('Cannot write OpenFoam tecplot file since there is '
-                    'no openFoam ata present')
+            Warning("Cannot write OpenFoam tecplot file since there is " "no openFoam ata present")
             return
 
         if self.comm.size == 1:
-            f = open(fileName, 'w')
+            f = open(fileName, "w")
         else:
             fname, fext = os.path.splitext(fileName)
-            fileName = fname + '%d'%self.comm.rank + fext
-            f = open(fileName, 'w')
+            fileName = fname + "%d" % self.comm.rank + fext
+            f = open(fileName, "w")
 
         # Extract the data we need from the OFDict to make the code a
         # little easier to read:
         nodes = self.getCommonGrid()
-        nodes = nodes.reshape((len(nodes)//3, 3))
+        nodes = nodes.reshape((len(nodes) // 3, 3))
         nPoints = len(nodes)
 
-        faces = self.OFData['faces']
+        faces = self.OFData["faces"]
         nFaces = len(faces)
 
-        owner = self.OFData['owner']
+        owner = self.OFData["owner"]
         nCells = np.max(owner) + 1
 
-        neighbour = self.OFData['neighbour']
+        neighbour = self.OFData["neighbour"]
         nNeighbours = len(neighbour)
 
         # write the node numbers for each face
@@ -581,53 +584,53 @@ class USMesh(object):
 
         # Tecplot Header Info:
         f.write('TITLE = "Example Grid File"\n')
-        f.write('FILETYPE = GRID\n')
+        f.write("FILETYPE = GRID\n")
         f.write('VARIABLES = "X" "Y" "Z"\n')
-        f.write('Zone\n')
-        f.write('ZoneType=FEPOLYHEDRON\n')
-        f.write('NODES=%d\n'%nPoints)
-        f.write('FACES=%d\n'%nFaces)
-        f.write('ELEMENTS=%d\n'%nCells)
-        f.write('TotalNumFaceNodes=%d\n'%faceNodeSum)
-        f.write('NumConnectedBoundaryFaces=%d\n'%0)
-        f.write('TotalNumBoundaryConnections=%d\n'%0)
+        f.write("Zone\n")
+        f.write("ZoneType=FEPOLYHEDRON\n")
+        f.write("NODES=%d\n" % nPoints)
+        f.write("FACES=%d\n" % nFaces)
+        f.write("ELEMENTS=%d\n" % nCells)
+        f.write("TotalNumFaceNodes=%d\n" % faceNodeSum)
+        f.write("NumConnectedBoundaryFaces=%d\n" % 0)
+        f.write("TotalNumBoundaryConnections=%d\n" % 0)
 
         # Write the points to file in block data format
         for idim in range(3):
             for j in range(nPoints):
-                f.write('%g\n'% nodes[j, idim])
+                f.write("%g\n" % nodes[j, idim])
 
         # Write the number of nodes in each face
         for i in range(nFaces):
-            f.write('%d '%len(faces[i]))
-            if i%300 == 0:
-                f.write('\n')
+            f.write("%d " % len(faces[i]))
+            if i % 300 == 0:
+                f.write("\n")
 
-        f.write('\n')
+        f.write("\n")
         # write the node numbers for each face (+1 for tecplot 1-based
         # ordering)
         for i in range(nFaces):
             nPointsFace = len(faces[i])
             for j in range(nPointsFace):
-                f.write('%d '% (faces[i][j]+1))
-            f.write('\n')
+                f.write("%d " % (faces[i][j] + 1))
+            f.write("\n")
 
         # write left elements (+1 for 1 based ordering)
         for i in range(nFaces):
-            f.write('%d\n'%(owner[i]+1))
+            f.write("%d\n" % (owner[i] + 1))
 
         # write right elements (+1 for 1 based ordering)
         for i in range(nFaces):
             if i < nNeighbours:
-                f.write('%d\n'% (neighbour[i]+1))
+                f.write("%d\n" % (neighbour[i] + 1))
             else:
-                f.write('%d\n'%(0))
+                f.write("%d\n" % (0))
 
         f.close()
 
-# =========================================================================
-#                     Internal Private Functions
-# =========================================================================
+    # =========================================================================
+    #                     Internal Private Functions
+    # =========================================================================
     def _setInternalSurface(self):
         """This function is used by default if setSurfaceDefinition() is not
         set BEFORE an operation is requested that requires this
@@ -638,17 +641,18 @@ class USMesh(object):
             return
 
         if self.comm.rank == 0:
-            Warning("Using internally generated IDWarp surfaces. If "
-                    "this mesh object is to be used with an "
-                    "external solver, ensure the mesh object is "
-                    "passed to the solver immediatedly after it is created. "
-                    "The external solver must then call "
-                    "'setExternalMeshIndices()' and 'setSurfaceDefinition()' "
-                    "routines.")
+            Warning(
+                "Using internally generated IDWarp surfaces. If "
+                "this mesh object is to be used with an "
+                "external solver, ensure the mesh object is "
+                "passed to the solver immediatedly after it is created. "
+                "The external solver must then call "
+                "'setExternalMeshIndices()' and 'setSurfaceDefinition()' "
+                "routines."
+            )
 
         conn = []
         pts = []
-        patchNames = []
         faceSizes = []
 
         if self.meshType.lower() == "cgns":
@@ -660,28 +664,27 @@ class USMesh(object):
                 else:
                     self.warp.processunstructuredpatches()
 
-                fullConn = self.warp.cgnsgrid.surfaceconn-1
+                fullConn = self.warp.cgnsgrid.surfaceconn - 1
                 fullPts = self.warp.cgnsgrid.surfacepoints
 
                 nPatch = self.warp.cgnsgrid.getnpatch()
                 fullPatchNames = []
                 for i in range(nPatch):
-                    fullPatchNames.append(self.warp.cgnsgrid.getsurf(i+1).strip().lower())
+                    fullPatchNames.append(self.warp.cgnsgrid.getsurf(i + 1).strip().lower())
                 # We now have all surfaces belonging to
                 # boundary conditions. We need to decide which
                 # ones to use depending on what the user has
                 # told us.
                 surfaceFamilies = set()
-                if self.solverOptions['specifiedSurfaces'] is None:
+                if self.solverOptions["specifiedSurfaces"] is None:
                     # Use all wall surfaces:
                     for i in range(len(self.warp.cgnsgrid.surfaceiswall)):
                         if self.warp.cgnsgrid.surfaceiswall[i]:
                             surfaceFamilies.add(fullPatchNames[i].lower())
                 else:
                     # The user has supplied a list of surface families
-                    for name in self.solverOptions['specifiedSurfaces']:
+                    for name in self.solverOptions["specifiedSurfaces"]:
                         surfaceFamilies.add(name.lower())
-
 
             usedFams = set()
             if self.warp.cgnsgrid.cgnsstructured:
@@ -698,35 +701,34 @@ class USMesh(object):
                     curCellIndex = 0
                     curOffset = 0
                     for i in range(len(fullPatchNames)):
-                        curNodeSize = fullPatchSizes[i][0]*fullPatchSizes[i][1]
-                        curCellSize = (fullPatchSizes[i][0]-1)*(fullPatchSizes[i][1]-1)
+                        curNodeSize = fullPatchSizes[i][0] * fullPatchSizes[i][1]
+                        curCellSize = (fullPatchSizes[i][0] - 1) * (fullPatchSizes[i][1] - 1)
 
                         if fullPatchNames[i] in surfaceFamilies:
                             # Keep track of the families we've actually used
                             usedFams.add(fullPatchNames[i])
-                            pts.extend(fullPts[curNodeIndex:curNodeIndex+curNodeSize*3])
-                            conn.extend(fullConn[curCellIndex:curCellIndex+curCellSize*4] - curOffset)
+                            pts.extend(fullPts[curNodeIndex : curNodeIndex + curNodeSize * 3])
+                            conn.extend(fullConn[curCellIndex : curCellIndex + curCellSize * 4] - curOffset)
                         else:
                             # If we skipped, we increment the offset
                             curOffset += curNodeSize
 
-                        curNodeIndex += curNodeSize*3
-                        curCellIndex += curCellSize*4
+                        curNodeIndex += curNodeSize * 3
+                        curCellIndex += curCellSize * 4
 
                 # end for (root proc)
 
                 # Run the common surface definition routine
-                pts = np.array(pts).reshape((len(pts)//3,3))
-                faceSizes = 4*np.ones(len(conn)//4, 'intc')
-                self.setSurfaceDefinition(pts=pts, conn=np.array(conn, 'intc'),
-                                          faceSizes=faceSizes)
+                pts = np.array(pts).reshape((len(pts) // 3, 3))
+                faceSizes = 4 * np.ones(len(conn) // 4, "intc")
+                self.setSurfaceDefinition(pts=pts, conn=np.array(conn, "intc"), faceSizes=faceSizes)
 
-            else: # unstructured
+            else:  # unstructured
                 if self.comm.rank == 0:
 
                     # Pull out data and convert to 0-based ordering
-                    fullPtr = self.warp.cgnsgrid.surfaceptr-1
-                    fullPatchPtr = self.warp.cgnsgrid.surfacepatchptr-1
+                    fullPtr = self.warp.cgnsgrid.surfaceptr - 1
+                    fullPatchPtr = self.warp.cgnsgrid.surfacepatchptr - 1
                     fullFaceSizes = fullPtr[1:-1] - fullPtr[0:-2]
 
                     # Now we loop back over the "full" versions of
@@ -737,27 +739,25 @@ class USMesh(object):
 
                         # Start/end indices into fullPtr array
                         iStart = fullPatchPtr[i]
-                        iEnd   = fullPatchPtr[i+1]
+                        iEnd = fullPatchPtr[i + 1]
 
                         # Start/end indices into the fullConn/fullPts array
                         iStart2 = fullPtr[iStart]
-                        iEnd2   = fullPtr[iEnd]
+                        iEnd2 = fullPtr[iEnd]
 
                         if fullPatchNames[i] in surfaceFamilies:
                             # Keep track of the families we've actually used
                             usedFams.add(fullPatchNames[i])
                             faceSizes.extend(fullFaceSizes[iStart:iEnd])
                             conn.extend(fullConn[iStart2:iEnd2] - curOffset)
-                            pts.extend(fullPts[iStart2*3:iEnd2*3])
+                            pts.extend(fullPts[iStart2 * 3 : iEnd2 * 3])
                         else:
                             # If we skipped, we increment the offset
-                            curOffset += (iEnd2 - iStart2)
+                            curOffset += iEnd2 - iStart2
 
-                pts = np.array(pts).reshape((len(pts)//3,3))
+                pts = np.array(pts).reshape((len(pts) // 3, 3))
                 # Run the common surface definition routine
-                self.setSurfaceDefinition(pts=pts,
-                                          conn=np.array(conn, 'intc'),
-                                          faceSizes=faceSizes)
+                self.setSurfaceDefinition(pts=pts, conn=np.array(conn, "intc"), faceSizes=faceSizes)
 
             # Check if all supplied family names were actually
             # used. The user probably wants to know if a family
@@ -765,14 +765,17 @@ class USMesh(object):
             if self.comm.rank == 0:
                 if usedFams < surfaceFamilies:
                     missing = list(surfaceFamilies - usedFams)
-                    Warning("Not all specified surface families that "
-                            "were given were found the CGNS file. "
-                            "The families not found are %s."%(repr(missing)))
+                    Warning(
+                        "Not all specified surface families that "
+                        "were given were found the CGNS file. "
+                        "The families not found are %s." % (repr(missing))
+                    )
                 if len(usedFams) == 0:
-                    raise Error("No surfaces were selected. Check the names "
-                                "given in the 'specifiedSurface' option. The "
-                                "list of families is %s."%(repr(list(fullPatchNames))))
-
+                    raise Error(
+                        "No surfaces were selected. Check the names "
+                        "given in the 'specifiedSurface' option. The "
+                        "list of families is %s." % (repr(list(fullPatchNames)))
+                    )
 
         elif self.meshType.lower() == "openfoam":
 
@@ -797,7 +800,7 @@ class USMesh(object):
 
         """
 
-        symmList = self.solverOptions['symmetryPlanes']
+        symmList = self.solverOptions["symmetryPlanes"]
         if symmList is not None:
             # The user has explictly supplied symmetry planes. Use those
             pts = []
@@ -818,22 +821,22 @@ class USMesh(object):
                     else:
                         self.warp.processunstructuredpatches()
 
-                    fullConn = self.warp.cgnsgrid.surfaceconn-1
+                    fullConn = self.warp.cgnsgrid.surfaceconn - 1
                     fullPts = self.warp.cgnsgrid.surfacepoints
 
                     nPatch = self.warp.cgnsgrid.getnpatch()
                     fullPatchNames = []
                     for i in range(nPatch):
-                        fullPatchNames.append(self.warp.cgnsgrid.getsurf(i+1).strip().lower())
+                        fullPatchNames.append(self.warp.cgnsgrid.getsurf(i + 1).strip().lower())
                     symmFamilies = set()
-                    if self.solverOptions['symmetrySurfaces'] is None:
+                    if self.solverOptions["symmetrySurfaces"] is None:
                         # Use all symmetry surfaces:
                         for i in range(len(self.warp.cgnsgrid.surfaceissymm)):
                             if self.warp.cgnsgrid.surfaceissymm[i]:
                                 symmFamilies.add(fullPatchNames[i].lower())
                     else:
                         # The user has supplied a list of surface families
-                        for name in self.solverOptions['symmetrySurfaces']:
+                        for name in self.solverOptions["symmetrySurfaces"]:
                             symmFamilies.add(name.lower())
 
                 usedFams = set()
@@ -851,29 +854,30 @@ class USMesh(object):
                         curCellIndex = 0
                         curOffset = 0
                         for i in range(len(fullPatchNames)):
-                            curNodeSize = fullPatchSizes[i][0]*fullPatchSizes[i][1]
-                            curCellSize = (fullPatchSizes[i][0]-1)*(fullPatchSizes[i][1]-1)
+                            curNodeSize = fullPatchSizes[i][0] * fullPatchSizes[i][1]
+                            curCellSize = (fullPatchSizes[i][0] - 1) * (fullPatchSizes[i][1] - 1)
 
                             if fullPatchNames[i] in symmFamilies:
                                 # Keep track of the families we've actually used
                                 usedFams.add(fullPatchNames[i])
 
                                 # Determine the average normal for these points:
-                                conn =  fullConn[curCellIndex:curCellIndex+curCellSize*4] - fullConn[curCellIndex] + 1
-                                pts =   fullPts[curNodeIndex:curNodeIndex+curNodeSize*3]
-                                avgNorm = self.warp.averagenormal(
-                                    pts, conn, 4*np.ones(curCellSize, 'intc'))
+                                conn = (
+                                    fullConn[curCellIndex : curCellIndex + curCellSize * 4] - fullConn[curCellIndex] + 1
+                                )
+                                pts = fullPts[curNodeIndex : curNodeIndex + curNodeSize * 3]
+                                avgNorm = self.warp.averagenormal(pts, conn, 4 * np.ones(curCellSize, "intc"))
                                 planes.append([pts[0:3], avgNorm])
                             else:
                                 # If we skipped, we increment the offset
                                 curOffset += curNodeSize
 
-                            curNodeIndex += curNodeSize*3
-                            curCellIndex += curCellSize*4
+                            curNodeIndex += curNodeSize * 3
+                            curCellIndex += curCellSize * 4
 
                     # end for (root proc)
 
-                else: # unstructured
+                else:  # unstructured
 
                     # We won't do this in general. The issue is that
                     # each of the elements needs to be checked
@@ -883,11 +887,13 @@ class USMesh(object):
                     # slow, we'll just defer this and make the user
                     # supply the symmetry planes.
 
-                    raise Error("Automatic determine of symmetry surfaces is "
-                                "not supported for unstructured CGNS. Please "
-                                "specify the symmetry planes using the "
-                                "'symmetryPlanes' option. See the _setSymmetryConditions()"
-                               " documentation string for the option prototype.")
+                    raise Error(
+                        "Automatic determine of symmetry surfaces is "
+                        "not supported for unstructured CGNS. Please "
+                        "specify the symmetry planes using the "
+                        "'symmetryPlanes' option. See the _setSymmetryConditions()"
+                        " documentation string for the option prototype."
+                    )
 
                 # Check if all supplied family names were actually
                 # used. The user probably wants to know if a family
@@ -895,20 +901,24 @@ class USMesh(object):
                 if self.comm.rank == 0:
                     if usedFams < symmFamilies:
                         missing = list(symmFamilies - usedFams)
-                        Warning("Not all specified symm families that "
-                                "were given were found the CGNS file. "
-                                "The families not found are %s."%(repr(missing)))
+                        Warning(
+                            "Not all specified symm families that "
+                            "were given were found the CGNS file. "
+                            "The families not found are %s." % (repr(missing))
+                        )
 
-            elif self.meshType.lower() in ['openfoam', 'plot3d']:
+            elif self.meshType.lower() in ["openfoam", "plot3d"]:
 
                 # We could probably implement this at some point, but
                 # it is not critical
 
-                raise Error("Automatic determine of symmetry surfaces is "
-                            "not supported for OpenFoam or Plot3d meshes. Please "
-                            "specify the symmetry planes using the "
-                            "'symmetryPlanes' option. See the _setSymmetryConditions()"
-                            " documentation string for the option prototype.")
+                raise Error(
+                    "Automatic determine of symmetry surfaces is "
+                    "not supported for OpenFoam or Plot3d meshes. Please "
+                    "specify the symmetry planes using the "
+                    "'symmetryPlanes' option. See the _setSymmetryConditions()"
+                    " documentation string for the option prototype."
+                )
 
             # Now we have a list of planes. We have to reduce them to the
             # set of independent planes. This is tricky since you can have
@@ -929,7 +939,7 @@ class USMesh(object):
                 # first plane up to a tolerance.
 
                 d = p2 - p1
-                d1 = p2 - np.dot(d, n1)*n1
+                d1 = p2 - np.dot(d, n1) * n1
 
                 if np.linalg.norm(d1 - p2) / (np.linalg.norm(d) + 1e-30) > 1e-8:
                     return False
@@ -937,15 +947,14 @@ class USMesh(object):
                 return True
 
             uniquePlanes = []
-            flagged = np.zeros(len(planes), 'intc')
+            flagged = np.zeros(len(planes), "intc")
             for i in range(len(planes)):
                 if not flagged[i]:
                     uniquePlanes.append(planes[i])
                     curPlane = planes[i]
                     # Loop over remainder to check:
-                    for j in range(i+1, len(planes)):
-                        if checkPlane(curPlane[0], curPlane[1],
-                                      planes[j][0], planes[j][1]):
+                    for j in range(i + 1, len(planes)):
+                        if checkPlane(curPlane[0], curPlane[1], planes[j][0], planes[j][1]):
                             flagged[j] = 1
 
             # Before we return, reset the point for each plane to be as
@@ -961,7 +970,7 @@ class USMesh(object):
 
                 p2 = np.zeros(3)
                 d = p2 - p
-                pstar = p2 - np.dot(d, n)*n
+                pstar = p2 - np.dot(d, n) * n
 
                 normals.append(n)
                 pts.append(pstar)
@@ -971,45 +980,53 @@ class USMesh(object):
 
         # Let the user know what they are:
         if self.comm.rank == 0:
-            print ('+-------------------- Symmetry Planes -------------------+')
-            print ('|           Point                        Normal          |')
+            print("+-------------------- Symmetry Planes -------------------+")
+            print("|           Point                        Normal          |")
             for i in range(len(pts)):
-                print ('| (%7.3f %7.3f %7.3f)    (%7.3f %7.3f %7.3f) |'%(
-                    np.real(pts[i][0]), np.real(pts[i][1]), np.real(pts[i][2]),
-                    np.real(normals[i][0]), np.real(normals[i][1]), np.real(normals[i][2])))
-            print ('+--------------------------------------------------------+')
+                print(
+                    "| (%7.3f %7.3f %7.3f)    (%7.3f %7.3f %7.3f) |"
+                    % (
+                        np.real(pts[i][0]),
+                        np.real(pts[i][1]),
+                        np.real(pts[i][2]),
+                        np.real(normals[i][0]),
+                        np.real(normals[i][1]),
+                        np.real(normals[i][2]),
+                    )
+                )
+            print("+--------------------------------------------------------+")
 
         # Now set the data into fortran.
         self.warp.setsymmetryplanes(pts.T, normals.T)
 
-# =========================================================================
-#                  Local OpenFoam Functions
-# =========================================================================
+    # =========================================================================
+    #                  Local OpenFoam Functions
+    # =========================================================================
 
     def _computeOFConn(self):
 
-        '''
+        """
         The user has specified an openfoam mesh. Loop through the mesh data and
         create the arrays necessary to initialize the warping.
-        '''
+        """
 
         # Finally create the underlying data structure:
         faceSizes = []
         faceConn = []
         pts = []
-        x0 = self.OFData['x0']
-        faces = self.OFData['faces']
+        x0 = self.OFData["x0"]
+        faces = self.OFData["faces"]
         connCount = 0
 
-        for bName in self.OFData['boundaries']:
-            bType = self.OFData['boundaries'][bName]['type'].lower()
+        for bName in self.OFData["boundaries"]:
+            bType = self.OFData["boundaries"][bName]["type"].lower()
 
-            if bType in ['patch', 'wall','slip']:
+            if bType in ["patch", "wall", "slip"]:
                 # Apparently openfoam will list boundaries with zero
                 # faces on them:
-                nFace = len(self.OFData['boundaries'][bName]['faces'])
+                nFace = len(self.OFData["boundaries"][bName]["faces"])
                 if nFace > 0:
-                    for iFace in self.OFData['boundaries'][bName]['faces']:
+                    for iFace in self.OFData["boundaries"][bName]["faces"]:
                         face = faces[iFace]
                         nNodes = len(face)
                         # Pull out the 'len(face)' nodes from x0.
@@ -1019,18 +1036,17 @@ class USMesh(object):
                         faceConn.extend(range(connCount, connCount + nNodes))
                         connCount += nNodes
 
-
         pts = np.array(pts)
         faceConn = np.array(faceConn)
-        return  faceSizes, faceConn, pts
+        return faceSizes, faceConn, pts
 
     def _readOFGrid(self, caseDir):
         """
         Read in the mesh points and connectivity from the polyMesh
         directory.
 
-        NOTE: To ensure a consistant starting point in DAFoam. One needs to copy 
-        points_orig to points in pyDAFoam before initializing USMesh. This function 
+        NOTE: To ensure a consistant starting point in DAFoam. One needs to copy
+        points_orig to points in pyDAFoam before initializing USMesh. This function
         will no longer perform this copying!
 
         Parameters
@@ -1046,58 +1062,56 @@ class USMesh(object):
 
         # Copy the reference points file to points to ensure
         # consistant starting point
-        self.OFData = ofm.getFileNames(caseDir,comm=self.comm)
+        self.OFData = ofm.getFileNames(caseDir, comm=self.comm)
 
         # Read in the volume points
-        self.OFData['x0'] = ofm.readVolumeMeshPoints()
+        self.OFData["x0"] = ofm.readVolumeMeshPoints()
 
         # Read the face info for the mesh
-        self.OFData['faces'] = ofm.readFaceInfo()
+        self.OFData["faces"] = ofm.readFaceInfo()
 
         # Read the boundary info
-        self.OFData['boundaries'] = ofm.readBoundaryInfo(self.OFData['faces'])
+        self.OFData["boundaries"] = ofm.readBoundaryInfo(self.OFData["faces"])
 
         # Read the cell info for the mesh
-        self.OFData['owner'],self.OFData['neighbour'] = ofm.readCellInfo()
+        self.OFData["owner"], self.OFData["neighbour"] = ofm.readCellInfo()
 
         # Create the internal structures for volume mesh
-        x0 = self.OFData['x0']
-        surfaceNodes = np.zeros(len(x0), 'intc') # this isn't used internally any more
+        x0 = self.OFData["x0"]
 
         self.warp.createcommongrid(x0.T)
 
         ofm = None
 
-
-# =========================================================================
-#                     Utility functions
-# =========================================================================
+    # =========================================================================
+    #                     Utility functions
+    # =========================================================================
 
     def _setMeshOptions(self):
-        """ Private function to set the options currently in
+        """Private function to set the options currently in
         self.solverOptions to the corresponding place in Fortran"""
         o = self.solverOptions
-        self.warp.gridinput.ldeffact = o['LdefFact']
-        self.warp.gridinput.alpha = o['alpha']
-        self.warp.gridinput.aexp = o['aExp']
-        self.warp.gridinput.bexp = o['bExp']
-        self.warp.gridinput.symmtol = o['symmTol']
-        self.warp.gridinput.userotations = o['useRotations']
-        self.warp.gridinput.zerocornerrotations = o['zeroCornerRotations']
-        self.warp.gridinput.cornerangle = o['cornerAngle']
-        self.warp.gridinput.errtol = o['errTol']
-        self.warp.kd_tree.bucket_size = o['bucketSize']
-        if o['evalMode'].lower() == 'fast':
+        self.warp.gridinput.ldeffact = o["LdefFact"]
+        self.warp.gridinput.alpha = o["alpha"]
+        self.warp.gridinput.aexp = o["aExp"]
+        self.warp.gridinput.bexp = o["bExp"]
+        self.warp.gridinput.symmtol = o["symmTol"]
+        self.warp.gridinput.userotations = o["useRotations"]
+        self.warp.gridinput.zerocornerrotations = o["zeroCornerRotations"]
+        self.warp.gridinput.cornerangle = o["cornerAngle"]
+        self.warp.gridinput.errtol = o["errTol"]
+        self.warp.kd_tree.bucket_size = o["bucketSize"]
+        if o["evalMode"].lower() == "fast":
             self.warp.gridinput.evalmode = self.warp.gridinput.eval_fast
-        elif o['evalMode'].lower() == 'exact':
+        elif o["evalMode"].lower() == "exact":
             self.warp.gridinput.evalmode = self.warp.gridinput.eval_exact
 
     def _checkOptions(self, solverOptions):
-        """ Check the solver options against the default ones and add
-        option iff it is NOT in solverOptions """
+        """Check the solver options against the default ones and add
+        option iff it is NOT in solverOptions"""
 
         for key in self.solverOptionsDefault.keys():
-            if not key in solverOptions.keys():
+            if key not in solverOptions.keys():
                 solverOptions[key] = self.solverOptionsDefault[key]
             else:
                 self.solverOptionsDefault[key] = solverOptions[key]
@@ -1105,10 +1119,12 @@ class USMesh(object):
         # Print a couple of warnings about aExp and bExp which are not
         # fully implemented.
         if self.comm.rank == 0:
-            if self.solverOptions['aExp'] != 3.0 or self.solverOptions['bExp'] != 5.0:
-                Warning('The aExp and bExp options are currently not implemented '
-                        'and will always use their default values of aExp=3.0 and '
-                        'bExp=5.0')
+            if self.solverOptions["aExp"] != 3.0 or self.solverOptions["bExp"] != 5.0:
+                Warning(
+                    "The aExp and bExp options are currently not implemented "
+                    "and will always use their default values of aExp=3.0 and "
+                    "bExp=5.0"
+                )
 
         return solverOptions
 
@@ -1117,16 +1133,16 @@ class USMesh(object):
         the stdout on the root processor
         """
         if self.comm.rank == 0:
-            print('+---------------------------------------+')
-            print('|     All IDWarp Options:               |')
-            print('+---------------------------------------+')
+            print("+---------------------------------------+")
+            print("|     All IDWarp Options:               |")
+            print("+---------------------------------------+")
             pprint(self.solverOptions)
 
     def _processFortranStringArray(self, strArray):
         """Getting arrays of strings out of Fortran can be kinda nasty. This
         takes the array and returns a nice python list of strings"""
         shp = strArray.shape
-        arr = strArray.reshape((shp[1],shp[0]), order='F')
+        arr = strArray.reshape((shp[1], shp[0]), order="F")
         tmp = []
 
         for i in range(arr.shape[1]):

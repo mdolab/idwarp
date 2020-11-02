@@ -1,19 +1,20 @@
 # this is a simple script to test the IDWarp module
+import numpy as np
 from mpi4py import MPI
 from idwarp import USMesh
 
 options = {
-    'fileType':'CGNS',
-    'gridFile':'../../input_files/o_mesh.cgns',
-    'aExp': 3.0,
-    'bExp': 5.0,
-    'LdefFact':100.0,
-    'alpha':0.25,
-    'errTol':0.0001,
-    'evalMode':'fast',
-    'symmTol':1e-6,
-    'useRotations':True,
-    'bucketSize':8,
+    "fileType": "CGNS",
+    "gridFile": "../../input_files/o_mesh.cgns",
+    "aExp": 3.0,
+    "bExp": 5.0,
+    "LdefFact": 100.0,
+    "alpha": 0.25,
+    "errTol": 0.0001,
+    "evalMode": "fast",
+    "symmTol": 1e-6,
+    "useRotations": True,
+    "bucketSize": 8,
 }
 
 # Create the mesh object
@@ -32,9 +33,7 @@ mesh.setSurfaceCoordinates(new_coords)
 mesh.warpMesh()
 
 # Write the new grid file.
-mesh.writeGrid('warped.cgns')
-
-import numpy as np
+mesh.writeGrid("warped.cgns")
 
 np.random.seed(314)
 dXsd = np.random.random((1439, 3))
@@ -47,7 +46,7 @@ dXsb = mesh.getdXs()
 dotProd = 0.0
 dotProd += np.sum(dXvWarpd * dXvWarpb)
 dotProd -= np.sum(dXsb * dXsd)
-print('dotProd should be zero:', dotProd)
+print("dotProd should be zero:", dotProd)
 print()
 
 print(mesh.getdXs())
