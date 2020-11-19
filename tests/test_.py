@@ -67,7 +67,6 @@ class Test(unittest.TestCase):
     N_PROCS = 1
 
     def setUp(self):
-        self.ref_file = os.path.join(baseDir, "ref/test_.ref")
 
         # TODO keep this explicit set of options? Or use the default ones?
         self.defOpts = {
@@ -86,10 +85,11 @@ class Test(unittest.TestCase):
 
     def train_comesh(self, train=True):
         self.test_comesh(train=train)
-        # handler.writeRef()
 
     def test_comesh(self, train=False):
-        with BaseRegTest(self.ref_file, train=train) as handler:
+        ref_file = os.path.join(baseDir, "ref/test_comesh.ref")
+        with BaseRegTest(ref_file, train=train) as handler:
+            # Test the mdo tutorial co mesh
             test_name = "Test_co_mesh"
             file_name = os.path.join(baseDir, "../input_files/co_mesh.cgns")
 
@@ -99,5 +99,18 @@ class Test(unittest.TestCase):
 
             eval_warp(handler=handler, test_name=test_name, meshOptions=meshOptions)
 
-            if train is True:
-                handler.writeRef()
+    def train_omesh(self, train=True):
+        self.test_omesh(train=train)
+
+    def test_omesh(self, train=False):
+        ref_file = os.path.join(baseDir, "ref/test_omesh.ref")
+        with BaseRegTest(ref_file, train=train) as handler:
+            # Test the mdo tutorial o mesh
+            test_name = "Test_o_mesh"
+            file_name = file_name = os.path.join(baseDir, "../input_files/o_mesh.cgns")
+
+            meshOptions = copy.deepcopy(self.defOpts)
+
+            meshOptions.update({"gridFile": file_name, "fileType": "cgns"})
+
+            eval_warp(handler=handler, test_name=test_name, meshOptions=meshOptions)
