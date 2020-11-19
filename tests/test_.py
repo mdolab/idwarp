@@ -33,9 +33,15 @@ def eval_warp(handler, test_name, meshOptions):
 
     new_coords = coords0.copy()
     # Do a shearing sweep deflection:
-    for i in range(len(coords0)):
-        span = coords0[i, 2]
-        new_coords[i, 0] += 0.05 * span
+    if test_name == "Test_inflate":
+        for i in range(len(coords0)):
+            new_coords[i, 0] *= 1.1
+            new_coords[i, 1] *= 1.2
+            new_coords[i, 1] *= 1.3
+    else:
+        for i in range(len(coords0)):
+            span = coords0[i, 2]
+            new_coords[i, 0] += 0.05 * span
 
     # Reset the newly computed surface coordiantes
     mesh.setSurfaceCoordinates(new_coords)
@@ -107,10 +113,53 @@ class Test(unittest.TestCase):
         with BaseRegTest(ref_file, train=train) as handler:
             # Test the mdo tutorial o mesh
             test_name = "Test_o_mesh"
-            file_name = file_name = os.path.join(baseDir, "../input_files/o_mesh.cgns")
+            file_name = os.path.join(baseDir, "../input_files/o_mesh.cgns")
 
             meshOptions = copy.deepcopy(self.defOpts)
 
             meshOptions.update({"gridFile": file_name, "fileType": "cgns"})
+
+            eval_warp(handler=handler, test_name=test_name, meshOptions=meshOptions)
+
+    def train_hmesh(self, train=True):
+        self.test_hmesh(train=train)
+
+    def test_hmesh(self, train=False):
+        ref_file = os.path.join(baseDir, "ref/test_hmesh.ref")
+        with BaseRegTest(ref_file, train=train) as handler:
+            # Test the MDO tutorial h mesh
+            test_name = "Test_h_mesh"
+            file_name = os.path.join(baseDir, "../input_files/mdo_tutorial_face_bcs.cgns")
+
+            meshOptions = copy.deepcopy(self.defOpts)
+
+            meshOptions.update(
+                {
+                    "gridFile": file_name,
+                    "fileType": "cgns",
+                    "symmetryPlanes": [[[0, 0, 0], [0, 0, 1]]],
+                }
+            )
+
+            eval_warp(handler=handler, test_name=test_name, meshOptions=meshOptions)
+
+    def train_inflate(self, train=True):
+        self.test_inflate(train=train)
+
+    def test_inflate(self, train=False):
+        ref_file = os.path.join(baseDir, "ref/test_inflate.ref")
+        with BaseRegTest(ref_file, train=train) as handler:
+            # Test the MDO tutorial h mesh
+            test_name = "Test_inflate"
+            file_name = os.path.join(baseDir, "../input_files/symm_block.cgns")
+
+            meshOptions = copy.deepcopy(self.defOpts)
+
+            meshOptions.update(
+                {
+                    "gridFile": file_name,
+                    "fileType": "cgns",
+                }
+            )
 
             eval_warp(handler=handler, test_name=test_name, meshOptions=meshOptions)
