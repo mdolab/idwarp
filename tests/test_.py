@@ -20,6 +20,48 @@ from baseclasses import BaseRegTest
 baseDir = os.path.dirname(os.path.abspath(__file__))
 
 
+def eval_warp(handler, test_name, meshOptions):
+    # Create warping object
+    mesh = USMesh(options=meshOptions)
+
+    # Extract Surface Coordinates
+    coords0 = mesh.getSurfaceCoordinates()
+
+    vCoords = mesh.getCommonGrid()
+    val = MPI.COMM_WORLD.reduce(numpy.sum(vCoords.flatten()), op=MPI.SUM)
+    handler.root_add_val(f"{test_name} - Sum of vCoords Inital:", val, tol=1e-8)
+
+    new_coords = coords0.copy()
+    # Do a shearing sweep deflection:
+    for i in range(len(coords0)):
+        span = coords0[i, 2]
+        new_coords[i, 0] += 0.05 * span
+
+    # Reset the newly computed surface coordiantes
+    mesh.setSurfaceCoordinates(new_coords)
+    mesh.warpMesh()
+
+    # Get the sum of the warped coordinates
+    vCoords = mesh.getWarpGrid()
+
+    val = MPI.COMM_WORLD.reduce(numpy.sum(vCoords.flatten()), op=MPI.SUM)
+    handler.root_add_val(f"{test_name} - Sum of vCoords Warped:", val, tol=1e-8)
+
+    # Create a dXv vector to do test the mesh warping with:
+    dXv_warp = numpy.linspace(0, 1.0, mesh.warp.griddata.warpmeshdof)
+
+    # Computing Warp Derivatives
+    mesh.warpDeriv(dXv_warp, solverVec=False)
+    dXs = mesh.getdXs()
+
+    val = MPI.COMM_WORLD.reduce(numpy.sum(dXs.flatten()), op=MPI.SUM)
+    handler.root_add_val(f"{test_name} - Sum of dxs:", val, tol=1e-8)
+
+    # Verifying Warp Deriv
+    # TODO: Do we want to keep / exploit this automatic deriv check?
+    mesh.verifyWarpDeriv(dXv_warp, solverVec=False, dofStart=0, dofEnd=5)
+
+
 class Test(unittest.TestCase):
 
     N_PROCS = 1
@@ -54,45 +96,8 @@ class Test(unittest.TestCase):
             meshOptions = copy.deepcopy(self.defOpts)
 
             meshOptions.update({"gridFile": file_name, "fileType": "cgns"})
-            # Create warping object
-            mesh = USMesh(options=meshOptions)
 
-            # Extract Surface Coordinates
-            coords0 = mesh.getSurfaceCoordinates()
-
-            vCoords = mesh.getCommonGrid()
-            val = MPI.COMM_WORLD.reduce(numpy.sum(vCoords.flatten()), op=MPI.SUM)
-            handler.root_add_val(f"{test_name} - Sum of vCoords Inital:", val, tol=1e-8)
-
-            new_coords = coords0.copy()
-            # Do a shearing sweep deflection:
-            for i in range(len(coords0)):
-                span = coords0[i, 2]
-                new_coords[i, 0] += 0.05 * span
-
-            # Reset the newly computed surface coordiantes
-            mesh.setSurfaceCoordinates(new_coords)
-            mesh.warpMesh()
-
-            # Get the sum of the warped coordinates
-            vCoords = mesh.getWarpGrid()
-
-            val = MPI.COMM_WORLD.reduce(numpy.sum(vCoords.flatten()), op=MPI.SUM)
-            handler.root_add_val(f"{test_name} - Sum of vCoords Warped:", val, tol=1e-8)
-
-            # Create a dXv vector to do test the mesh warping with:
-            dXv_warp = numpy.linspace(0, 1.0, mesh.warp.griddata.warpmeshdof)
-
-            # Computing Warp Derivatives
-            mesh.warpDeriv(dXv_warp, solverVec=False)
-            dXs = mesh.getdXs()
-
-            val = MPI.COMM_WORLD.reduce(numpy.sum(dXs.flatten()), op=MPI.SUM)
-            handler.root_add_val(f"{test_name} - Sum of dxs:", val, tol=1e-8)
-
-            # Verifying Warp Deriv
-            # TODO: Do we want to keep / exploit this automatic deriv check?
-            mesh.verifyWarpDeriv(dXv_warp, solverVec=False, dofStart=0, dofEnd=5)
+            eval_warp(handler=handler, test_name=test_name, meshOptions=meshOptions)
 
             if train is True:
                 handler.writeRef()
