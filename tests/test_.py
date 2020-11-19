@@ -8,7 +8,6 @@ import copy
 # External Python modules
 # =============================================================================
 import numpy
-from numpy.testing import assert_allclose
 import unittest
 from mpi4py import MPI
 
@@ -28,6 +27,7 @@ class Test(unittest.TestCase):
     def setUp(self):
         self.ref_file = os.path.join(baseDir, "ref/test_.ref")
 
+        # TODO keep this explicit set of options? Or use the default ones?
         self.defOpts = {
             "gridFile": None,
             "aExp": 3.0,
@@ -75,7 +75,6 @@ class Test(unittest.TestCase):
             mesh.warpMesh()
 
             # Get the sum of the warped coordinates
-            # vCoords = mesh.getSolverGrid()
             vCoords = mesh.getWarpGrid()
 
             val = MPI.COMM_WORLD.reduce(numpy.sum(vCoords.flatten()), op=MPI.SUM)
@@ -83,16 +82,16 @@ class Test(unittest.TestCase):
 
             # Create a dXv vector to do test the mesh warping with:
             dXv_warp = numpy.linspace(0, 1.0, mesh.warp.griddata.warpmeshdof)
-            # if MPI.COMM_WORLD.rank == 0:
-            #     print("Computing Warp Deriv")
+
+            # Computing Warp Derivatives
             mesh.warpDeriv(dXv_warp, solverVec=False)
             dXs = mesh.getdXs()
 
             val = MPI.COMM_WORLD.reduce(numpy.sum(dXs.flatten()), op=MPI.SUM)
             handler.root_add_val(f"{test_name} - Sum of dxs:", val, tol=1e-8)
 
-            # if MPI.COMM_WORLD.rank == 0:
-            #     print("Verifying Warp Deriv")
+            # Verifying Warp Deriv
+            # TODO: Do we want to keep / exploit this automatic deriv check?
             mesh.verifyWarpDeriv(dXv_warp, solverVec=False, dofStart=0, dofEnd=5)
 
             if train is True:
