@@ -40,7 +40,7 @@ def eval_warp(handler, test_name, meshOptions):
         for i in range(len(coords0)):
             new_coords[i, 0] *= 1.1
             new_coords[i, 1] *= 1.2
-            new_coords[i, 1] *= 1.3  # TODO this should be [i,2], right?
+            new_coords[i, 2] *= 1.3  # TODO this should be [i,2], right?
     else:
         # Do a shearing sweep deflection:
         for i in range(len(coords0)):
