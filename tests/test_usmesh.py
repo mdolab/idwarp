@@ -69,10 +69,10 @@ def eval_warp(handler, test_name, meshOptions):
     mesh.verifyWarpDeriv(dXv_warp, solverVec=False, dofStart=0, dofEnd=5)
 
 
-test_params = [{"N_PROCS": 1, "ref_app": ""}, {"N_PROCS": 2, "ref_app": "_par"}]
+test_params = [{"N_PROCS": 1}, {"N_PROCS": 2, "name": "parallel"}]
 
 
-@parameterized_class(test_params[0], test_params[1])
+@parameterized_class(test_params)
 class Test_USmesh(unittest.TestCase):
 
     N_PROCS = 1
@@ -92,6 +92,11 @@ class Test_USmesh(unittest.TestCase):
             "bucketSize": 8,
             "fileType": None,
         }
+        self.ref_app = ""
+
+        if self.N_PROCS > 1:
+            self.ref_app = "_par"
+            print(self.ref_app)
 
     def train_comesh(self, train=True):
         self.test_comesh(train=train)
