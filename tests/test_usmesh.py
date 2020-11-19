@@ -113,7 +113,10 @@ class Test_USmesh(unittest.TestCase):
             self.ref_app = "_par"
 
     def train_comesh(self, train=True):
-        self.test_comesh(train=train)
+        try:
+            self.test_comesh(train=train)
+        except AttributeError:
+            raise unittest.SkipTest()
 
     def test_comesh(self, train=False):
         ref_file = os.path.join(baseDir, f"ref/test_comesh{self.ref_app}.ref")
@@ -130,7 +133,10 @@ class Test_USmesh(unittest.TestCase):
             eval_warp(handler=handler, test_name=test_name, meshOptions=meshOptions)
 
     def train_omesh(self, train=True):
-        self.test_omesh(train=train)
+        try:
+            self.test_omesh(train=train)
+        except AttributeError:
+            raise unittest.SkipTest()
 
     def test_omesh(self, train=False):
         ref_file = os.path.join(baseDir, f"ref/test_omesh{self.ref_app}.ref")
@@ -147,7 +153,10 @@ class Test_USmesh(unittest.TestCase):
             eval_warp(handler=handler, test_name=test_name, meshOptions=meshOptions)
 
     def train_sym_mesh(self, train=True):
-        self.test_sym_mesh(train=train)
+        try:
+            self.test_sym_mesh(train=train)
+        except AttributeError:
+            raise unittest.SkipTest()
 
     def test_sym_mesh(self, train=False):
         ref_file = os.path.join(baseDir, f"ref/test_sym_mesh{self.ref_app}.ref")
@@ -170,7 +179,10 @@ class Test_USmesh(unittest.TestCase):
             eval_warp(handler=handler, test_name=test_name, meshOptions=meshOptions)
 
     def train_inflate_cube(self, train=True):
-        self.test_inflate_cube(train=train)
+        try:
+            self.test_inflate_cube(train=train)
+        except AttributeError:
+            raise unittest.SkipTest()
 
     def test_inflate_cube(self, train=False):
         ref_file = os.path.join(baseDir, f"ref/test_inflate_cube{self.ref_app}.ref")
