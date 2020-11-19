@@ -33,7 +33,7 @@ def eval_warp(handler, test_name, meshOptions):
 
     new_coords = coords0.copy()
     # Do a shearing sweep deflection:
-    if test_name == "Test_inflate":
+    if test_name == "Test_inflate_cube":
         for i in range(len(coords0)):
             new_coords[i, 0] *= 1.1
             new_coords[i, 1] *= 1.2
@@ -68,7 +68,7 @@ def eval_warp(handler, test_name, meshOptions):
     mesh.verifyWarpDeriv(dXv_warp, solverVec=False, dofStart=0, dofEnd=5)
 
 
-class Test(unittest.TestCase):
+class Test_USmesh(unittest.TestCase):
 
     N_PROCS = 1
 
@@ -121,11 +121,11 @@ class Test(unittest.TestCase):
 
             eval_warp(handler=handler, test_name=test_name, meshOptions=meshOptions)
 
-    def train_hmesh(self, train=True):
-        self.test_hmesh(train=train)
+    def train_sym_mesh(self, train=True):
+        self.test_sym_mesh(train=train)
 
-    def test_hmesh(self, train=False):
-        ref_file = os.path.join(baseDir, "ref/test_hmesh.ref")
+    def test_sym_mesh(self, train=False):
+        ref_file = os.path.join(baseDir, "ref/test_sym_mesh.ref")
         with BaseRegTest(ref_file, train=train) as handler:
             # Test the MDO tutorial h mesh
             test_name = "Test_h_mesh"
@@ -143,14 +143,14 @@ class Test(unittest.TestCase):
 
             eval_warp(handler=handler, test_name=test_name, meshOptions=meshOptions)
 
-    def train_inflate(self, train=True):
-        self.test_inflate(train=train)
+    def train_inflate_cube(self, train=True):
+        self.test_inflate_cube(train=train)
 
-    def test_inflate(self, train=False):
-        ref_file = os.path.join(baseDir, "ref/test_inflate.ref")
+    def test_inflate_cube(self, train=False):
+        ref_file = os.path.join(baseDir, "ref/test_inflate_cube.ref")
         with BaseRegTest(ref_file, train=train) as handler:
             # Test the MDO tutorial h mesh
-            test_name = "Test_inflate"
+            test_name = "Test_inflate_cube"
             file_name = os.path.join(baseDir, "../input_files/symm_block.cgns")
 
             meshOptions = copy.deepcopy(self.defOpts)
