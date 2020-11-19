@@ -10,6 +10,7 @@ import copy
 import numpy
 import unittest
 from mpi4py import MPI
+from parameterized import parameterized_class
 
 # =============================================================================
 # Extension modules
@@ -68,12 +69,15 @@ def eval_warp(handler, test_name, meshOptions):
     mesh.verifyWarpDeriv(dXv_warp, solverVec=False, dofStart=0, dofEnd=5)
 
 
+test_params = [{"N_PROCS": 1, "ref_app": ""}, {"N_PROCS": 2, "ref_app": "_par"}]
+
+
+@parameterized_class(test_params[0], test_params[1])
 class Test_USmesh(unittest.TestCase):
 
     N_PROCS = 1
 
     def setUp(self):
-
         # TODO keep this explicit set of options? Or use the default ones?
         self.defOpts = {
             "gridFile": None,
@@ -93,7 +97,8 @@ class Test_USmesh(unittest.TestCase):
         self.test_comesh(train=train)
 
     def test_comesh(self, train=False):
-        ref_file = os.path.join(baseDir, "ref/test_comesh.ref")
+        print(self.ref_app)
+        ref_file = os.path.join(baseDir, f"ref/test_comesh{self.ref_app}.ref")
         with BaseRegTest(ref_file, train=train) as handler:
             # Test the mdo tutorial co mesh
             test_name = "Test_co_mesh"
@@ -109,7 +114,7 @@ class Test_USmesh(unittest.TestCase):
         self.test_omesh(train=train)
 
     def test_omesh(self, train=False):
-        ref_file = os.path.join(baseDir, "ref/test_omesh.ref")
+        ref_file = os.path.join(baseDir, f"ref/test_omesh{self.ref_app}.ref")
         with BaseRegTest(ref_file, train=train) as handler:
             # Test the mdo tutorial o mesh
             test_name = "Test_o_mesh"
@@ -125,7 +130,7 @@ class Test_USmesh(unittest.TestCase):
         self.test_sym_mesh(train=train)
 
     def test_sym_mesh(self, train=False):
-        ref_file = os.path.join(baseDir, "ref/test_sym_mesh.ref")
+        ref_file = os.path.join(baseDir, f"ref/test_sym_mesh{self.ref_app}.ref")
         with BaseRegTest(ref_file, train=train) as handler:
             # Test the MDO tutorial h mesh
             test_name = "Test_h_mesh"
@@ -147,7 +152,7 @@ class Test_USmesh(unittest.TestCase):
         self.test_inflate_cube(train=train)
 
     def test_inflate_cube(self, train=False):
-        ref_file = os.path.join(baseDir, "ref/test_inflate_cube.ref")
+        ref_file = os.path.join(baseDir, f"ref/test_inflate_cube{self.ref_app}.ref")
         with BaseRegTest(ref_file, train=train) as handler:
             # Test the MDO tutorial h mesh
             test_name = "Test_inflate_cube"
