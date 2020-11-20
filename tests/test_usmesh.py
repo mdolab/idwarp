@@ -26,7 +26,7 @@ def eval_warp(handler, test_name, meshOptions, iscomplex):
     if iscomplex is True:
         # Checking if the complex verision of the code has been built:
         try:
-            from idwarp import idwarp_cso  # noqa: F401
+            from idwarp import idwarp_cs  # noqa: F401
             h = 1e-40
             mesh = USMesh_C(options=meshOptions, debug=True)
         except ImportError:
