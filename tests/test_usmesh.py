@@ -24,8 +24,13 @@ baseDir = os.path.dirname(os.path.abspath(__file__))  # Path to current folder
 def eval_warp(handler, test_name, meshOptions, iscomplex):
     # --- Create warping object ---
     if iscomplex is True:
-        h = 1e-40
-        mesh = USMesh_C(options=meshOptions, debug=True)
+        # Checking if the complex verision of the code has been built:
+        try:
+            from idwarp import idwarp_cso  # noqa: F401
+            h = 1e-40
+            mesh = USMesh_C(options=meshOptions, debug=True)
+        except ImportError:
+            raise unittest.SkipTest('Skipping because you do not have complex idwarp compiled')
     else:
         mesh = USMesh(options=meshOptions)
 
@@ -64,7 +69,7 @@ def eval_warp(handler, test_name, meshOptions, iscomplex):
     # --- Create a dXv vector to do test the mesh warping with ---
     dXv_warp = numpy.linspace(0, 1.0, mesh.warp.griddata.warpmeshdof)
 
-    if iscomplex is False:
+    if not iscomplex:
         # --- Computing Warp Derivatives ---
         mesh.warpDeriv(dXv_warp, solverVec=False)
         dXs = mesh.getdXs()
