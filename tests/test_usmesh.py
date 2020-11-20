@@ -15,15 +15,19 @@ from parameterized import parameterized_class
 # =============================================================================
 # Extension modules
 # =============================================================================
-from idwarp import USMesh
+from idwarp import USMesh, USMesh_C
 from baseclasses import BaseRegTest
 
 baseDir = os.path.dirname(os.path.abspath(__file__))  # Path to current folder
 
 
-def eval_warp(handler, test_name, meshOptions):
+def eval_warp(handler, test_name, meshOptions, iscomplex):
     # --- Create warping object ---
-    mesh = USMesh(options=meshOptions)
+    if iscomplex is True:
+        h = 1e-40
+        mesh = USMesh_C(options=meshOptions, debug=True)
+    else:
+        mesh = USMesh(options=meshOptions)
 
     # --- Extract Surface Coordinates ---
     coords0 = mesh.getSurfaceCoordinates()
@@ -60,20 +64,35 @@ def eval_warp(handler, test_name, meshOptions):
     # --- Create a dXv vector to do test the mesh warping with ---
     dXv_warp = numpy.linspace(0, 1.0, mesh.warp.griddata.warpmeshdof)
 
-    # --- Computing Warp Derivatives ---
-    mesh.warpDeriv(dXv_warp, solverVec=False)
-    dXs = mesh.getdXs()
+    if iscomplex is False:
+        # --- Computing Warp Derivatives ---
+        mesh.warpDeriv(dXv_warp, solverVec=False)
+        dXs = mesh.getdXs()
 
-    val = MPI.COMM_WORLD.reduce(numpy.sum(dXs.flatten()), op=MPI.SUM)
+        val = MPI.COMM_WORLD.reduce(numpy.sum(dXs.flatten()), op=MPI.SUM)
+
+        # --- Verifying Warp Deriv ---
+        mesh.verifyWarpDeriv(dXv_warp, solverVec=False, dofStart=0, dofEnd=5)
+
+    else:
+        # add a complex perturbation on all surface nodes simultaneously:
+        for i in range(len(coords0)):
+            new_coords[i, :] += h * 1j
+
+        # Reset the newly computed surface coordiantes
+        mesh.setSurfaceCoordinates(new_coords)
+        mesh.warpMesh()
+
+        vCoords = mesh.getWarpGrid()
+        deriv = numpy.imag(vCoords) / h
+        deriv = numpy.dot(dXv_warp, deriv)
+        val = MPI.COMM_WORLD.reduce(numpy.sum(deriv), op=MPI.SUM)
+
     handler.root_add_val(f"{test_name} - Sum of dxs:", val, tol=1e-8)
-
-    # --- Verifying Warp Deriv ---
-    # TODO: Do we want to keep / exploit this automatic deriv check?
-    mesh.verifyWarpDeriv(dXv_warp, solverVec=False, dofStart=0, dofEnd=5)
 
 
 # --- Set up variables to be overridden at every parametrized_class loop ---
-test_params = [{"N_PROCS": 1}, {"N_PROCS": 2, "name": "parallel"}]
+test_params = [{"N_PROCS": 1, "iscomplex": False}, {"N_PROCS": 2, "name": "parallel", "iscomplex": False}, {"N_PROCS": 1, "name": "complex", "iscomplex": True}, {"N_PROCS": 2, "name": "parallel_complex", "iscomplex": True}]
 
 
 @parameterized_class(test_params)
@@ -90,7 +109,6 @@ class Test_USmesh(unittest.TestCase):
     N_PROCS = 1
 
     def setUp(self):
-        # TODO keep this explicit set of options? Or use the default ones?
         # --- Reference options to be used by every test ---
         self.defOpts = {
             "gridFile": None,
@@ -130,7 +148,7 @@ class Test_USmesh(unittest.TestCase):
             meshOptions.update({"gridFile": file_name, "fileType": "cgns"})
 
             # --- Call shared computation --
-            eval_warp(handler=handler, test_name=test_name, meshOptions=meshOptions)
+            eval_warp(handler=handler, test_name=test_name, meshOptions=meshOptions, iscomplex=self.iscomplex)
 
     def train_omesh(self, train=True):
         try:
@@ -150,7 +168,7 @@ class Test_USmesh(unittest.TestCase):
             meshOptions.update({"gridFile": file_name, "fileType": "cgns"})
 
             # --- Call shared computation ---
-            eval_warp(handler=handler, test_name=test_name, meshOptions=meshOptions)
+            eval_warp(handler=handler, test_name=test_name, meshOptions=meshOptions, iscomplex=self.iscomplex)
 
     def train_sym_mesh(self, train=True):
         try:
@@ -176,7 +194,7 @@ class Test_USmesh(unittest.TestCase):
             )
 
             # --- Call shared computation --
-            eval_warp(handler=handler, test_name=test_name, meshOptions=meshOptions)
+            eval_warp(handler=handler, test_name=test_name, meshOptions=meshOptions, iscomplex=self.iscomplex)
 
     def train_inflate_cube(self, train=True):
         try:
@@ -196,4 +214,4 @@ class Test_USmesh(unittest.TestCase):
             meshOptions.update({"gridFile": file_name, "fileType": "cgns"})
 
             # --- Call shared computation --
-            eval_warp(handler=handler, test_name=test_name, meshOptions=meshOptions)
+            eval_warp(handler=handler, test_name=test_name, meshOptions=meshOptions, iscomplex=self.iscomplex)
