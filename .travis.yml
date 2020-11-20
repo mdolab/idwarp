@@ -9,20 +9,14 @@ env:
     - DOCKER_REPO=public
     - GCC_CONFIG=config/defaults/config.LINUX_GFORTRAN_OPENMPI.mk
     - INTEL_CONFIG=config/defaults/config.LINUX_INTEL_OPENMPI.mk
-    - SEPARATE_COMPLEX_BUILD=true
 
 script:
   - |
     if [ $TEST_TYPE == "docker" ]; then
       # Download input files for regression testing
       docker exec -it app /bin/bash -c ". $BASHRC && cd $DOCKER_WORKING_DIR/input_files && ./get-input-files.sh"
-      if [ $DOCKER_TEST_TYPE == "real" ]; then
-        # Real tests
-        docker exec -it app /bin/bash -c ". $BASHRC && cd $DOCKER_WORKING_DIR/reg_tests && python run_reg_tests.py -nodiff"
-      elif [ $DOCKER_TEST_TYPE == "complex" ]; then
-        # Complex tests
-        docker exec -it app /bin/bash -c ". $BASHRC && cd $DOCKER_WORKING_DIR/reg_tests && export PETSC_ARCH=complex-opt-\$COMPILERS-\$PETSCVERSION && python run_reg_tests_cs.py -nodiff"
-      fi
+      # Run tests
+      docker exec -it app /bin/bash -c ". $BASHRC && cd $DOCKER_WORKING_DIR/tests && testflo . -v -n 1"
     fi
 
 
