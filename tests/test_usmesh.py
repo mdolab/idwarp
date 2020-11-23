@@ -27,10 +27,11 @@ def eval_warp(handler, test_name, meshOptions, iscomplex):
         # Checking if the complex verision of the code has been built:
         try:
             from idwarp import idwarp_cs  # noqa: F401
+
             h = 1e-40
             mesh = USMesh_C(options=meshOptions, debug=True)
         except ImportError:
-            raise unittest.SkipTest('Skipping because you do not have complex idwarp compiled')
+            raise unittest.SkipTest("Skipping because you do not have complex idwarp compiled")
     else:
         mesh = USMesh(options=meshOptions)
 
@@ -97,7 +98,12 @@ def eval_warp(handler, test_name, meshOptions, iscomplex):
 
 
 # --- Set up variables to be overridden at every parametrized_class loop ---
-test_params = [{"N_PROCS": 1, "iscomplex": False}, {"N_PROCS": 2, "name": "parallel", "iscomplex": False}, {"N_PROCS": 1, "name": "complex", "iscomplex": True}, {"N_PROCS": 2, "name": "parallel_complex", "iscomplex": True}]
+test_params = [
+    {"N_PROCS": 1, "iscomplex": False},
+    {"N_PROCS": 2, "name": "parallel", "iscomplex": False},
+    {"N_PROCS": 1, "name": "complex", "iscomplex": True},
+    {"N_PROCS": 2, "name": "parallel_complex", "iscomplex": True},
+]
 
 
 @parameterized_class(test_params)
