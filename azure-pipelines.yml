@@ -20,4 +20,4 @@ jobs:
       REPO_NAME: ${{ variables.REPO_NAME }}
       COMPLEX: ${{ variables.COMPLEX }}
       GCC_CONFIG: ${{ variables.GCC_CONFIG }}
-      INTEL_CONFIG: ${{ variables.INTEL_CONFIG }}
+      INTEL_CONFIG: ${{ variables.INTEL_CONFIG }} 
