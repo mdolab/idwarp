@@ -1,0 +1,19 @@
+variables:
+  REPO_NAME: idwarp
+  COMPLEX: true
+
+pool:
+    vmImage: 'ubuntu-latest'
+
+resources:
+  repositories:
+  - repository: azure_template
+    type: github
+    name: bernardopacini/.azure
+    endpoint: bernardopacini
+
+jobs:
+  - template: azure_template.yaml@azure_template
+    parameters:
+      REPO_NAME: ${{ variables.REPO_NAME }}
+      COMPLEX: ${{ variables.COMPLEX }}
