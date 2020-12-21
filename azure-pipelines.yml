@@ -18,7 +18,7 @@ resources:
 
 jobs: 
   - template: azure_template.yaml@azure_template
-    parameters:
+    parameters: 
       REPO_NAME: ${{ variables.REPO_NAME }}
       COMPLEX: ${{ variables.COMPLEX }}
       GCC_CONFIG: ${{ variables.GCC_CONFIG }}
