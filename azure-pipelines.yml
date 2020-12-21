@@ -4,8 +4,8 @@ variables:
   GCC_CONFIG: config/defaults/config.LINUX_GFORTRAN_OPENMPI.mk
   INTEL_CONFIG: config/defaults/config.LINUX_INTEL_OPENMPI.mk
   EXEC_TESTS: >
-      docker exec app /bin/bash -c ". \$HOME/.bashrc_mdolab && cd ${{ variables.DOCKER_WORKING_DIR }}/input_files && ./get-input-files.sh"
-      docker exec app /bin/bash -c ". \$HOME/.bashrc_mdolab && cd ${{ variables.DOCKER_WORKING_DIR/tests }} && testflo . -v -n 1"
+      'docker exec app /bin/bash -c ". \$HOME/.bashrc_mdolab && cd ${{ variables.DOCKER_WORKING_DIR }}/input_files && ./get-input-files.sh"'
+      'docker exec app /bin/bash -c ". \$HOME/.bashrc_mdolab && cd ${{ variables.DOCKER_WORKING_DIR/tests }} && testflo . -v -n 1"'
 
 pool:
     vmImage: 'ubuntu-latest'
