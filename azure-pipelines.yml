@@ -4,7 +4,7 @@ variables:
   GCC_CONFIG: config/defaults/config.LINUX_GFORTRAN_OPENMPI.mk
   INTEL_CONFIG: config/defaults/config.LINUX_INTEL_OPENMPI.mk
   EXEC_TESTS: >
-      docker exec app /bin/bash -c ". $BASHRC && cd $DOCKER_WORKING_DIR/input_files && ./get-input-files.sh" >
+      docker exec app /bin/bash -c ". $BASHRC && cd $DOCKER_WORKING_DIR/input_files && ./get-input-files.sh"
       docker exec app /bin/bash -c ". $BASHRC && cd $DOCKER_WORKING_DIR/tests && testflo . -v -n 1"
 
 pool:
