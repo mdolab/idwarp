@@ -3,9 +3,8 @@ variables:
   COMPLEX: false
   GCC_CONFIG: config/defaults/config.LINUX_GFORTRAN_OPENMPI.mk
   INTEL_CONFIG: config/defaults/config.LINUX_INTEL_OPENMPI.mk
-  EXEC_TESTS: >
-      'docker exec app /bin/bash -c ". \$HOME/.bashrc_mdolab && cd ${{ variables.DOCKER_WORKING_DIR }}/input_files && ./get-input-files.sh"'
-      'docker exec app /bin/bash -c ". \$HOME/.bashrc_mdolab && cd ${{ variables.DOCKER_WORKING_DIR/tests }} && testflo . -v -n 1"'
+  INPUT_FILES: true
+
 
 pool:
     vmImage: 'ubuntu-latest'
@@ -24,4 +23,4 @@ jobs:
       COMPLEX: ${{ variables.COMPLEX }}
       GCC_CONFIG: ${{ variables.GCC_CONFIG }}
       INTEL_CONFIG: ${{ variables.INTEL_CONFIG }}
-      EXEC_TESTS: ${{ variables.EXEC_TESTS }}
+      INPUT_FILES: ${{ variables.INPUT_FILES }}
