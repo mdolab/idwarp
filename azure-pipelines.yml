@@ -1,6 +1,6 @@
 variables:
   REPO_NAME: idwarp
-  COMPLEX: false
+  COMPLEX: true
   GCC_CONFIG: config/defaults/config.LINUX_GFORTRAN_OPENMPI.mk
   INTEL_CONFIG: config/defaults/config.LINUX_INTEL_OPENMPI.mk
   INPUT_FILES: true
