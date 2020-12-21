@@ -16,7 +16,7 @@ resources:
     name: bernardopacini/.azure
     endpoint: bernardopacini
 
-jobs: 
+jobs:
   - template: azure_template.yaml@azure_template
     parameters: 
       REPO_NAME: ${{ variables.REPO_NAME }}
