@@ -3,7 +3,7 @@ from mpi4py import MPI
 from idwarp import USMesh
 
 options = {
-    "fileType": "CGNS",
+    "fileType": "cgns",
     "gridFile": "../../input_files/o_mesh.cgns",
     "aExp": 3.0,
     "bExp": 5.0,

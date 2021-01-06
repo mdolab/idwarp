@@ -20,4 +20,4 @@ project = "IDWarp"
 extensions.extend(["numpydoc"])  # noqa: F405
 
 # mock import for autodoc
-autodoc_mock_imports = ["numpy", "mpi4py", "petsc4py"]
+autodoc_mock_imports = ["numpy", "mpi4py", "petsc4py", "baseclasses"]

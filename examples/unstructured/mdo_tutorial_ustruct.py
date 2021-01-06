@@ -4,7 +4,7 @@ from idwarp import USMesh
 
 options = {
     "gridFile": "../../input_files/mdo_tutorial_face_bcs.cgns",
-    "fileType": "CGNS",
+    "fileType": "cgns",
     "symmetryPlanes": [[[0, 0, 0], [0, 0, 1]]],
     "aExp": 3.0,
     "bExp": 5.0,

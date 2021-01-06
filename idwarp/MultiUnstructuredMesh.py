@@ -28,35 +28,14 @@ History
 # =============================================================================
 import os
 import numpy as np
-from pprint import pprint
 from mpi4py import MPI
 from .MExt import MExt
+from baseclasses.utils import Error
 
 try:
     from cgnsutilities import cgnsutilities as cs
 except ImportError:
     cs = None
-
-
-class Error(Exception):
-    """
-    Format the error message in a box to make it clear this
-    was a expliclty raised exception.
-    """
-
-    def __init__(self, message):
-        msg = "\n+" + "-" * 78 + "+" + "\n" + "| IDWarp Error: "
-        i = 22
-        for word in message.split():
-            if len(word) + i + 1 > 78:  # Finish line and start new one
-                msg += " " * (78 - i) + "|\n| " + word + " "
-                i = 1 + len(word) + 1
-            else:
-                msg += word + " "
-                i += len(word) + 1
-        msg += " " * (78 - i) + "|\n" + "+" + "-" * 78 + "+" + "\n"
-        print(msg)
-        Exception.__init__(self)
 
 
 class Warning(object):
@@ -66,7 +45,7 @@ class Warning(object):
 
     def __init__(self, message):
         msg = "\n+" + "-" * 78 + "+" + "\n" + "| IDWarp Warning: "
-        i = 24
+        i = 17
         for word in message.split():
             if len(word) + i + 1 > 78:  # Finish line and start new one
                 msg += " " * (78 - i) + "|\n| " + word + " "
@@ -79,15 +58,14 @@ class Warning(object):
 
 
 # =============================================================================
-# UnstructuredMesh class
+# MultiUnstructuredMesh class
 # =============================================================================
 
 
 class MultiUSMesh(object):
     """
-    This is the main Unstructured Mesh. This mesh object is designed
-    to interact with an structured or unstructured CFD solver though a
-    variety of interface functions.
+    This mesh object is designed to support independent deformation of
+    multiple overset component meshes.
     """
 
     def __init__(self, CGNSFile, optionsDict, comm=None, dtype="d", debug=False):
@@ -1004,23 +982,6 @@ class MultiUSMesh(object):
     # =========================================================================
     #                     Utility functions
     # =========================================================================
-
-    def _printCurrentOptions(self):
-        """Prints a nicely formatted dictionary of all the current options to
-        the stdout on the root processor
-        """
-        meshCounter = 0
-        for mesh in self.meshes():
-            if self.comm.rank == 0:
-                print("")
-                print(" Options of mesh", meshCounter, "of", len(self.meshes))
-                print("")
-                print("+---------------------------------------+")
-                print("|     All IDWarp Options:               |")
-                print("+---------------------------------------+")
-                pprint(mesh.solverOptions)
-                print("")
-            meshCounter += 1
 
     def __del__(self):
         """Release all the mesh warping memory. This should be called

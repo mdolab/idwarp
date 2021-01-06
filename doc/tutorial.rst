@@ -12,7 +12,7 @@ warping script and explaining the various parts. ::
 
   options = {
     'gridFile':'../../input_files/o_mesh.cgns',
-    'fileType':'CGNS',
+    'fileType':'cgns',
     'specifiedSurfaces':None,
     'symmetrySurfaces':None,
     'symmetryPlanes':[],
@@ -58,7 +58,7 @@ explained in :ref:`idwarp_options`. ::
 
   options = {
     'gridFile':'../../input_files/o_mesh.cgns',
-    'fileType':'CGNS',
+    'fileType':'cgns',
     'specifiedSurfaces':None,
     'symmetrySurfaces':None,
     'symmetryPlanes':[],
