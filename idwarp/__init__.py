@@ -1,4 +1,4 @@
-__version__ = "2.2.2"
+__version__ = "2.3.0"
 
 from .UnstructuredMesh import USMesh
 from .MultiUnstructuredMesh import MultiUSMesh
