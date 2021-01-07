@@ -38,7 +38,7 @@ jobs:
   strategy:
     matrix: ${{ parameters.TestMatrix  }}
   steps:
-    script: echo here
+  - script: echo here
     # script: echo {{ parameters.TestMatrix }}
     # - template: before-install.yaml@azure_template
   #   parameters: 
