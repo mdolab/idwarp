@@ -9,7 +9,7 @@ variables:
 pool:
     vmImage: 'ubuntu-latest'
 
-    
+
 resources:
   repositories:
   - repository: azure_template
@@ -18,11 +18,15 @@ resources:
     endpoint: bernardopacini
 
 jobs:
-  - template: azure_template.yaml@azure_template
-    parameters: 
-      REPO_NAME: ${{ variables.REPO_NAME }}
-      COMPLEX: ${{ variables.COMPLEX }}
-      GCC_CONFIG: ${{ variables.GCC_CONFIG }}
-      INTEL_CONFIG: ${{ variables.INTEL_CONFIG }}
-      INPUT_FILES: ${{ variables.INPUT_FILES }}
-      STYLE_CHECK: ${{ variables.STYLE_CHECK }}
+  # - template: azure_template.yaml@azure_template
+  #   parameters: 
+  #     REPO_NAME: ${{ variables.REPO_NAME }}
+  #     COMPLEX: ${{ variables.COMPLEX }}
+  #     GCC_CONFIG: ${{ variables.GCC_CONFIG }}
+  #     INTEL_CONFIG: ${{ variables.INTEL_CONFIG }}
+  #     INPUT_FILES: ${{ variables.INPUT_FILES }}
+  #     STYLE_CHECK: ${{ variables.STYLE_CHECK }}
+
+  - job: Flake8
+    steps:
+    - template: style_check.yaml@azure_template
