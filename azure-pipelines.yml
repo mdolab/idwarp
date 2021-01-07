@@ -19,18 +19,19 @@ pool:
 parameters:
   - name: TestMatrix
     type: object
-    c7-gcc-ompi-latest:
-      DOCKER_TAG: c7-gcc-ompi-latest
-      # CONFIG_FILE: ${{ parameters.GCC_CONFIG }}
-    c7-intel-impi-latest:
-      DOCKER_TAG: c7-intel-impi-latest
-      # CONFIG_FILE: ${{ parameters.INTEL_CONFIG }}
-    u20-gcc-ompi-latest:
-      DOCKER_TAG: u20-gcc-ompi-latest
-      # CONFIG_FILE: ${{ parameters.GCC_CONFIG }}
-    u20-gcc-ompi-stable:
-      DOCKER_TAG: u20-gcc-ompi-stable
-      # CONFIG_FILE: ${{ parameters.GCC_CONFIG }}
+    test:
+      c7-gcc-ompi-latest:
+        DOCKER_TAG: c7-gcc-ompi-latest
+        # CONFIG_FILE: ${{ parameters.GCC_CONFIG }}
+      c7-intel-impi-latest:
+        DOCKER_TAG: c7-intel-impi-latest
+        # CONFIG_FILE: ${{ parameters.INTEL_CONFIG }}
+      u20-gcc-ompi-latest:
+        DOCKER_TAG: u20-gcc-ompi-latest
+        # CONFIG_FILE: ${{ parameters.GCC_CONFIG }}
+      u20-gcc-ompi-stable:
+        DOCKER_TAG: u20-gcc-ompi-stable
+        # CONFIG_FILE: ${{ parameters.GCC_CONFIG }}
 
 jobs:
   - job:
