@@ -17,7 +17,9 @@ resources:
     endpoint: bernardopacini
 
 jobs:
-  # - template: azure_template.yaml@azure_template
+  - job:
+    steps:
+    - template: before-install.yaml@azure_template
   #   parameters: 
   #     REPO_NAME: ${{ variables.REPO_NAME }}
   #     COMPLEX: ${{ variables.COMPLEX }}
@@ -26,8 +28,8 @@ jobs:
   #     INPUT_FILES: ${{ variables.INPUT_FILES }}
   #     STYLE_CHECK: ${{ variables.STYLE_CHECK }}
 
-  - template: style_check.yaml@azure_template
-    parameters:
-      REPO_NAME: ${{ variables.REPO_NAME }}
-      STYLE_CHECK: ${{ variables.STYLE_CHECK }}
+  # - template: style_check.yaml@azure_template
+  #   parameters:
+  #     REPO_NAME: ${{ variables.REPO_NAME }}
+  #     STYLE_CHECK: ${{ variables.STYLE_CHECK }}
 
