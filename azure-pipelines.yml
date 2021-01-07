@@ -19,7 +19,7 @@ pool:
 parameters:
   - name: TestMatrix
     type: object
-    test:
+    default:
       c7-gcc-ompi-latest:
         DOCKER_TAG: c7-gcc-ompi-latest
         # CONFIG_FILE: ${{ parameters.GCC_CONFIG }}
