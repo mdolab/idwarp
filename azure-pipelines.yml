@@ -14,7 +14,7 @@ variables:
   STYLE_CHECK: true
 
 parameters:
-  theMatrix:
+  - matrix: theMatrix
     one:
       num: one
     two:
