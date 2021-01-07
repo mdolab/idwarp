@@ -12,6 +12,8 @@ variables:
   INTEL_CONFIG: config/defaults/config.LINUX_INTEL_OPENMPI.mk
   INPUT_FILES: true
   STYLE_CHECK: true
+
+parameters:
   theMatrix:
     one:
       num: one
@@ -28,7 +30,7 @@ jobs:
     # strategy:
     #   matrix: ${{ variables.testMatrix }}
     steps:
-    - script: echo ${{ variables.testMatrix }}
+    - script: echo ${{ parameters.theMatrix }}
     # - template: before-install.yaml@azure_template
   #   parameters: 
   #     REPO_NAME: ${{ variables.REPO_NAME }}
