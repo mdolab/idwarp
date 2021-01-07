@@ -12,15 +12,16 @@ variables:
   INTEL_CONFIG: config/defaults/config.LINUX_INTEL_OPENMPI.mk
   INPUT_FILES: true
   STYLE_CHECK: true
-  - template: matrix.yaml@azure_template
 
 pool:
     vmImage: 'ubuntu-latest'
 
 jobs:
   - job:
+    variables:
+    - template: matrix.yaml@azure_template
     strategy:
-      matrix: ${{ variables.matrix }}
+      matrix: ${{ variables.testMatrix }}
     steps:
     - template: before-install.yaml@azure_template
   #   parameters: 
