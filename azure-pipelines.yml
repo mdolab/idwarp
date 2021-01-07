@@ -16,26 +16,25 @@ variables:
 pool:
     vmImage: 'ubuntu-latest'
 
-
+parameters:
+  - name: TestMatrix
+    type: object
+    default:
+      c7-gcc-ompi-latest:
+        DOCKER_TAG: c7-gcc-ompi-latest
+        CONFIG_FILE: config/defaults/config.LINUX_GFORTRAN_OPENMPI.mk
+      c7-intel-impi-latest:
+        DOCKER_TAG: c7-intel-impi-latest
+        CONFIG_FILE: ${{ variables.INTEL_CONFIG }}
+      u20-gcc-ompi-latest:
+        DOCKER_TAG: u20-gcc-ompi-latest
+        CONFIG_FILE: ${{ variables.GCC_CONFIG }}
+      u20-gcc-ompi-stable:
+        DOCKER_TAG: u20-gcc-ompi-stable
+        CONFIG_FILE: ${{ variables.GCC_CONFIG }}
 
 jobs:
 - job:
-  parameters:
-    - name: TestMatrix
-      type: object
-      default:
-        c7-gcc-ompi-latest:
-          DOCKER_TAG: c7-gcc-ompi-latest
-          CONFIG_FILE: ${{ variables.GCC_CONFIG }}
-        c7-intel-impi-latest:
-          DOCKER_TAG: c7-intel-impi-latest
-          CONFIG_FILE: ${{ variables.INTEL_CONFIG }}
-        u20-gcc-ompi-latest:
-          DOCKER_TAG: u20-gcc-ompi-latest
-          CONFIG_FILE: ${{ variables.GCC_CONFIG }}
-        u20-gcc-ompi-stable:
-          DOCKER_TAG: u20-gcc-ompi-stable
-          CONFIG_FILE: ${{ variables.GCC_CONFIG }}
   strategy:
     matrix: ${{ parameters.TestMatrix  }}
   steps:
