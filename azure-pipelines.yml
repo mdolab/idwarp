@@ -12,14 +12,27 @@ variables:
   INTEL_CONFIG: config/defaults/config.LINUX_INTEL_OPENMPI.mk
   INPUT_FILES: true
   STYLE_CHECK: true
+  testMatrix:
+    c7-gcc-ompi-latest:
+      DOCKER_TAG: c7-gcc-ompi-latest
+      # CONFIG_FILE: ${{ parameters.GCC_CONFIG }}
+    c7-intel-impi-latest:
+      DOCKER_TAG: c7-intel-impi-latest
+      # CONFIG_FILE: ${{ parameters.INTEL_CONFIG }}
+    u20-gcc-ompi-latest:
+      DOCKER_TAG: u20-gcc-ompi-latest
+      # CONFIG_FILE: ${{ parameters.GCC_CONFIG }}
+    u20-gcc-ompi-stable:
+      DOCKER_TAG: u20-gcc-ompi-stable
+      # CONFIG_FILE: ${{ parameters.GCC_CONFIG }}
 
 pool:
     vmImage: 'ubuntu-latest'
 
 jobs:
   - job:
-    variables:
-    - template: matrix.yaml@azure_template
+    # variables:
+    # - template: matrix.yaml@azure_template
     # strategy:
     #   matrix: ${{ variables.testMatrix }}
     steps:
