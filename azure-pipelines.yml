@@ -22,7 +22,7 @@ pool:
 
 jobs:
 - job:
-  template: matrix.yaml@azure_template
+  - template: matrix.yaml@azure_template
   # strategy:
   #   matrix: ${{ parameters.TestMatrix }}
   steps:
