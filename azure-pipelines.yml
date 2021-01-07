@@ -5,6 +5,8 @@ variables:
   INTEL_CONFIG: config/defaults/config.LINUX_INTEL_OPENMPI.mk
   INPUT_FILES: true
   STYLE_CHECK: true
+
+variables:
   - template: matrix.yaml@azure_template
 
 pool:
