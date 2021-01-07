@@ -34,7 +34,9 @@ parameters:
         # CONFIG_FILE: ${{ parameters.GCC_CONFIG }}
 
 jobs:
-  - job:
+- job:
+  steps:
+    script: echo {{ parameters.TestMatrix }}
     # - template: before-install.yaml@azure_template
   #   parameters: 
   #     REPO_NAME: ${{ variables.REPO_NAME }}
