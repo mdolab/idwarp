@@ -13,32 +13,27 @@ variables:
   INPUT_FILES: true
   STYLE_CHECK: true
 
-parameters:
-  theMatrix:{
-    one:
-      num: one
-    two:
-      num: two
-  }
-  
 pool:
     vmImage: 'ubuntu-latest'
 
+parameters:
+  - name: myObject
+    type: object
+    default:
+      foo: FOO
+      bar: BAR
+      things:
+      - one
+      - two
+      - three
+      nested:
+        one: apple
+        two: pear
+        count: 3
+
+
 jobs:
   - job:
-    # variables:
-    # - template: matrix.yaml@azure_template
-    # strategy:
-    #   matrix: ${{ variables.testMatrix }}
-    steps:
-    - script: echo ${{ parameters.theMatrix }}
-
-    parameters:
-      theMatrix:
-        one:
-          num: one
-        two:
-          num: two
     # - template: before-install.yaml@azure_template
   #   parameters: 
   #     REPO_NAME: ${{ variables.REPO_NAME }}
