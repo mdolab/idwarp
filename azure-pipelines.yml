@@ -20,8 +20,10 @@ jobs:
 - job:
   variables:
   - template: matrix.yaml@azure_template
+  parameters:
+    TestMatrix: ${{ variables.TestMatrix }}
   strategy:
-    matrix: ${{ variables.TestMatrix  }}
+    matrix: ${{ parameters.TestMatrix }}
   steps:
   - script: echo here
     # script: echo {{ parameters.TestMatrix }}
