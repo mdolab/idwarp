@@ -26,6 +26,8 @@ jobs:
   #     INPUT_FILES: ${{ variables.INPUT_FILES }}
   #     STYLE_CHECK: ${{ variables.STYLE_CHECK }}
 
-  - job: Flake8
-    steps:
-    - template: style_check.yaml@azure_template
+  - template: style_check.yaml@azure_template
+    parameters:
+      REPO_NAME: ${{ variables.REPO_NAME }}
+      STYLE_CHECK: ${{ variables.STYLE_CHECK }}
+
