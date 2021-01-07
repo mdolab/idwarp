@@ -20,10 +20,11 @@ jobs:
   - job:
     variables:
     - template: matrix.yaml@azure_template
-    strategy:
-      matrix: ${{ variables.testMatrix }}
+    # strategy:
+    #   matrix: ${{ variables.testMatrix }}
     steps:
-    - template: before-install.yaml@azure_template
+    - script: echo ${{ variables.a }}
+    # - template: before-install.yaml@azure_template
   #   parameters: 
   #     REPO_NAME: ${{ variables.REPO_NAME }}
   #     COMPLEX: ${{ variables.COMPLEX }}
