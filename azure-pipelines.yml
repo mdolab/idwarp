@@ -23,7 +23,7 @@ jobs:
     # strategy:
     #   matrix: ${{ variables.testMatrix }}
     steps:
-    - script: echo ${{ variables.a }}
+    - script: echo ${{ variables.testMatrix }}
     # - template: before-install.yaml@azure_template
   #   parameters: 
   #     REPO_NAME: ${{ variables.REPO_NAME }}
