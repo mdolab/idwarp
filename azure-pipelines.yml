@@ -5,7 +5,7 @@ variables:
   INTEL_CONFIG: config/defaults/config.LINUX_INTEL_OPENMPI.mk
   INPUT_FILES: true
 
-
+ 
 pool:
     vmImage: 'ubuntu-latest'
 
