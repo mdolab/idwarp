@@ -16,13 +16,12 @@ variables:
 pool:
     vmImage: 'ubuntu-latest'
 
-parameters:
-  - template: matrix.yaml@azure_template
-
 jobs:
 - job:
+  variables:
+  - template: matrix.yaml@azure_template
   strategy:
-    matrix: ${{ parameters.TestMatrix  }}
+    matrix: ${{ variables.TestMatrix  }}
   steps:
   - script: echo here
     # script: echo {{ parameters.TestMatrix }}
