@@ -35,8 +35,10 @@ parameters:
 
 jobs:
 - job:
+  strategy:
+    matrix: ${{ parameters.TestMatrix  }}
   steps:
-    script: echo {{ parameters.TestMatrix }}
+    # script: echo {{ parameters.TestMatrix }}
     # - template: before-install.yaml@azure_template
   #   parameters: 
   #     REPO_NAME: ${{ variables.REPO_NAME }}
