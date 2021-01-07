@@ -8,6 +8,7 @@ variables:
 pool:
     vmImage: 'ubuntu-latest'
 
+
 resources:
   repositories:
   - repository: azure_template
