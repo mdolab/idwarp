@@ -6,6 +6,7 @@ variables:
   INPUT_FILES: true
   STYLE_CHECK: true
 
+
 pool:
     vmImage: 'ubuntu-latest'
 
