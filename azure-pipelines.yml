@@ -4,10 +4,10 @@ variables:
   GCC_CONFIG: config/defaults/config.LINUX_GFORTRAN_OPENMPI.mk
   INTEL_CONFIG: config/defaults/config.LINUX_INTEL_OPENMPI.mk
   INPUT_FILES: true
+  STYLE_CHECK: false
 
 pool:
     vmImage: 'ubuntu-latest'
-
 
 resources:
   repositories:
@@ -24,3 +24,4 @@ jobs:
       GCC_CONFIG: ${{ variables.GCC_CONFIG }}
       INTEL_CONFIG: ${{ variables.INTEL_CONFIG }}
       INPUT_FILES: ${{ variables.INPUT_FILES }}
+      STYLE_CHECK: ${{ variables.STYLE_CHECK }}
