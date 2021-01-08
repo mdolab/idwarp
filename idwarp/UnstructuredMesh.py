@@ -87,17 +87,11 @@ class USMesh(BaseSolver):
         category = "Volume mesh warping"
 
         if comm is None:
-            self.comm = MPI.COMM_WORLD
-        else:
-            self.comm = comm
+            comm = MPI.COMM_WORLD
 
-        # Check if warp has already been set if this is this has been
-        # interhited to complex version
-        try:
-            self.warp
-        except AttributeError:
-            curDir = os.path.dirname(os.path.realpath(__file__))
-            self.warp = MExt("idwarp", [curDir], debug=debug)._module
+        # Default options for mesh warping
+        defOpts = self._getDefaultOptions()
+
         if options is None:
             raise Error(
                 "The 'options' keyword argument is *NOT* "
@@ -105,18 +99,8 @@ class USMesh(BaseSolver):
                 "creation of this object"
             )
 
-        # Initialize PETSc if not done so
-        self.warp.initpetsc(self.comm.py2f())
-
-        # Set realtype of 'd'. 'D' is used in Complex and set in
-        # UnstructuredMesh_C.py
-        self.dtype = "d"
-
-        # Default options for mesh warping
-        defOpts = self._getDefaultOptions()
-
         # Initialize the inherited BaseSolver
-        super().__init__(name, category, defOpts, options)
+        super().__init__(name, category, defaultOptions=defOpts, options=options, comm=comm)
 
         # Print a warning about aExp and bExp which are not fully implemented
         if self.comm.rank == 0:
@@ -127,10 +111,25 @@ class USMesh(BaseSolver):
                     "bExp=5.0"
                 )
 
+        self.printCurrentOptions()
+
+        # Check if warp has already been set if this has been
+        # inherited to complex version
+        try:
+            self.warp
+        except AttributeError:
+            curDir = os.path.dirname(os.path.realpath(__file__))
+            self.warp = MExt("idwarp", [curDir], debug=debug)._module
+
+        # Initialize PETSc if not done so
+        self.warp.initpetsc(self.comm.py2f())
+
+        # Set realtype of 'd'. 'D' is used in Complex and set in
+        # UnstructuredMesh_C.py
+        self.dtype = "d"
+
         # Set Fortran options values
         self._setMeshOptions()
-
-        self.printCurrentOptions()
 
         # Initialize various bits of stored information
         self.OFData = {}
