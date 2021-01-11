@@ -135,16 +135,16 @@ class USMesh(BaseSolver):
         self.OFData = {}
         self.warpInitialized = False
         self.faceSizes = None
-        self.meshType = self.getOption("fileType")
+        self.fileType = self.getOption("fileType")
         fileName = self.getOption("gridFile")
 
         # Determine how to read
-        if self.meshType == "cgns":
+        if self.fileType == "cgns":
             # Determine type of CGNS mesh we have
             self.warp.readcgns(fileName)
-        elif self.meshType == "openfoam":
+        elif self.fileType == "openfoam":
             self._readOFGrid(fileName)
-        elif self.meshType == "plot3d":
+        elif self.fileType == "plot3d":
             self.warp.readplot3d(fileName)
 
     @staticmethod
@@ -516,21 +516,20 @@ class USMesh(BaseSolver):
             cgns/plot3d. It is not required for openFOAM meshes. This
             call will update the 'points' file.
         """
-        mt = self.meshType
-        if mt in ["cgns", "plot3d"]:
+        if self.fileType in ["cgns", "plot3d"]:
             if fileName is None:
                 raise Error("fileName is not optional for writeGrid with " "gridType of cgns or plot3d")
 
-            if mt == "cgns":
+            if self.fileType == "cgns":
                 # Copy the default and then write
                 if self.comm.rank == 0:
                     shutil.copy(self.getOption("gridFile"), fileName)
                 self.warp.writecgns(fileName)
 
-            elif mt == "plot3d":
+            elif self.fileType == "plot3d":
                 self.warp.writeplot3d(fileName)
 
-        elif mt == "openfoam":
+        elif self.fileType == "openfoam":
             self._writeOpenFOAMVolumePoints(self.getCommonGrid())
 
     def writeOFGridTecplot(self, fileName):
@@ -647,7 +646,7 @@ class USMesh(BaseSolver):
         pts = []
         faceSizes = []
 
-        if self.meshType == "cgns":
+        if self.fileType == "cgns":
             if self.comm.rank == 0:
 
                 # Do the necessary fortran preprocessing
@@ -769,7 +768,7 @@ class USMesh(BaseSolver):
                         "list of families is %s." % (repr(list(fullPatchNames)))
                     )
 
-        elif self.meshType == "openfoam":
+        elif self.fileType == "openfoam":
 
             faceSizes, conn, pts = self._computeOFConn()
 
@@ -804,7 +803,7 @@ class USMesh(BaseSolver):
         else:
             # Otherwise generate from the geometry.
             planes = []
-            if self.meshType == "cgns":
+            if self.fileType == "cgns":
                 if self.comm.rank == 0:
 
                     # Do the necessary fortran preprocessing
@@ -899,7 +898,7 @@ class USMesh(BaseSolver):
                             "The families not found are %s." % (repr(missing))
                         )
 
-            elif self.meshType in ["openfoam", "plot3d"]:
+            elif self.fileType in ["openfoam", "plot3d"]:
 
                 # We could probably implement this at some point, but
                 # it is not critical
