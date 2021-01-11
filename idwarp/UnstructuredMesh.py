@@ -102,14 +102,12 @@ class USMesh(BaseSolver):
         # Initialize the inherited BaseSolver
         super().__init__(name, category, defaultOptions=defOpts, options=options, comm=comm)
 
-        # Print a warning about aExp and bExp which are not fully implemented
-        if self.comm.rank == 0:
-            if self.getOption("aExp") != 3.0 or self.getOption("bExp") != 5.0:
-                Warning(
-                    "The aExp and bExp options are currently not implemented "
-                    "and will always use their default values of aExp=3.0 and "
-                    "bExp=5.0"
-                )
+        # aExp and bExp are not fully implemented
+        if self.getOption("aExp") != 3.0 or self.getOption("bExp") != 5.0:
+            raise Error(
+                "The aExp and bExp options are currently not implemented "
+                "and should not be modified from their default values."
+            )
 
         self.printCurrentOptions()
 
