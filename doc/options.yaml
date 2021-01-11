@@ -2,12 +2,13 @@ gridFile:
   desc: >
     This is the grid file to use.
     It must always be specified.
-    It may be a structured or unstructured CGNS file or it may be an OpenFOAM directory containing a mesh specification.
+    It may be a structured or unstructured grid file or it may be an OpenFOAM directory containing a mesh specification.
 
 fileType:
   desc: Specify the type of grid file.
   cgns: CGNS file
   openfoam: OpenFOAM directory
+  plot3d: PLOT3D file
 
 specifiedSurfaces:
   desc: >

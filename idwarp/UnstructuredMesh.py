@@ -149,7 +149,7 @@ class USMesh(BaseSolver):
     def _getDefaultOptions():
         defOpts = {
             "gridFile": [(str, type(None)), None],
-            "fileType": [str, ["cgns", "openfoam"]],
+            "fileType": [str, ["cgns", "openfoam", "plot3d"]],
             "specifiedSurfaces": [(list, type(None)), None],
             "symmetrySurfaces": [(list, type(None)), None],
             "symmetryPlanes": [(list, type(None)), None],
