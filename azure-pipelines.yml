@@ -15,7 +15,7 @@ extends:
     COMPLEX: true
     GCC_CONFIG: config/defaults/config.LINUX_GFORTRAN_OPENMPI.mk
     INTEL_CONFIG: config/defaults/config.LINUX_INTEL_OPENMPI.mk
-    INPUT_FILES: false
+    INPUT_FILES: true
     STYLE_CHECK: true
     STEPS_MAKE_REAL: make
     STEPS_INSTALL_REAL: pip install .
@@ -23,4 +23,3 @@ extends:
     STEPS_MAKE_COMPLEX: make && make -f Makefile_CS PETSC_ARCH=complex-opt-\$COMPILERS-\$PETSCVERSION
     STEPS_INSTALL_COMPLEX: pip install .
     STEPS_TEST_COMPLEX: testflo -v . -n 1
-
