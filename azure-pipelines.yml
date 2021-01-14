@@ -23,3 +23,4 @@ extends:
     STEPS_MAKE_COMPLEX: make && make -f Makefile_CS PETSC_ARCH=complex-opt-\$COMPILERS-\$PETSCVERSION
     STEPS_INSTALL_COMPLEX: pip install .
     STEPS_TEST_COMPLEX: testflo -v . -n 1
+
