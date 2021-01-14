@@ -5,14 +5,6 @@ resources:
     name: bernardopacini/.azure
     endpoint: bernardopacini
 
-# variables:
-#   REPO_NAME: idwarp 
-#   COMPLEX: true
-#   GCC_CONFIG: config/defaults/config.LINUX_GFORTRAN_OPENMPI.mk
-#   INTEL_CONFIG: config/defaults/config.LINUX_INTEL_OPENMPI.mk
-#   INPUT_FILES: true
-#   STYLE_CHECK: true
-
 pool:
     vmImage: 'ubuntu-latest'
 
@@ -23,29 +15,11 @@ extends:
     COMPLEX: true
     GCC_CONFIG: config/defaults/config.LINUX_GFORTRAN_OPENMPI.mk
     INTEL_CONFIG: config/defaults/config.LINUX_INTEL_OPENMPI.mk
-    INPUT_FILES: true
+    INPUT_FILES: false
     STYLE_CHECK: true
- 
-
-
-# - job:
-#   - template: matrix.yaml@azure_template
-#   # strategy:
-#   #   matrix: ${{ parameters.TestMatrix }}
-#   steps:
-#   - script: echo here
-    # script: echo {{ parameters.TestMatrix }}
-    # - template: before-install.yaml@azure_template
-  #   parameters: 
-  #     REPO_NAME: ${{ variables.REPO_NAME }}
-  #     COMPLEX: ${{ variables.COMPLEX }}
-  #     GCC_CONFIG: ${{ variables.GCC_CONFIG }}
-  #     INTEL_CONFIG: ${{ variables.INTEL_CONFIG }}
-  #     INPUT_FILES: ${{ variables.INPUT_FILES }}
-  #     STYLE_CHECK: ${{ variables.STYLE_CHECK }}
-
-  # - template: style_check.yaml@azure_template
-  #   parameters:
-  #     REPO_NAME: ${{ variables.REPO_NAME }}
-  #     STYLE_CHECK: ${{ variables.STYLE_CHECK }}
-
+    STEPS_MAKE_REAL: make
+    STEPS_INSTALL_REAL: pip install .
+    STEPS_TEST_REAL: testflo -v . -n 1
+    STEPS_MAKE_COMPLEX: make && make -f Makefile_CS PETSC_ARCH=complex-opt-\$COMPILERS-\$PETSCVERSION
+    STEPS_INSTALL_COMPLEX: pip install .
+    STEPS_TEST_COMPLEX: testflo -v . -n 1
