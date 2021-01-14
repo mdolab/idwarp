@@ -5,28 +5,35 @@ resources:
     name: bernardopacini/.azure
     endpoint: bernardopacini
 
-variables:
-  REPO_NAME: idwarp
-  COMPLEX: true
-  GCC_CONFIG: config/defaults/config.LINUX_GFORTRAN_OPENMPI.mk
-  INTEL_CONFIG: config/defaults/config.LINUX_INTEL_OPENMPI.mk
-  INPUT_FILES: true
-  STYLE_CHECK: true
+# variables:
+#   REPO_NAME: idwarp
+#   COMPLEX: true
+#   GCC_CONFIG: config/defaults/config.LINUX_GFORTRAN_OPENMPI.mk
+#   INTEL_CONFIG: config/defaults/config.LINUX_INTEL_OPENMPI.mk
+#   INPUT_FILES: true
+#   STYLE_CHECK: true
 
 pool:
     vmImage: 'ubuntu-latest'
 
-# extends:
-#   template: start.yml # matrix
-#   steps:
+extends:
+  template: azure_extend.yml@azure_template
+  parameters:
+    REPO_NAME: idwarp
+    COMPLEX: true
+    GCC_CONFIG: config/defaults/config.LINUX_GFORTRAN_OPENMPI.mk
+    INTEL_CONFIG: config/defaults/config.LINUX_INTEL_OPENMPI.mk
+    INPUT_FILES: true
+    STYLE_CHECK: true
  
-jobs:
-- job:
-  - template: matrix.yaml@azure_template
-  # strategy:
-  #   matrix: ${{ parameters.TestMatrix }}
-  steps:
-  - script: echo here
+
+
+# - job:
+#   - template: matrix.yaml@azure_template
+#   # strategy:
+#   #   matrix: ${{ parameters.TestMatrix }}
+#   steps:
+#   - script: echo here
     # script: echo {{ parameters.TestMatrix }}
     # - template: before-install.yaml@azure_template
   #   parameters: 
