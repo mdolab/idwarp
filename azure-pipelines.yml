@@ -9,7 +9,7 @@ pool:
     vmImage: 'ubuntu-latest'
 
 extends:
-  template: azure_extend.yaml@azure_template
+  template: azure_template.yaml@azure_template
   parameters:
     REPO_NAME: idwarp
     COMPLEX: true
