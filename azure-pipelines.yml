@@ -6,7 +6,7 @@ resources:
     endpoint: bernardopacini
 
 # variables:
-#   REPO_NAME: idwarp
+#   REPO_NAME: idwarp 
 #   COMPLEX: true
 #   GCC_CONFIG: config/defaults/config.LINUX_GFORTRAN_OPENMPI.mk
 #   INTEL_CONFIG: config/defaults/config.LINUX_INTEL_OPENMPI.mk
@@ -17,7 +17,7 @@ pool:
     vmImage: 'ubuntu-latest'
 
 extends:
-  template: azure_extend.yml@azure_template
+  template: azure_extend.yaml@azure_template
   parameters:
     REPO_NAME: idwarp
     COMPLEX: true
