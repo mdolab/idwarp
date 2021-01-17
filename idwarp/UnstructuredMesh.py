@@ -137,19 +137,19 @@ class USMesh(BaseSolver):
         fileName = self.getOption("gridFile")
 
         # Determine how to read
-        if self.fileType == "cgns":
+        if self.fileType == "CGNS":
             # Determine type of CGNS mesh we have
             self.warp.readcgns(fileName)
-        elif self.fileType == "openfoam":
+        elif self.fileType == "OpenFOAM":
             self._readOFGrid(fileName)
-        elif self.fileType == "plot3d":
+        elif self.fileType == "PLOT3D":
             self.warp.readplot3d(fileName)
 
     @staticmethod
     def _getDefaultOptions():
         defOpts = {
             "gridFile": [(str, type(None)), None],
-            "fileType": [str, ["cgns", "openfoam", "plot3d"]],
+            "fileType": [str, ["CGNS", "OpenFOAM", "PLOT3D"]],
             "specifiedSurfaces": [(list, type(None)), None],
             "symmetrySurfaces": [(list, type(None)), None],
             "symmetryPlanes": [(list, type(None)), None],
@@ -287,14 +287,14 @@ class USMesh(BaseSolver):
 
     def setSurfaceDefinitionFromFile(self, surfFile):
         """Set the surface definition for the warping from a
-        multiblock plot3d surface file
+        multiblock PLOT3D surface file
 
         Parameters
         ----------
-        surfFile : filename of multiblock plot3d surface file.
+        surfFile : filename of multiblock PLOT3D surface file.
         """
 
-        # Read the plot3d surface file
+        # Read the PLOT3D surface file
         self.warp.readplot3dsurface(surfFile)
 
         if self.comm.rank == 0:
@@ -318,7 +318,7 @@ class USMesh(BaseSolver):
 
     def setSurfaceFromFile(self, surfFile):
         """Update the internal surface surface coordinates using an
-        external plot3d surface file. This can be used in an analogous
+        external PLOT3D surface file. This can be used in an analogous
         way to setSurfaceDefinitionFromFile. The 'sense' of the file
         must be same as the file used with
         setSurfaceDefinitionFromFile. That means, the same number of
@@ -326,10 +326,10 @@ class USMesh(BaseSolver):
 
         Parameters
         ----------
-        surfFile: filename of multiblock plot3d surface file'
+        surfFile: filename of multiblock PLOT3D surface file'
         """
 
-        # Read the plot3d surface file
+        # Read the PLOT3D surface file
         self.warp.readplot3dsurface(surfFile)
 
         if self.comm.rank == 0:
@@ -379,7 +379,7 @@ class USMesh(BaseSolver):
 
     def getCommonGrid(self):
         """Return the grid in the original ordering. This is required for the
-        openFOAM tecplot writer since the connectivity is only known
+        OpenFOAM tecplot writer since the connectivity is only known
         in this ordering.
         """
         return self.warp.getcommonvolumecoordinates(self.warp.griddata.commonmeshdof)
@@ -510,29 +510,29 @@ class USMesh(BaseSolver):
         fileName : str or None
 
             Filename for grid. Should end in .cgns for CGNS files. For
-            plot3d whatever you want. It is not optional for
-            cgns/plot3d. It is not required for openFOAM meshes. This
+            PLOT3D whatever you want. It is not optional for
+            CGNS/PLOT3D. It is not required for OpenFOAM meshes. This
             call will update the 'points' file.
         """
-        if self.fileType in ["cgns", "plot3d"]:
+        if self.fileType in ["CGNS", "PLOT3D"]:
             if fileName is None:
-                raise Error("fileName is not optional for writeGrid with " "gridType of cgns or plot3d")
+                raise Error("fileName is not optional for writeGrid with " "gridType of CGNS or PLOT3D")
 
-            if self.fileType == "cgns":
+            if self.fileType == "CGNS":
                 # Copy the default and then write
                 if self.comm.rank == 0:
                     shutil.copy(self.getOption("gridFile"), fileName)
                 self.warp.writecgns(fileName)
 
-            elif self.fileType == "plot3d":
+            elif self.fileType == "PLOT3D":
                 self.warp.writeplot3d(fileName)
 
-        elif self.fileType == "openfoam":
+        elif self.fileType == "OpenFOAM":
             self._writeOpenFOAMVolumePoints(self.getCommonGrid())
 
     def writeOFGridTecplot(self, fileName):
         """
-        Write the current openFOAM grid to a Tecplot FE polyhedron file.
+        Write the current OpenFOAM grid to a Tecplot FE polyhedron file.
         This is generally used for debugging/visualization purposes.
 
         Parameters
@@ -541,7 +541,7 @@ class USMesh(BaseSolver):
             Filename to use. Should end in .dat for tecplot ascii file.
         """
         if not self.OFData:
-            Warning("Cannot write OpenFoam tecplot file since there is " "no openFoam ata present")
+            Warning("Cannot write OpenFOAM tecplot file since there is " "no OpenFOAM data present")
             return
 
         if self.comm.size == 1:
@@ -644,7 +644,7 @@ class USMesh(BaseSolver):
         pts = []
         faceSizes = []
 
-        if self.fileType == "cgns":
+        if self.fileType == "CGNS":
             if self.comm.rank == 0:
 
                 # Do the necessary fortran preprocessing
@@ -766,7 +766,7 @@ class USMesh(BaseSolver):
                         "list of families is %s." % (repr(list(fullPatchNames)))
                     )
 
-        elif self.fileType == "openfoam":
+        elif self.fileType == "OpenFOAM":
 
             faceSizes, conn, pts = self._computeOFConn()
 
@@ -801,7 +801,7 @@ class USMesh(BaseSolver):
         else:
             # Otherwise generate from the geometry.
             planes = []
-            if self.fileType == "cgns":
+            if self.fileType == "CGNS":
                 if self.comm.rank == 0:
 
                     # Do the necessary fortran preprocessing
@@ -896,14 +896,14 @@ class USMesh(BaseSolver):
                             "The families not found are %s." % (repr(missing))
                         )
 
-            elif self.fileType in ["openfoam", "plot3d"]:
+            elif self.fileType in ["OpenFOAM", "PLOT3D"]:
 
                 # We could probably implement this at some point, but
                 # it is not critical
 
                 raise Error(
                     "Automatic determine of symmetry surfaces is "
-                    "not supported for OpenFoam or Plot3d meshes. Please "
+                    "not supported for OpenFOAM or PLOT3D meshes. Please "
                     "specify the symmetry planes using the "
                     "'symmetryPlanes' option. See the _setSymmetryConditions()"
                     " documentation string for the option prototype."
@@ -989,13 +989,13 @@ class USMesh(BaseSolver):
         self.warp.setsymmetryplanes(pts.T, normals.T)
 
     # =========================================================================
-    #                  Local OpenFoam Functions
+    #                  Local OpenFOAM Functions
     # =========================================================================
 
     def _computeOFConn(self):
 
         """
-        The user has specified an openfoam mesh. Loop through the mesh data and
+        The user has specified an OpenFOAM mesh. Loop through the mesh data and
         create the arrays necessary to initialize the warping.
         """
 
@@ -1011,7 +1011,7 @@ class USMesh(BaseSolver):
             bType = self.OFData["boundaries"][bName]["type"].lower()
 
             if bType in ["patch", "wall", "slip"]:
-                # Apparently openfoam will list boundaries with zero
+                # Apparently OpenFOAM will list boundaries with zero
                 # faces on them:
                 nFace = len(self.OFData["boundaries"][bName]["faces"])
                 if nFace > 0:
@@ -1041,7 +1041,7 @@ class USMesh(BaseSolver):
         Parameters
         ----------
         caseDir : str
-            The directory containing the openFOAM Mesh files
+            The directory containing the OpenFOAM mesh files
         """
 
         # import the pyOFM repo
