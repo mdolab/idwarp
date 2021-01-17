@@ -6,9 +6,9 @@ gridFile:
 
 fileType:
   desc: Specify the type of grid file.
-  cgns: CGNS file
-  openfoam: OpenFOAM directory
-  plot3d: PLOT3D file
+  CGNS: CGNS file
+  OpenFOAM: OpenFOAM directory
+  PLOT3D: PLOT3D file
 
 specifiedSurfaces:
   desc: >
