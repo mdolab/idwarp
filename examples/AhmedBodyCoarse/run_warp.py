@@ -10,10 +10,10 @@ gcomm = MPI.COMM_WORLD
 
 meshOptions = {
     "gridFile": os.getcwd(),
-    "fileType": "openFoam",
+    "fileType": "OpenFOAM",
     "symmetryPlanes": [[[0, 0, 0], [0, 1, 0]]],
-    "aExp": 3,
-    "bExp": 5,
+    "aExp": 3.0,
+    "bExp": 5.0,
     "alpha": 1.0,
     "LdefFact": 0.20,
 }

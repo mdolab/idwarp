@@ -43,7 +43,7 @@ def printHeader(testName):
 
 # NOTE: we no longer run test1 in idwarp. test1 has been moved to pyofm and will be tested from there.
 def test1():
-    # Test the Ahmed body openfoam mesh
+    # Test the Ahmed body OpenFOAM mesh
     sys.stdout.flush()
     # change directory to the correct test case
     os.chdir("../input_files/ahmedBodyMesh/")
@@ -55,7 +55,7 @@ def test1():
     meshOptions.update(
         {
             "gridFile": file_name,
-            "fileType": "openfoam",
+            "fileType": "OpenFOAM",
             "symmetryPlanes": [[[0, 0, 0], [0, 1, 0]]],
         }
     )
@@ -113,7 +113,7 @@ def test2():
 
     meshOptions = copy.deepcopy(defOpts)
 
-    meshOptions.update({"gridFile": file_name, "fileType": "cgns"})
+    meshOptions.update({"gridFile": file_name, "fileType": "CGNS"})
     # Create warping object
     mesh = USMesh(options=meshOptions)
 
@@ -168,7 +168,7 @@ def test3():
 
     meshOptions = copy.deepcopy(defOpts)
 
-    meshOptions.update({"gridFile": file_name, "fileType": "cgns"})
+    meshOptions.update({"gridFile": file_name, "fileType": "CGNS"})
     # Create warping object
     mesh = USMesh(options=meshOptions)
 
@@ -226,7 +226,7 @@ def test4():
     meshOptions.update(
         {
             "gridFile": file_name,
-            "fileType": "cgns",
+            "fileType": "CGNS",
             "symmetryPlanes": [[[0, 0, 0], [0, 0, 1]]],
         }
     )
@@ -287,7 +287,7 @@ def test5():
     meshOptions.update(
         {
             "gridFile": file_name,
-            "fileType": "cgns",
+            "fileType": "CGNS",
         }
     )
     # Create warping object
