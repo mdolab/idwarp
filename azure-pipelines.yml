@@ -2,21 +2,21 @@ resources:
   repositories:
   - repository: azure_template
     type: github
-    name: bernardopacini/.azure
+    name: bernardopacini/.github
     endpoint: bernardopacini
 
 pool:
     vmImage: 'ubuntu-latest'
 
 extends:
-  template: azure_template.yaml@azure_template
+  template: azure/azure_template.yaml@azure_template
   parameters:
     REPO_NAME: idwarp
+    IGNORE_STYLE: false
     COMPLEX: true
     GCC_CONFIG: config/defaults/config.LINUX_GFORTRAN_OPENMPI.mk
     INTEL_CONFIG: config/defaults/config.LINUX_INTEL_OPENMPI.mk
     INPUT_FILES: true
-    STYLE_CHECK: true
     STEPS_MAKE_REAL: make
     STEPS_INSTALL_REAL: pip install .
     STEPS_TEST_REAL: testflo -v . -n 1
