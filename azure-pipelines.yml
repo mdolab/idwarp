@@ -11,7 +11,7 @@ pool:
 extends:
   template: azure/azure_template.yaml@azure_template
   parameters:
-    REPO_NAME: idwarp
+    REPO_NAME: $(Build.Repository.Name)
     IGNORE_STYLE: false
     COMPLEX: true
     GCC_CONFIG: config/defaults/config.LINUX_GFORTRAN_OPENMPI.mk
