@@ -5,9 +5,6 @@ resources:
     name: bernardopacini/.github
     endpoint: bernardopacini
 
-pool:
-    vmImage: 'ubuntu-latest'
-
 extends:
   template: azure/azure_template.yaml@azure_template
   parameters:
