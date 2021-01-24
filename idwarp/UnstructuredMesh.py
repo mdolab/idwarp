@@ -109,7 +109,7 @@ class USMesh(BaseSolver):
                 "and should not be modified from their default values."
             )
 
-        self.printCurrentOptions()
+        self.printOptions()
 
         # Check if warp has already been set if this has been
         # inherited to complex version
