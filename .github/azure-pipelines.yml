@@ -1,0 +1,22 @@
+trigger:
+- master
+
+pr:
+- master
+
+resources:
+  repositories:
+  - repository: azure_template
+    type: github
+    name: mdolab/.github
+    endpoint: mdolab
+
+extends:
+  template: azure/azure_template.yaml@azure_template
+  parameters:
+    REPO_NAME: idwarp
+    IGNORE_STYLE: false
+    COMPLEX: true
+    GCC_CONFIG: config/defaults/config.LINUX_GFORTRAN_OPENMPI.mk
+    INTEL_CONFIG: config/defaults/config.LINUX_INTEL_OPENMPI.mk
+    PRIVATE: false
