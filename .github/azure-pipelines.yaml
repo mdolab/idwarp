@@ -19,4 +19,4 @@ extends:
     COMPLEX: true
     GCC_CONFIG: config/defaults/config.LINUX_GFORTRAN_OPENMPI.mk
     INTEL_CONFIG: config/defaults/config.LINUX_INTEL_OPENMPI.mk
-    PRIVATE: true
+    PRIVATE: false
