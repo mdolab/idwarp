@@ -7,7 +7,7 @@ IDWarp depends on the follow libraries:
 - PETSc
 - MPI
 
-See the MDO Lab installation guide `here <http://mdolab.engin.umich.edu/docs/installInstructions/install3rdPartyPackages.html>`_ for the supported versions and installation instructions.
+See the MDO Lab installation guide :ref:`here <mach-aero:installThirdPartyPackages>` for the supported versions and installation instructions.
 
 All the core computations in IDWarp are coded in Fortran.
 It is therefore necessary to build this library before using IDWarp.

@@ -45,6 +45,7 @@ setup(
         "numpy>=1.16",
         "petsc4py>=3.11",
         "mpi4py>=3.0",
+        "mdolab-baseclasses>=1.4",
     ],
     extras_require={"testing": ["parameterized", "testflo"]},
     classifiers=["Operating System :: Linux", "Programming Language :: Python, Fortran"],
