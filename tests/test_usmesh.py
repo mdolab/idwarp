@@ -123,6 +123,7 @@ class Test_USmesh(unittest.TestCase):
         # --- Reference options to be used by every test ---
         self.defOpts = {
             "gridFile": None,
+            "fileType": "CGNS",
             "aExp": 3.0,
             "bExp": 5.0,
             "LdefFact": 1.0,
@@ -132,7 +133,6 @@ class Test_USmesh(unittest.TestCase):
             "symmTol": 1e-6,
             "useRotations": True,
             "bucketSize": 8,
-            "fileType": None,
         }
         # --- Setting the ref file for parallel tests ---
         self.ref_app = ""
@@ -156,7 +156,7 @@ class Test_USmesh(unittest.TestCase):
 
             meshOptions = copy.deepcopy(self.defOpts)
 
-            meshOptions.update({"gridFile": file_name, "fileType": "cgns"})
+            meshOptions.update({"gridFile": file_name})
 
             # --- Call shared computation --
             eval_warp(handler=handler, test_name=test_name, meshOptions=meshOptions, iscomplex=self.iscomplex)
@@ -176,7 +176,7 @@ class Test_USmesh(unittest.TestCase):
 
             meshOptions = copy.deepcopy(self.defOpts)
 
-            meshOptions.update({"gridFile": file_name, "fileType": "cgns"})
+            meshOptions.update({"gridFile": file_name})
 
             # --- Call shared computation ---
             eval_warp(handler=handler, test_name=test_name, meshOptions=meshOptions, iscomplex=self.iscomplex)
@@ -199,7 +199,6 @@ class Test_USmesh(unittest.TestCase):
             meshOptions.update(
                 {
                     "gridFile": file_name,
-                    "fileType": "cgns",
                     "symmetryPlanes": [[[0, 0, 0], [0, 0, 1]]],
                 }
             )
@@ -222,7 +221,7 @@ class Test_USmesh(unittest.TestCase):
 
             meshOptions = copy.deepcopy(self.defOpts)
 
-            meshOptions.update({"gridFile": file_name, "fileType": "cgns"})
+            meshOptions.update({"gridFile": file_name})
 
             # --- Call shared computation --
             eval_warp(handler=handler, test_name=test_name, meshOptions=meshOptions, iscomplex=self.iscomplex)

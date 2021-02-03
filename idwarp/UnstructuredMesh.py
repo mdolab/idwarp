@@ -27,30 +27,10 @@ History
 import os
 import shutil
 import numpy as np
-from pprint import pprint
 from mpi4py import MPI
 from .MExt import MExt
-
-
-class Error(Exception):
-    """
-    Format the error message in a box to make it clear this
-    was a expliclty raised exception.
-    """
-
-    def __init__(self, message):
-        msg = "\n+" + "-" * 78 + "+" + "\n" + "| IDWarp Error: "
-        i = 22
-        for word in message.split():
-            if len(word) + i + 1 > 78:  # Finish line and start new one
-                msg += " " * (78 - i) + "|\n| " + word + " "
-                i = 1 + len(word) + 1
-            else:
-                msg += word + " "
-                i += len(word) + 1
-        msg += " " * (78 - i) + "|\n" + "+" + "-" * 78 + "+" + "\n"
-        print(msg)
-        Exception.__init__(self)
+from baseclasses import BaseSolver
+from baseclasses.utils import Error
 
 
 class Warning(object):
@@ -60,7 +40,7 @@ class Warning(object):
 
     def __init__(self, message):
         msg = "\n+" + "-" * 78 + "+" + "\n" + "| IDWarp Warning: "
-        i = 24
+        i = 17
         for word in message.split():
             if len(word) + i + 1 > 78:  # Finish line and start new one
                 msg += " " * (78 - i) + "|\n| " + word + " "
@@ -77,7 +57,7 @@ class Warning(object):
 # =============================================================================
 
 
-class USMesh(object):
+class USMesh(BaseSolver):
     """
     This is the main Unstructured Mesh. This mesh object is designed
     to interact with an structured or unstructured CFD solver though a
@@ -103,26 +83,41 @@ class USMesh(object):
             This needs to be true ONLY when a symbolic debugger is used.
         """
 
-        if comm is None:
-            self.comm = MPI.COMM_WORLD
-        else:
-            self.comm = comm
+        name = "IDWarp"
+        category = "Volume mesh warping"
 
-        # Check if warp has already been set if this is this has been
-        # interhited to complex version
-        try:
-            self.warp
-        except AttributeError:
-            curDir = os.path.dirname(os.path.realpath(__file__))
-            self.warp = MExt("idwarp", [curDir], debug=debug)._module
-        if options is not None:
-            self.solverOptions = options
-        else:
+        if comm is None:
+            comm = MPI.COMM_WORLD
+
+        # Default options for mesh warping
+        defOpts = self._getDefaultOptions()
+
+        if options is None:
             raise Error(
                 "The 'options' keyword argument is *NOT* "
                 "optional. An options dictionary must be passed upon "
                 "creation of this object"
             )
+
+        # Initialize the inherited BaseSolver
+        super().__init__(name, category, defaultOptions=defOpts, options=options, comm=comm)
+
+        # aExp and bExp are not fully implemented
+        if self.getOption("aExp") != 3.0 or self.getOption("bExp") != 5.0:
+            raise Error(
+                "The aExp and bExp options are currently not implemented "
+                "and should not be modified from their default values."
+            )
+
+        self.printOptions()
+
+        # Check if warp has already been set if this has been
+        # inherited to complex version
+        try:
+            self.warp
+        except AttributeError:
+            curDir = os.path.dirname(os.path.realpath(__file__))
+            self.warp = MExt("idwarp", [curDir], debug=debug)._module
 
         # Initialize PETSc if not done so
         self.warp.initpetsc(self.comm.py2f())
@@ -131,52 +126,47 @@ class USMesh(object):
         # UnstructuredMesh_C.py
         self.dtype = "d"
 
-        # Defalut options for mesh warping
-        self.solverOptionsDefault = {
-            "gridFile": None,
-            "fileType": "cgns",
-            "specifiedSurfaces": None,
-            "symmetrySurfaces": None,
-            "symmetryPlanes": None,
-            "aExp": 3.0,
-            "bExp": 5.0,
-            "LdefFact": 1.0,
-            "alpha": 0.25,
-            "errTol": 0.0005,
-            "evalMode": "fast",
-            "symmTol": 1e-6,
-            "useRotations": True,
-            "zeroCornerRotations": True,
-            "cornerAngle": 30.0,
-            "restartFile": None,
-            "bucketSize": 8,
-        }
-
-        # Set remaining default values
-        self._checkOptions(self.solverOptions)
+        # Set Fortran options values
         self._setMeshOptions()
-        self._printCurrentOptions()
 
         # Initialize various bits of stored information
         self.OFData = {}
         self.warpInitialized = False
         self.faceSizes = None
-        self.meshType = None
-        fileName = self.solverOptions["gridFile"]
-        self.meshType = self.solverOptions["fileType"]
+        self.fileType = self.getOption("fileType")
+        fileName = self.getOption("gridFile")
 
-        # Determine how to read:
-        if self.meshType is not None:
-            if self.meshType.lower() == "cgns":
-                # Determine type of CGNS mesh we have:
-                self.warp.readcgns(fileName)
+        # Determine how to read
+        if self.fileType == "CGNS":
+            # Determine type of CGNS mesh we have
+            self.warp.readcgns(fileName)
+        elif self.fileType == "OpenFOAM":
+            self._readOFGrid(fileName)
+        elif self.fileType == "PLOT3D":
+            self.warp.readplot3d(fileName)
 
-            elif self.meshType.lower() == "openfoam":
-                self._readOFGrid(fileName)
-            elif self.meshType.lower() == "plot3d":
-                self.warp.readplot3d(fileName)
-        else:
-            raise Error("Invalid input file type. valid options are: " "CGNS" or "OpenFOAM.")
+    @staticmethod
+    def _getDefaultOptions():
+        defOpts = {
+            "gridFile": [(str, type(None)), None],
+            "fileType": [str, ["CGNS", "OpenFOAM", "PLOT3D"]],
+            "specifiedSurfaces": [(list, type(None)), None],
+            "symmetrySurfaces": [(list, type(None)), None],
+            "symmetryPlanes": [(list, type(None)), None],
+            "aExp": [float, 3.0],
+            "bExp": [float, 5.0],
+            "LdefFact": [float, 1.0],
+            "alpha": [float, 0.25],
+            "errTol": [float, 0.0005],
+            "evalMode": [str, ["fast", "exact"]],
+            "symmTol": [float, 1e-6],
+            "useRotations": [bool, True],
+            "zeroCornerRotations": [bool, True],
+            "cornerAngle": [float, 30.0],
+            "restartFile": [(str, type(None)), None],
+            "bucketSize": [int, 8],
+        }
+        return defOpts
 
     def getSurfaceCoordinates(self):
         """Returns all defined surface coordinates on this processor
@@ -251,10 +241,10 @@ class USMesh(object):
 
         # Call the fortran initialze warping command with  the
         # coordinates and the patch connectivity given to us.
-        if self.solverOptions["restartFile"] is None:
+        if self.getOption("restartFile") is None:
             restartFile = ""
         else:
-            restartFile = self.solverOptions["restartFile"]
+            restartFile = self.getOption("restartFile")
 
         # The symmetry conditions but be set before initializing the
         # warping.
@@ -297,14 +287,14 @@ class USMesh(object):
 
     def setSurfaceDefinitionFromFile(self, surfFile):
         """Set the surface definition for the warping from a
-        multiblock plot3d surface file
+        multiblock PLOT3D surface file
 
         Parameters
         ----------
-        surfFile : filename of multiblock plot3d surface file.
+        surfFile : filename of multiblock PLOT3D surface file.
         """
 
-        # Read the plot3d surface file
+        # Read the PLOT3D surface file
         self.warp.readplot3dsurface(surfFile)
 
         if self.comm.rank == 0:
@@ -328,7 +318,7 @@ class USMesh(object):
 
     def setSurfaceFromFile(self, surfFile):
         """Update the internal surface surface coordinates using an
-        external plot3d surface file. This can be used in an analogous
+        external PLOT3D surface file. This can be used in an analogous
         way to setSurfaceDefinitionFromFile. The 'sense' of the file
         must be same as the file used with
         setSurfaceDefinitionFromFile. That means, the same number of
@@ -336,10 +326,10 @@ class USMesh(object):
 
         Parameters
         ----------
-        surfFile: filename of multiblock plot3d surface file'
+        surfFile: filename of multiblock PLOT3D surface file'
         """
 
-        # Read the plot3d surface file
+        # Read the PLOT3D surface file
         self.warp.readplot3dsurface(surfFile)
 
         if self.comm.rank == 0:
@@ -389,7 +379,7 @@ class USMesh(object):
 
     def getCommonGrid(self):
         """Return the grid in the original ordering. This is required for the
-        openFOAM tecplot writer since the connectivity is only known
+        OpenFOAM tecplot writer since the connectivity is only known
         in this ordering.
         """
         return self.warp.getcommonvolumecoordinates(self.warp.griddata.commonmeshdof)
@@ -520,30 +510,29 @@ class USMesh(object):
         fileName : str or None
 
             Filename for grid. Should end in .cgns for CGNS files. For
-            plot3d whatever you want. It is not optional for
-            cgns/plot3d. It is not required for openFOAM meshes. This
+            PLOT3D whatever you want. It is not optional for
+            CGNS/PLOT3D. It is not required for OpenFOAM meshes. This
             call will update the 'points' file.
         """
-        mt = self.meshType.lower()
-        if mt in ["cgns", "plot3d"]:
+        if self.fileType in ["CGNS", "PLOT3D"]:
             if fileName is None:
-                raise Error("fileName is not optional for writeGrid with " "gridType of cgns or plot3d")
+                raise Error("fileName is not optional for writeGrid with " "gridType of CGNS or PLOT3D")
 
-            if mt == "cgns":
+            if self.fileType == "CGNS":
                 # Copy the default and then write
                 if self.comm.rank == 0:
-                    shutil.copy(self.solverOptions["gridFile"], fileName)
+                    shutil.copy(self.getOption("gridFile"), fileName)
                 self.warp.writecgns(fileName)
 
-            elif mt == "plot3d":
+            elif self.fileType == "PLOT3D":
                 self.warp.writeplot3d(fileName)
 
-        elif mt == "openfoam":
+        elif self.fileType == "OpenFOAM":
             self._writeOpenFOAMVolumePoints(self.getCommonGrid())
 
     def writeOFGridTecplot(self, fileName):
         """
-        Write the current openFOAM grid to a Tecplot FE polyhedron file.
+        Write the current OpenFOAM grid to a Tecplot FE polyhedron file.
         This is generally used for debugging/visualization purposes.
 
         Parameters
@@ -552,7 +541,7 @@ class USMesh(object):
             Filename to use. Should end in .dat for tecplot ascii file.
         """
         if not self.OFData:
-            Warning("Cannot write OpenFoam tecplot file since there is " "no openFoam ata present")
+            Warning("Cannot write OpenFOAM tecplot file since there is " "no OpenFOAM data present")
             return
 
         if self.comm.size == 1:
@@ -655,7 +644,7 @@ class USMesh(object):
         pts = []
         faceSizes = []
 
-        if self.meshType.lower() == "cgns":
+        if self.fileType == "CGNS":
             if self.comm.rank == 0:
 
                 # Do the necessary fortran preprocessing
@@ -676,14 +665,14 @@ class USMesh(object):
                 # ones to use depending on what the user has
                 # told us.
                 surfaceFamilies = set()
-                if self.solverOptions["specifiedSurfaces"] is None:
+                if self.getOption("specifiedSurfaces") is None:
                     # Use all wall surfaces:
                     for i in range(len(self.warp.cgnsgrid.surfaceiswall)):
                         if self.warp.cgnsgrid.surfaceiswall[i]:
                             surfaceFamilies.add(fullPatchNames[i].lower())
                 else:
                     # The user has supplied a list of surface families
-                    for name in self.solverOptions["specifiedSurfaces"]:
+                    for name in self.getOption("specifiedSurfaces"):
                         surfaceFamilies.add(name.lower())
 
             usedFams = set()
@@ -777,7 +766,7 @@ class USMesh(object):
                         "list of families is %s." % (repr(list(fullPatchNames)))
                     )
 
-        elif self.meshType.lower() == "openfoam":
+        elif self.fileType == "OpenFOAM":
 
             faceSizes, conn, pts = self._computeOFConn()
 
@@ -800,7 +789,7 @@ class USMesh(object):
 
         """
 
-        symmList = self.solverOptions["symmetryPlanes"]
+        symmList = self.getOption("symmetryPlanes")
         if symmList is not None:
             # The user has explictly supplied symmetry planes. Use those
             pts = []
@@ -812,7 +801,7 @@ class USMesh(object):
         else:
             # Otherwise generate from the geometry.
             planes = []
-            if self.meshType.lower() == "cgns":
+            if self.fileType == "CGNS":
                 if self.comm.rank == 0:
 
                     # Do the necessary fortran preprocessing
@@ -829,14 +818,14 @@ class USMesh(object):
                     for i in range(nPatch):
                         fullPatchNames.append(self.warp.cgnsgrid.getsurf(i + 1).strip().lower())
                     symmFamilies = set()
-                    if self.solverOptions["symmetrySurfaces"] is None:
+                    if self.getOption("symmetrySurfaces") is None:
                         # Use all symmetry surfaces:
                         for i in range(len(self.warp.cgnsgrid.surfaceissymm)):
                             if self.warp.cgnsgrid.surfaceissymm[i]:
                                 symmFamilies.add(fullPatchNames[i].lower())
                     else:
                         # The user has supplied a list of surface families
-                        for name in self.solverOptions["symmetrySurfaces"]:
+                        for name in self.getOption("symmetrySurfaces"):
                             symmFamilies.add(name.lower())
 
                 usedFams = set()
@@ -907,14 +896,14 @@ class USMesh(object):
                             "The families not found are %s." % (repr(missing))
                         )
 
-            elif self.meshType.lower() in ["openfoam", "plot3d"]:
+            elif self.fileType in ["OpenFOAM", "PLOT3D"]:
 
                 # We could probably implement this at some point, but
                 # it is not critical
 
                 raise Error(
                     "Automatic determine of symmetry surfaces is "
-                    "not supported for OpenFoam or Plot3d meshes. Please "
+                    "not supported for OpenFOAM or PLOT3D meshes. Please "
                     "specify the symmetry planes using the "
                     "'symmetryPlanes' option. See the _setSymmetryConditions()"
                     " documentation string for the option prototype."
@@ -1000,13 +989,13 @@ class USMesh(object):
         self.warp.setsymmetryplanes(pts.T, normals.T)
 
     # =========================================================================
-    #                  Local OpenFoam Functions
+    #                  Local OpenFOAM Functions
     # =========================================================================
 
     def _computeOFConn(self):
 
         """
-        The user has specified an openfoam mesh. Loop through the mesh data and
+        The user has specified an OpenFOAM mesh. Loop through the mesh data and
         create the arrays necessary to initialize the warping.
         """
 
@@ -1022,7 +1011,7 @@ class USMesh(object):
             bType = self.OFData["boundaries"][bName]["type"].lower()
 
             if bType in ["patch", "wall", "slip"]:
-                # Apparently openfoam will list boundaries with zero
+                # Apparently OpenFOAM will list boundaries with zero
                 # faces on them:
                 nFace = len(self.OFData["boundaries"][bName]["faces"])
                 if nFace > 0:
@@ -1052,7 +1041,7 @@ class USMesh(object):
         Parameters
         ----------
         caseDir : str
-            The directory containing the openFOAM Mesh files
+            The directory containing the OpenFOAM mesh files
         """
 
         # import the pyOFM repo
@@ -1089,54 +1078,22 @@ class USMesh(object):
 
     def _setMeshOptions(self):
         """Private function to set the options currently in
-        self.solverOptions to the corresponding place in Fortran"""
-        o = self.solverOptions
-        self.warp.gridinput.ldeffact = o["LdefFact"]
-        self.warp.gridinput.alpha = o["alpha"]
-        self.warp.gridinput.aexp = o["aExp"]
-        self.warp.gridinput.bexp = o["bExp"]
-        self.warp.gridinput.symmtol = o["symmTol"]
-        self.warp.gridinput.userotations = o["useRotations"]
-        self.warp.gridinput.zerocornerrotations = o["zeroCornerRotations"]
-        self.warp.gridinput.cornerangle = o["cornerAngle"]
-        self.warp.gridinput.errtol = o["errTol"]
-        self.warp.kd_tree.bucket_size = o["bucketSize"]
-        if o["evalMode"].lower() == "fast":
+        self.options to the corresponding place in Fortran"""
+
+        self.warp.gridinput.ldeffact = self.getOption("LdefFact")
+        self.warp.gridinput.alpha = self.getOption("alpha")
+        self.warp.gridinput.aexp = self.getOption("aExp")
+        self.warp.gridinput.bexp = self.getOption("bExp")
+        self.warp.gridinput.symmtol = self.getOption("symmTol")
+        self.warp.gridinput.userotations = self.getOption("useRotations")
+        self.warp.gridinput.zerocornerrotations = self.getOption("zeroCornerRotations")
+        self.warp.gridinput.cornerangle = self.getOption("cornerAngle")
+        self.warp.gridinput.errtol = self.getOption("errTol")
+        self.warp.kd_tree.bucket_size = self.getOption("bucketSize")
+        if self.getOption("evalMode") == "fast":
             self.warp.gridinput.evalmode = self.warp.gridinput.eval_fast
-        elif o["evalMode"].lower() == "exact":
+        elif self.getOption("evalMode") == "exact":
             self.warp.gridinput.evalmode = self.warp.gridinput.eval_exact
-
-    def _checkOptions(self, solverOptions):
-        """Check the solver options against the default ones and add
-        option iff it is NOT in solverOptions"""
-
-        for key in self.solverOptionsDefault.keys():
-            if key not in solverOptions.keys():
-                solverOptions[key] = self.solverOptionsDefault[key]
-            else:
-                self.solverOptionsDefault[key] = solverOptions[key]
-
-        # Print a couple of warnings about aExp and bExp which are not
-        # fully implemented.
-        if self.comm.rank == 0:
-            if self.solverOptions["aExp"] != 3.0 or self.solverOptions["bExp"] != 5.0:
-                Warning(
-                    "The aExp and bExp options are currently not implemented "
-                    "and will always use their default values of aExp=3.0 and "
-                    "bExp=5.0"
-                )
-
-        return solverOptions
-
-    def _printCurrentOptions(self):
-        """Prints a nicely formatted dictionary of all the current options to
-        the stdout on the root processor
-        """
-        if self.comm.rank == 0:
-            print("+---------------------------------------+")
-            print("|     All IDWarp Options:               |")
-            print("+---------------------------------------+")
-            pprint(self.solverOptions)
 
     def _processFortranStringArray(self, strArray):
         """Getting arrays of strings out of Fortran can be kinda nasty. This
