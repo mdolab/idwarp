@@ -23,7 +23,7 @@ baseDir = os.path.dirname(os.path.abspath(__file__))  # Path to current folder
 
 def eval_warp(handler, test_name, meshOptions, iscomplex):
     # --- Create warping object ---
-    if iscomplex is True:
+    if iscomplex:
         # Checking if the complex verision of the code has been built:
         try:
             from idwarp import idwarp_cs  # noqa: F401
@@ -33,7 +33,12 @@ def eval_warp(handler, test_name, meshOptions, iscomplex):
         except ImportError:
             raise unittest.SkipTest("Skipping because you do not have complex idwarp compiled")
     else:
-        mesh = USMesh(options=meshOptions)
+        try:
+            from idwarp import idwarp  # noqa: F401
+
+            mesh = USMesh(options=meshOptions)
+        except ImportError:
+            raise unittest.SkipTest("Skipping because you do not have real idwarp compiled")
 
     # --- Extract Surface Coordinates ---
     coords0 = mesh.getSurfaceCoordinates()
