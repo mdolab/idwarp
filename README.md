@@ -17,7 +17,19 @@ You can then view the built documentation in the `_build` folder.
 
 ## Citation
 
-IDWarp is based on the theory presented in [this journal article](https://doi.org/10.1016/j.jcp.2011.09.021).
+If you use IDWarp in any publication for which you find it useful, please cite this paper.
+
+N. Secco, G. K. W. Kenway, P. He, C. A. Mader, and J. R. R. A. Martins, “Efficient Mesh Generation and Deformation for Aerodynamic Shape Optimization”, AIAA Journal, 2021. [doi:10.2514/1.J059491](https://doi.org/10.2514/1.J059491)
+
+```
+@article{Secco2021,
+    title = {Efficient Mesh Generation and Deformation for Aerodynamic Shape Optimization},
+    author = {Ney Secco and Gaetan K. W. Kenway and Ping He and Charles A. Mader and Joaquim R. R. A. Martins},
+    doi = {10.2514/1.J059491},
+    journal = {AIAA Journal},
+    year = {2021}
+}
+```
 
 ## License
 Copyright 2019 MDO Lab. See the LICENSE file for details.
