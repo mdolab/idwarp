@@ -1,7 +1,6 @@
 
 # IDWarp
 [![Build Status](https://dev.azure.com/mdolab/Public/_apis/build/status/mdolab.idwarp?repoName=mdolab%2Fidwarp&branchName=master)](https://dev.azure.com/mdolab/Public/_build/latest?definitionId=10&repoName=mdolab%2Fidwarp&branchName=master)
-[![Build Status](https://travis-ci.com/mdolab/idwarp.svg?branch=master)](https://travis-ci.com/mdolab/idwarp)
 [![Documentation Status](https://readthedocs.com/projects/mdolab-idwarp/badge/?version=latest)](https://mdolab-idwarp.readthedocs-hosted.com/en/latest/?badge=latest)
 
 
