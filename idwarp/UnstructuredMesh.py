@@ -116,8 +116,8 @@ class USMesh(BaseSolver):
         try:
             self.warp
         except AttributeError:
-            curDir = os.path.dirname(os.path.realpath(__file__))
-            self.warp = MExt("idwarp", [curDir], debug=debug)._module
+            curDir = os.path.basename(os.path.dirname(os.path.realpath(__file__)))
+            self.warp = MExt("idwarp", curDir, debug=debug)._module
 
         # Initialize PETSc if not done so
         self.warp.initpetsc(self.comm.py2f())
