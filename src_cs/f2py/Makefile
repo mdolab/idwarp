@@ -31,7 +31,7 @@ all:
 	 @echo f2py root directory: $(F2PY_ROOT)
 	 @echo "#------------------------------------------------------#"
 
-	f2py idwarp.pyf.autogen
+	f2py libidwarp.pyf.autogen
 	@echo " "
 	$(CC) $(CC_ALL_FLAGS) $(PYTHON_INCLUDES) -I$(NUMPY_INCLUDES) \
 	-I$(F2PY_ROOT)/src -c libidwarp_csmodule.c

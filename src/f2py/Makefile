@@ -14,8 +14,8 @@ default: all
 
 complexify: 
 	cp get_f2py.py ../../src_cs/f2py
-	python pyf_preprocessor.py complex idwarp.pyf
-	cp idwarp.pyf.autogen ../../src_cs/f2py
+	python pyf_preprocessor.py complex libidwarp.pyf
+	cp libidwarp.pyf.autogen ../../src_cs/f2py
 all:
 
 # Generate Python inlude directory
@@ -40,9 +40,9 @@ all:
 	cp f2py_f2cmap.ref .f2py_f2cmap
 
 #       Run the preprocessor on the pyf file:
-	$(PYTHON) pyf_preprocessor.py real idwarp.pyf 
+	$(PYTHON) pyf_preprocessor.py real libidwarp.pyf 
 
-	$(F2PY) idwarp.pyf.autogen
+	$(F2PY) libidwarp.pyf.autogen
 	@echo " "
 	$(CC) $(CC_ALL_FLAGS) $(PYTHON_INCLUDES) -I$(NUMPY_INCLUDES) \
 	-I$(F2PY_ROOT)/src -c libidwarpmodule.c
