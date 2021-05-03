@@ -26,7 +26,7 @@ def eval_warp(handler, test_name, meshOptions, iscomplex):
     if iscomplex:
         # Checking if the complex verision of the code has been built:
         try:
-            from idwarp import idwarp_cs  # noqa: F401
+            from idwarp import libidwarp_cs  # noqa: F401
 
             h = 1e-40
             mesh = USMesh_C(options=meshOptions, debug=True)
@@ -34,7 +34,7 @@ def eval_warp(handler, test_name, meshOptions, iscomplex):
             raise unittest.SkipTest("Skipping because you do not have complex idwarp compiled")
     else:
         try:
-            from idwarp import idwarp  # noqa: F401
+            from idwarp import libidwarp  # noqa: F401
 
             mesh = USMesh(options=meshOptions)
         except ImportError:
