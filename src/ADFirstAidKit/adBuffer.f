@@ -841,9 +841,9 @@ c
       ENDIF
       END
 
-c======================= complex(kind=8) =========================
+c======================= complex(kind=4) =========================
       BLOCK DATA COMPLEXS8
-      complex(kind=8) adc8buf(512), adc8lbuf(512)
+      complex(kind=4) adc8buf(512), adc8lbuf(512)
       INTEGER adc8ibuf,adc8ilbuf
       LOGICAL adc8inlbuf
       COMMON /adc8fbuf/adc8buf,adc8lbuf,
@@ -854,7 +854,7 @@ c======================= complex(kind=8) =========================
       END
 
       SUBROUTINE PUSHCOMPLEX8(x)
-      complex(kind=8) x, adc8buf(512), adc8lbuf(512)
+      complex(kind=4) x, adc8buf(512), adc8lbuf(512)
       INTEGER adc8ibuf,adc8ilbuf
       LOGICAL adc8inlbuf
       COMMON /adc8fbuf/adc8buf,adc8lbuf,
@@ -880,7 +880,7 @@ c
       END
 
       SUBROUTINE LOOKCOMPLEX8(x)
-      complex(kind=8) x, adc8buf(512), adc8lbuf(512)
+      complex(kind=4) x, adc8buf(512), adc8lbuf(512)
       INTEGER adc8ibuf,adc8ilbuf
       LOGICAL adc8inlbuf
       COMMON /adc8fbuf/adc8buf,adc8lbuf,
@@ -911,7 +911,7 @@ c
       END
 
       SUBROUTINE POPCOMPLEX8(x)
-      complex(kind=8) x, adc8buf(512), adc8lbuf(512)
+      complex(kind=4) x, adc8buf(512), adc8lbuf(512)
       INTEGER adc8ibuf,adc8ilbuf
       LOGICAL adc8inlbuf
       COMMON /adc8fbuf/adc8buf,adc8lbuf,
@@ -934,9 +934,9 @@ c
       ENDIF
       END
 
-c======================= complex(kind=16) =========================
+c======================= complex(kind=8) =========================
       BLOCK DATA COMPLEXS16
-      complex(kind=16) adc16buf(512), adc16lbuf(512)
+      complex(kind=8) adc16buf(512), adc16lbuf(512)
       INTEGER adc16ibuf,adc16ilbuf
       LOGICAL adc16inlbuf
       COMMON /adc16fbuf/adc16buf,adc16lbuf,
@@ -947,7 +947,7 @@ c======================= complex(kind=16) =========================
       END
 
       SUBROUTINE PUSHCOMPLEX16(x)
-      complex(kind=16) x, adc16buf(512), adc16lbuf(512)
+      complex(kind=8) x, adc16buf(512), adc16lbuf(512)
       INTEGER adc16ibuf,adc16ilbuf
       LOGICAL adc16inlbuf
       COMMON /adc16fbuf/adc16buf,adc16lbuf,
@@ -973,7 +973,7 @@ c
       END
 
       SUBROUTINE LOOKCOMPLEX16(x)
-      complex(kind=16) x, adc16buf(512), adc16lbuf(512)
+      complex(kind=8) x, adc16buf(512), adc16lbuf(512)
       INTEGER adc16ibuf,adc16ilbuf
       LOGICAL adc16inlbuf
       COMMON /adc16fbuf/adc16buf,adc16lbuf,
@@ -1004,7 +1004,7 @@ c
       END
 
       SUBROUTINE POPCOMPLEX16(x)
-      complex(kind=16) x, adc16buf(512), adc16lbuf(512)
+      complex(kind=8) x, adc16buf(512), adc16lbuf(512)
       INTEGER adc16ibuf,adc16ilbuf
       LOGICAL adc16inlbuf
       COMMON /adc16fbuf/adc16buf,adc16lbuf,
@@ -1128,22 +1128,22 @@ c           INTEGER adr32ibuf,adr32ilbuf
 c           LOGICAL adr32inlbuf
 c           COMMON /adr32fbuf/adr32buf,adr32lbuf,
 c          +       adr32ibuf,adr32ilbuf,adr32inlbuf
-c           complex(kind=4) adc4buf(512), adc4lbuf(512)
+c           complex(kind=2) adc4buf(512), adc4lbuf(512)
 c           INTEGER adc4ibuf,adc4ilbuf
 c           LOGICAL adc4inlbuf
 c           COMMON /adc4fbuf/adc4buf,adc4lbuf,
 c          +       adc4ibuf,adc4ilbuf,adc4inlbuf
-      complex(kind=8) adc8buf(512), adc8lbuf(512)
+      complex(kind=4) adc8buf(512), adc8lbuf(512)
       INTEGER adc8ibuf,adc8ilbuf
       LOGICAL adc8inlbuf
       COMMON /adc8fbuf/adc8buf,adc8lbuf,
      +       adc8ibuf,adc8ilbuf,adc8inlbuf
-      complex(kind=16) adc16buf(512), adc16lbuf(512)
+      complex(kind=8) adc16buf(512), adc16lbuf(512)
       INTEGER adc16ibuf,adc16ilbuf
       LOGICAL adc16inlbuf
       COMMON /adc16fbuf/adc16buf,adc16lbuf,
      +       adc16ibuf,adc16ilbuf,adc16inlbuf
-c           complex(kind=32) adc32buf(512), adc32lbuf(512)
+c           complex(kind=16) adc32buf(512), adc32lbuf(512)
 c           INTEGER adc32ibuf,adc32ilbuf
 c           LOGICAL adc32inlbuf
 c           COMMON /adc32fbuf/adc32buf,adc32lbuf,
@@ -1215,22 +1215,22 @@ c           INTEGER adr32ibuf,adr32ilbuf
 c           LOGICAL adr32inlbuf
 c           COMMON /adr32fbuf/adr32buf,adr32lbuf,
 c          +       adr32ibuf,adr32ilbuf,adr32inlbuf
-c           complex(kind=4) adc4buf(512), adc4lbuf(512)
+c           complex(kind=2) adc4buf(512), adc4lbuf(512)
 c           INTEGER adc4ibuf,adc4ilbuf
 c           LOGICAL adc4inlbuf
 c           COMMON /adc4fbuf/adc4buf,adc4lbuf,
 c          +       adc4ibuf,adc4ilbuf,adc4inlbuf
-      complex(kind=8) adc8buf(512), adc8lbuf(512)
+      complex(kind=4) adc8buf(512), adc8lbuf(512)
       INTEGER adc8ibuf,adc8ilbuf
       LOGICAL adc8inlbuf
       COMMON /adc8fbuf/adc8buf,adc8lbuf,
      +       adc8ibuf,adc8ilbuf,adc8inlbuf
-      complex(kind=16) adc16buf(512), adc16lbuf(512)
+      complex(kind=8) adc16buf(512), adc16lbuf(512)
       INTEGER adc16ibuf,adc16ilbuf
       LOGICAL adc16inlbuf
       COMMON /adc16fbuf/adc16buf,adc16lbuf,
      +       adc16ibuf,adc16ilbuf,adc16inlbuf
-c           complex(kind=32) adc32buf(512), adc32lbuf(512)
+c           complex(kind=16) adc32buf(512), adc32lbuf(512)
 c           INTEGER adc32ibuf,adc32ilbuf
 c           LOGICAL adc32inlbuf
 c           COMMON /adc32fbuf/adc32buf,adc32lbuf,
@@ -1327,12 +1327,12 @@ C FOR INTERNAL DEBUGS ONLY:
       LOGICAL adr16inlbuf
       COMMON /adr16fbuf/adr16buf,adr16lbuf,
      +       adr16ibuf,adr16ilbuf,adr16inlbuf
-      complex(kind=8) adc8buf(512), adc8lbuf(512)
+      complex(kind=4) adc8buf(512), adc8lbuf(512)
       INTEGER adc8ibuf,adc8ilbuf
       LOGICAL adc8inlbuf
       COMMON /adc8fbuf/adc8buf,adc8lbuf,
      +       adc8ibuf,adc8ilbuf,adc8inlbuf
-      complex(kind=16) adc16buf(512), adc16lbuf(512)
+      complex(kind=8) adc16buf(512), adc16lbuf(512)
       INTEGER adc16ibuf,adc16ilbuf
       LOGICAL adc16inlbuf
       COMMON /adc16fbuf/adc16buf,adc16lbuf,
@@ -1553,9 +1553,9 @@ c              x = adr32buf(adr32ibuf)
 c           ENDIF
 c           END
 
-c======================= complex(kind=4) =========================
+c======================= complex(kind=2) =========================
 c           BLOCK DATA COMPLEXS4
-c           complex(kind=4) adc4buf(512), adc4lbuf(512)
+c           complex(kind=2) adc4buf(512), adc4lbuf(512)
 c           INTEGER adc4ibuf,adc4ilbuf
 c           LOGICAL adc4inlbuf
 c           COMMON /adc4fbuf/adc4buf,adc4lbuf,
@@ -1566,7 +1566,7 @@ c           DATA adc4inlbuf/.FALSE./
 c           END
 c     c
 c           SUBROUTINE PUSHCOMPLEX4(x)
-c           complex(kind=4) x, adc4buf(512), adc4lbuf(512)
+c           complex(kind=2) x, adc4buf(512), adc4lbuf(512)
 c           INTEGER adc4ibuf,adc4ilbuf
 c           LOGICAL adc4inlbuf
 c           COMMON /adc4fbuf/adc4buf,adc4lbuf,
@@ -1592,7 +1592,7 @@ c           ENDIF
 c           END
 c     
 c           SUBROUTINE LOOKCOMPLEX4(x)
-c           complex(kind=4) x, adc4buf(512), adc4lbuf(512)
+c           complex(kind=2) x, adc4buf(512), adc4lbuf(512)
 c           INTEGER adc4ibuf,adc4ilbuf
 c           LOGICAL adc4inlbuf
 c           COMMON /adc4fbuf/adc4buf,adc4lbuf,
@@ -1623,7 +1623,7 @@ c           ENDIF
 c           END
 c     
 c           SUBROUTINE POPCOMPLEX4(x)
-c           complex(kind=4) x, adc4buf(512), adc4lbuf(512)
+c           complex(kind=2) x, adc4buf(512), adc4lbuf(512)
 c           INTEGER adc4ibuf,adc4ilbuf
 c           LOGICAL adc4inlbuf
 c           COMMON /adc4fbuf/adc4buf,adc4lbuf,
@@ -1646,9 +1646,9 @@ c              x = adc4buf(adc4ibuf)
 c           ENDIF
 c           END
 
-c======================= complex(kind=32) =========================
+c======================= complex(kind=16) =========================
 c           BLOCK DATA COMPLEXS32
-c           complex(kind=32) adc32buf(512), adc32lbuf(512)
+c           complex(kind=16) adc32buf(512), adc32lbuf(512)
 c           INTEGER adc32ibuf,adc32ilbuf
 c           LOGICAL adc32inlbuf
 c           COMMON /adc32fbuf/adc32buf,adc32lbuf,
@@ -1659,7 +1659,7 @@ c           DATA adc32inlbuf/.FALSE./
 c           END
 c     c
 c           SUBROUTINE PUSHCOMPLEX32(x)
-c           complex(kind=32) x, adc32buf(512), adc32lbuf(512)
+c           complex(kind=16) x, adc32buf(512), adc32lbuf(512)
 c           INTEGER adc32ibuf,adc32ilbuf
 c           LOGICAL adc32inlbuf
 c           COMMON /adc32fbuf/adc32buf,adc32lbuf,
@@ -1685,7 +1685,7 @@ c           ENDIF
 c           END
 c     
 c           SUBROUTINE LOOKCOMPLEX32(x)
-c           complex(kind=32) x, adc32buf(512), adc32lbuf(512)
+c           complex(kind=16) x, adc32buf(512), adc32lbuf(512)
 c           INTEGER adc32ibuf,adc32ilbuf
 c           LOGICAL adc32inlbuf
 c           COMMON /adc32fbuf/adc32buf,adc32lbuf,
@@ -1716,7 +1716,7 @@ c           ENDIF
 c           END
 c     
 c           SUBROUTINE POPCOMPLEX32(x)
-c           complex(kind=32) x, adc32buf(512), adc32lbuf(512)
+c           complex(kind=16) x, adc32buf(512), adc32lbuf(512)
 c           INTEGER adc32ibuf,adc32ilbuf
 c           LOGICAL adc32inlbuf
 c           COMMON /adc32fbuf/adc32buf,adc32lbuf,
