@@ -18,7 +18,7 @@ subroutine getSurfaceCoordinates(coordinates, cdof)
   call EChk(ierr, __FILE__, __LINE__)
 
   do i=1, cdof
-#if PETSC_VERSION_MINOR > 13
+#if PETSC_VERSION_GE(3,14,0)
       call VecGetValues(Xs, 1, iStart+i-1, coordinates(i), ierr)
 #else
       call VecGetValues(Xs, 1, (/iStart+i-1/), coordinates(i), ierr)

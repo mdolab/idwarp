@@ -17,7 +17,7 @@ subroutine getdXs(output, ndof)
   call EChk(ierr, __FILE__, __LINE__)
 
   do i=1, ndof
-#if PETSC_VERSION_MINOR > 13
+#if PETSC_VERSION_GE(3,14,0)
       call VecGetValues(dXs, 1,  i+istart-1, output(i), ierr)
 #else
       call VecGetValues(dXs, 1,  (/i+istart-1/), output(i), ierr)

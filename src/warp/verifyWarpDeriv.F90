@@ -52,7 +52,7 @@ subroutine verifyWarpDeriv(dXv_f, ndof_warp, dof_start, dof_end, h)
 
      ! add h to dof
      if (dof >= istart .and. dof < iend) then
-#if PETSC_VERSION_MINOR > 13
+#if PETSC_VERSION_GE(3,14,0)
          call VecGetValues(Xs, 1, dof, orig_value, ierr)
 #else
          call VecGetValues(Xs, 1, (/dof/), orig_value, ierr)
@@ -128,7 +128,7 @@ subroutine verifyWarpDeriv(dXv_f, ndof_warp, dof_start, dof_end, h)
      call EChk(ierr, __FILE__, __LINE__)
 
      if (dof >= istart .and. dof < iend) then
-#if PETSC_VERSION_MINOR > 13
+#if PETSC_VERSION_GE(3,14,0)
          call VecGetValues(dXs, 1, dof, ADvalue, ierr)
 #else
          call VecGetValues(dXs, 1, (/dof/), ADvalue, ierr)
