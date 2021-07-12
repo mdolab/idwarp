@@ -25,3 +25,4 @@ src/f2py/libidwarp.pyf.autogen
 src/f2py/libidwarp-f2pywrappers2.f90
 src_cs/f2py/libidwarp_cs-f2pywrappers2.f90
 src_cs/f2py/get_f2py.py
+idwarp.egg-info
