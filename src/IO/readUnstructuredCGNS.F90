@@ -17,8 +17,8 @@ subroutine readUnstructuredCGNS(cg)
   integer(kind=cgsize_t) :: dims(3)
   integer(kind=intType):: nNodes, nCells
   integer(kind=intType) :: tmpSym, nSymm
-  character*32 :: zoneName, bocoName, famName
-  character*32 :: secName
+  character(len=32) :: zoneName, bocoName, famName
+  character(len=32) :: secName
 
   integer(kind=intType) :: nbocos, boco
   integer(kind=intType) :: nVertices,nElements, nzones
