@@ -1,5 +1,6 @@
 subroutine verifyWarpDeriv(dXv_f, ndof_warp, dof_start, dof_end, h)
 
+#include <petscversion.h>
   use gridData
   use gridInput
   use communication
@@ -51,7 +52,11 @@ subroutine verifyWarpDeriv(dXv_f, ndof_warp, dof_start, dof_end, h)
 
      ! add h to dof
      if (dof >= istart .and. dof < iend) then
-        call VecGetValues(Xs, 1, dof, orig_value, ierr)
+#if PETSC_VERSION_MINOR > 13
+         call VecGetValues(Xs, 1, dof, orig_value, ierr)
+#else
+         call VecGetValues(Xs, 1, (/dof/), orig_value, ierr)
+#endif
         call EChk(ierr, __FILE__, __LINE__)
 
         val = orig_value(1) + h
@@ -123,7 +128,11 @@ subroutine verifyWarpDeriv(dXv_f, ndof_warp, dof_start, dof_end, h)
      call EChk(ierr, __FILE__, __LINE__)
 
      if (dof >= istart .and. dof < iend) then
-        call VecGetValues(dXs, 1, dof, ADvalue, ierr)
+#if PETSC_VERSION_MINOR > 13
+         call VecGetValues(dXs, 1, dof, ADvalue, ierr)
+#else
+         call VecGetValues(dXs, 1, (/dof/), ADvalue, ierr)
+#endif
         call EChk(ierr, __FILE__, __LINE__)
         if (abs(half*(FDValue + ADValue(1))) < 1e-16) then
            err = 1e-16
