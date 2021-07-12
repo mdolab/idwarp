@@ -7,8 +7,8 @@ include ${RULES_FILE}
 LINKER_ALL_FLAGS = $(FF90_FLAGS) -L$(LIBDIR) -lidwarp_cs $(PETSC_LINKER_FLAGS) $(LINKER_FLAGS) $(CGNS_LINKER_FLAGS)
 
 PYTHON_OBJECTS = fortranobject.o \
-		 idwarp_csmodule.o \
-		 idwarp_cs-f2pywrappers2.o 
+		 libidwarp_csmodule.o \
+		 libidwarp_cs-f2pywrappers2.o 
 
 default: all
 all:
@@ -31,21 +31,21 @@ all:
 	 @echo f2py root directory: $(F2PY_ROOT)
 	 @echo "#------------------------------------------------------#"
 
-	f2py idwarp.pyf.autogen
+	f2py libidwarp.pyf.autogen
 	@echo " "
 	$(CC) $(CC_ALL_FLAGS) $(PYTHON_INCLUDES) -I$(NUMPY_INCLUDES) \
-	-I$(F2PY_ROOT)/src -c idwarp_csmodule.c
+	-I$(F2PY_ROOT)/src -c libidwarp_csmodule.c
 
 	$(CC) $(CC_ALL_FLAGS) $(PYTHON_INCLUDES) -I$(NUMPY_INCLUDES) -c \
 	$(F2PY_ROOT)/src/fortranobject.c -o fortranobject.o
 
         # Compiled f2py generated wrapper file
-        # $(FF90) $(FF90_ALL_FLAGS) -I$(MAIN_DIR)/mod -c idwarp-f2pywrappers.f
-	$(FF90) $(FF90_ALL_FLAGS) -I$(MAIN_DIR)/mod -c idwarp_cs-f2pywrappers2.f90 
+        # $(FF90) $(FF90_ALL_FLAGS) -I$(MAIN_DIR)/mod -c libidwarp-f2pywrappers.f
+	$(FF90) $(FF90_ALL_FLAGS) -I$(MAIN_DIR)/mod -c libidwarp_cs-f2pywrappers2.f90 
 
-	$(FF90) -shared $(PYTHON_OBJECTS) $(LINKER_ALL_FLAGS) -o idwarp_cs.so
+	$(FF90) -shared $(PYTHON_OBJECTS) $(LINKER_ALL_FLAGS) -o libidwarp_cs.so
 	$(PYTHON) importTest.py
-	mv idwarp_cs.so ../../idwarp
+	mv libidwarp_cs.so ../../idwarp
 
 # Clean up temporary files
 	-rm *.o

@@ -1,9 +1,9 @@
 !    -*- f90 -*-
 ! Note: the context of this file is case sensitive.
 #ifdef USE_COMPLEX
-python module idwarp_cs ! in 
+python module libidwarp_cs ! in 
 #else
-python module idwarp ! in 
+python module libidwarp ! in 
 #endif
     interface  ! in :idwarp
 
@@ -207,9 +207,9 @@ python module idwarp ! in
        
     end interface 
 #ifdef USE_COMPLEX
-end python module idwarp_cs
+end python module libidwarp_cs
 #else
-end python module idwarp
+end python module libidwarp
 #endif
 
 ! This file was auto-generated with f2py (version:2).
