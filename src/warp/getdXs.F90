@@ -1,6 +1,5 @@
 subroutine getdXs(output, ndof)
 
-#include <petscversion.h>
   use gridData
   implicit none
 
