@@ -16,13 +16,7 @@ subroutine getdXs(output, ndof)
   call VecGetOwnershipRange(dXs, istart, iend, ierr)
   call EChk(ierr, __FILE__, __LINE__)
 
-  do i=1, ndof
-#if PETSC_VERSION_GE(3,14,0)
-      call VecGetValues(dXs, 1,  i+istart-1, output(i), ierr)
-#else
-      call VecGetValues(dXs, 1,  (/i+istart-1/), output(i), ierr)
-#endif
-    call EChk(ierr, __FILE__, __LINE__)
-  end do
+  call VecGetValues(dXs, ndof, (/(i, i=istart,iend,1)/), output(1:ndof), ierr)
+  call EChk(ierr, __FILE__, __LINE__)
 
 end subroutine getdXs

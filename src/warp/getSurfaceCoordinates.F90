@@ -1,6 +1,5 @@
 subroutine getSurfaceCoordinates(coordinates, cdof)
 
-#include <petscversion.h>
   use gridData
   implicit none
 
@@ -17,13 +16,7 @@ subroutine getSurfaceCoordinates(coordinates, cdof)
   call VecGetOwnershipRange(Xs, istart, iend, ierr)
   call EChk(ierr, __FILE__, __LINE__)
 
-  do i=1, cdof
-#if PETSC_VERSION_GE(3,14,0)
-      call VecGetValues(Xs, 1, iStart+i-1, coordinates(i), ierr)
-#else
-      call VecGetValues(Xs, 1, (/iStart+i-1/), coordinates(i), ierr)
-#endif
-    call EChk(ierr, __FILE__, __LINE__)
-  end do
+  call VecGetValues(Xs, cdof, (/(i, i=istart,iend,1)/), coordinates(1:cdof), ierr)
+  call EChk(ierr, __FILE__, __LINE__)
 
 end subroutine getSurfaceCoordinates
