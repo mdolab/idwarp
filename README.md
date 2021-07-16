@@ -2,7 +2,7 @@
 # IDWarp
 [![Build Status](https://dev.azure.com/mdolab/Public/_apis/build/status/mdolab.idwarp?repoName=mdolab%2Fidwarp&branchName=master)](https://dev.azure.com/mdolab/Public/_build/latest?definitionId=10&repoName=mdolab%2Fidwarp&branchName=master)
 [![Documentation Status](https://readthedocs.com/projects/mdolab-idwarp/badge/?version=latest)](https://mdolab-idwarp.readthedocs-hosted.com/en/latest/?badge=latest)
-
+[![codecov](https://codecov.io/gh/mdolab/idwarp/branch/master/graph/badge.svg?token=L4B85135LS)](https://codecov.io/gh/mdolab/idwarp)
 
 IDWarp uses an inverse distance method to modify the location of mesh volume nodes given a perturbation of the surface nodes.
 
