@@ -159,26 +159,26 @@ def noseLength(val, geo):
 
 # lower = [-2.,-2.,-2.,-2.,5.]
 # upper = [-2.,5.,5.,5.,5.]
-# DVGeo.addGeoDVGlobal('length', x, length,
+# DVGeo.addGlobalDV('length', x, length,
 #                      lower=lower, upper=upper, scale=1.0)
-DVGeo.addGeoDVGlobal("noseLength", 0.3, noseLength, lower=0, upper=0.5, scale=1.0)
+DVGeo.addGlobalDV("noseLength", 0.3, noseLength, lower=0, upper=0.5, scale=1.0)
 
-# DVGeoChild.addGeoDVGlobal('rampAngle', 35.1, rampAngle,
+# DVGeoChild.addGlobalDV('rampAngle', 35.1, rampAngle,
 #                      lower=0., upper=90., scale=1.0)
-DVGeoChild.addGeoDVGlobal(
+DVGeoChild.addGlobalDV(
     "doubleRampAngle", [35.1, -5.0], doubleRampAngle, lower=[0.0, -45.0], upper=[45.0, 5.0], scale=[1.0, 1.0]
 )
 # lowerA = [0.,0.,0.,0.]
 # upperA = [0.3,0.3,0.3,0.3]
-# DVGeoChild.addGeoDVGlobal('angleVars', z1, angleVars,
+# DVGeoChild.addGlobalDV('angleVars', z1, angleVars,
 #                      lower=lowerA, upper=upperA, scale=1.0)
 
 # lowerL = [-1.,-1.,-1.,-1.]
 # upperL = [2.0,2.0,2.0,2.0]
-# DVGeoChild.addGeoDVGlobal('noseLen', x1, noseLength,
+# DVGeoChild.addGlobalDV('noseLen', x1, noseLength,
 #                      lower=lowerL, upper=upperL, scale=1.0)
 
-# DVGeo.addGeoDVGlobal('angleVars', z1, angleVars,
+# DVGeo.addGlobalDV('angleVars', z1, angleVars,
 #                      lower=lowerA, upper=upperA, scale=1.0)
 
 # Add the child to the parent
