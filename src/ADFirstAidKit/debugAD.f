@@ -60,7 +60,7 @@ C DEBUG PRIMITIVES FOR THE TANGENT MODE (DIVIDED-DIFFERENCES METHOD)
 
       SUBROUTINE DEBUG_TGT_INIT1(epsilon, ezero, errmax)
       IMPLICIT NONE
-      real(kind=8) epsilon, ezero, errmax
+      REAL*8 epsilon, ezero, errmax
       INCLUDE 'debugAD.inc'
       dbad_mode = 1
       dbad_phase = 1
@@ -72,7 +72,7 @@ C DEBUG PRIMITIVES FOR THE TANGENT MODE (DIVIDED-DIFFERENCES METHOD)
 
       SUBROUTINE DEBUG_TGT_INIT2(epsilon, ezero, errmax)
       IMPLICIT NONE
-      real(kind=8) epsilon, ezero, errmax
+      REAL*8 epsilon, ezero, errmax
       INCLUDE 'debugAD.inc'
       dbad_mode = 1
       dbad_phase = 2
@@ -89,7 +89,7 @@ C DEBUG PRIMITIVES FOR THE TANGENT MODE (DIVIDED-DIFFERENCES METHOD)
 
       SUBROUTINE DEBUG_TGT_INITREAL4(indep, indepd)
       IMPLICIT NONE
-      real(kind=4) indep, indepd
+      REAL*4 indep, indepd
       INCLUDE 'debugAD.inc'
       if (dbad_phase.eq.1) then
          indep = indep+dbad_ddeps*indepd
@@ -99,7 +99,7 @@ C DEBUG PRIMITIVES FOR THE TANGENT MODE (DIVIDED-DIFFERENCES METHOD)
       SUBROUTINE DEBUG_TGT_INITREAL4ARRAY(indep, indepd, length)
       IMPLICIT NONE
       INTEGER length
-      real(kind=4) indep(length), indepd(length)
+      REAL*4 indep(length), indepd(length)
       INCLUDE 'debugAD.inc'
       INTEGER i
       if (dbad_phase.eq.1) then
@@ -111,7 +111,7 @@ C DEBUG PRIMITIVES FOR THE TANGENT MODE (DIVIDED-DIFFERENCES METHOD)
 
       SUBROUTINE DEBUG_TGT_INITREAL8(indep, indepd)
       IMPLICIT NONE
-      real(kind=8) indep, indepd
+      REAL*8 indep, indepd
       INCLUDE 'debugAD.inc'
       if (dbad_phase.eq.1) then
          indep = indep+dbad_ddeps*indepd
@@ -121,7 +121,7 @@ C DEBUG PRIMITIVES FOR THE TANGENT MODE (DIVIDED-DIFFERENCES METHOD)
       SUBROUTINE DEBUG_TGT_INITREAL8ARRAY(indep, indepd, length)
       IMPLICIT NONE
       INTEGER length
-      real(kind=8) indep(length), indepd(length)
+      REAL*8 indep(length), indepd(length)
       INCLUDE 'debugAD.inc'
       INTEGER i
       if (dbad_phase.eq.1) then
@@ -134,9 +134,9 @@ C DEBUG PRIMITIVES FOR THE TANGENT MODE (DIVIDED-DIFFERENCES METHOD)
       SUBROUTINE DEBUG_TGT_CONCLUDEREAL4(varname, var, vard)
       IMPLICIT NONE
       character varname*(*)
-      real(kind=4) var, vard
+      real*4 var, vard
       INCLUDE 'debugAD.inc'
-      real(kind=4) ddvar, dd, diff, varwr
+      REAL*4 ddvar, dd, diff, varwr
       LOGICAL areNaNs
       if (dbad_phase.eq.1) then
          write (dbad_file, '(a)') 'final_result'
@@ -162,10 +162,10 @@ C DEBUG PRIMITIVES FOR THE TANGENT MODE (DIVIDED-DIFFERENCES METHOD)
      +                           (varname, tvar, tvard, length)
       IMPLICIT NONE
       integer length
-      real(kind=4) tvar(length)
-      real(kind=4) tvard(length)
+      real*4 tvar(length)
+      real*4 tvard(length)
       character varname*(*)
-      real(kind=4) var, vard
+      REAL*4 var, vard
       INTEGER i
       var = 0.0
       vard = 0.0
@@ -179,9 +179,9 @@ C DEBUG PRIMITIVES FOR THE TANGENT MODE (DIVIDED-DIFFERENCES METHOD)
       SUBROUTINE DEBUG_TGT_CONCLUDEREAL8(varname, var, vard)
       IMPLICIT NONE
       character varname*(*)
-      real(kind=8) var, vard
+      real*8 var, vard
       INCLUDE 'debugAD.inc'
-      real(kind=8) ddvar, dd, diff, varwr
+      REAL*8 ddvar, dd, diff, varwr
       LOGICAL areNaNs
       if (dbad_phase.eq.1) then
          write (dbad_file, '(a)') 'final_result'
@@ -207,10 +207,10 @@ C DEBUG PRIMITIVES FOR THE TANGENT MODE (DIVIDED-DIFFERENCES METHOD)
      +                           (varname, tvar, tvard, length)
       IMPLICIT NONE
       integer length
-      real(kind=8) tvar(length)
-      real(kind=8) tvard(length)
+      real*8 tvar(length)
+      real*8 tvard(length)
       character varname*(*)
-      real(kind=8) var, vard
+      REAL*8 var, vard
       INTEGER i
       var = 0.d0
       vard = 0.d0
@@ -254,12 +254,12 @@ C DEBUG PRIMITIVES FOR THE TANGENT MODE (DIVIDED-DIFFERENCES METHOD)
       SUBROUTINE DEBUG_TGT_REAL4(varname, var, vard)
       IMPLICIT NONE
       character varname*(*)
-      real(kind=4) var, vard
+      REAL*4 var, vard
       INCLUDE 'debugAD.inc'
-      real(kind=4) ddvar, dd, diff, varwr
+      REAL*4 ddvar, dd, diff, varwr
       LOGICAL areNaNs
-      character(len=12) diffstr
-      character(len=50) ddvarname
+      character*12 diffstr
+      character*50 ddvarname
       if (dbad_phase.eq.1) then
          WRITE(dbad_file, '(a)') varname
          WRITE(dbad_file, *) var
@@ -287,15 +287,15 @@ C DEBUG PRIMITIVES FOR THE TANGENT MODE (DIVIDED-DIFFERENCES METHOD)
       SUBROUTINE DEBUG_TGT_REAL4ARRAY (varname, var, vard, length)
       IMPLICIT NONE
       integer length
-      real(kind=4) var(length)
-      real(kind=4) vard(length)
+      real*4 var(length)
+      real*4 vard(length)
       character varname*(*)
       INCLUDE 'debugAD.inc'
-      real(kind=4) ddvar, dd, diff, varwr
-      real(kind=4) valbuf(10),ddbuf(10)
-      character(len=50) ddvarname
+      real*4 ddvar, dd, diff, varwr
+      real*4 valbuf(10),ddbuf(10)
+      character*50 ddvarname
       integer indexbuf1(10)
-      character(len=14) diffbuf(10)
+      character*14 diffbuf(10)
       integer i1,j
       integer ibuf
       logical notprintedheader
@@ -348,7 +348,7 @@ C DEBUG PRIMITIVES FOR THE TANGENT MODE (DIVIDED-DIFFERENCES METHOD)
 
       SUBROUTINE DDPICKTWO4(var, varwr, dbad_file, ddvar, areNaNs)
       IMPLICIT NONE
-      real(kind=4) var,varwr,ddvar
+      REAL*4 var,varwr,ddvar
       LOGICAL areNaNs
       INTEGER dbad_file,stat1,stat2
       OPEN(38, FILE='ddwrfile')
@@ -363,11 +363,11 @@ C DEBUG PRIMITIVES FOR THE TANGENT MODE (DIVIDED-DIFFERENCES METHOD)
       SUBROUTINE DEBUG_TGT_REAL8(varname, var, vard)
       IMPLICIT NONE
       CHARACTER varname*(*)
-      real(kind=8) var, vard
+      REAL*8 var, vard
       INCLUDE 'debugAD.inc'
-      real(kind=8) ddvar, dd, diff, varwr
-      character(len=12) diffstr
-      character(len=50) ddvarname
+      REAL*8 ddvar, dd, diff, varwr
+      character*12 diffstr
+      character*50 ddvarname
       LOGICAL areNaNs
       if (dbad_phase.eq.1) then
          WRITE(dbad_file, '(a)') varname
@@ -398,16 +398,16 @@ C DEBUG PRIMITIVES FOR THE TANGENT MODE (DIVIDED-DIFFERENCES METHOD)
       SUBROUTINE DEBUG_TGT_REAL8ARRAY(varname, var, vard, length)
       IMPLICIT NONE
       integer length
-      real(kind=8) var(length)
-      real(kind=8) vard(length)
+      real*8 var(length)
+      real*8 vard(length)
       character varname*(*)
       INCLUDE 'debugAD.inc'
       LOGICAL areNaNs
-      real(kind=8) ddvar, dd, diff, varwr
-      real(kind=8) valbuf(10),ddbuf(10)
-      character(len=50) ddvarname
+      real*8 ddvar, dd, diff, varwr
+      real*8 valbuf(10),ddbuf(10)
+      character*50 ddvarname
       integer indexbuf1(10)
-      character(len=14) diffbuf(10)
+      character*14 diffbuf(10)
       integer i1,j
       integer ibuf
       logical notprintedheader
@@ -461,7 +461,7 @@ C DEBUG PRIMITIVES FOR THE TANGENT MODE (DIVIDED-DIFFERENCES METHOD)
 
       SUBROUTINE DDPICKTWO8(var, varwr, dbad_file, ddvar, areNaNs)
       IMPLICIT NONE
-      real(kind=8) var,varwr,ddvar
+      REAL*8 var,varwr,ddvar
       LOGICAL areNaNs
       INTEGER dbad_file,stat1,stat2
       OPEN(38, FILE='ddwrfile')
@@ -477,7 +477,7 @@ C DEBUG PRIMITIVES FOR THE TANGENT MODE (DIVIDED-DIFFERENCES METHOD)
       IMPLICIT NONE
       character varname*(*)
       INCLUDE 'debugAD.inc'
-      character(len=50) ddvarname
+      character*50 ddvarname
       integer linesskip
       linesskip = 0
  100  CONTINUE
@@ -509,7 +509,7 @@ C DEBUG PRIMITIVES FOR THE ADJOINT MODE, BACKWARD SWEEP (DOT-PRODUCT METHOD)
 
       SUBROUTINE DEBUG_BWD_INIT(ezero, errmax, incr)
       IMPLICIT NONE
-      real(kind=8) ezero, errmax, incr
+      REAL*8 ezero, errmax, incr
       INCLUDE 'debugAD.inc'
       dbad_mode = -1
       dbad_phase = 1
@@ -523,9 +523,9 @@ C DEBUG PRIMITIVES FOR THE ADJOINT MODE, BACKWARD SWEEP (DOT-PRODUCT METHOD)
       SUBROUTINE DEBUG_BWD_CONCLUDE()
       IMPLICIT NONE
       INCLUDE 'debugAD.inc'
-      real(kind=8) sumd
-      integer(kind=4) smallsize, nbblocks, SMALLSTACKSIZE
-      integer(kind=4) nbreals, i
+      REAL*8 sumd
+      INTEGER*4 smallsize, nbblocks, SMALLSTACKSIZE
+      INTEGER*4 nbreals, i
       write(dbad_file,'(i3,a40)') -3, 'EndOfPhase1'
       END
 
@@ -571,12 +571,12 @@ C DEBUG PRIMITIVES FOR THE ADJOINT MODE, FORWARD SWEEP (DOT-PRODUCT METHOD)
 
       SUBROUTINE DEBUG_FWD_INIT(ezero, errmax, incr)
       IMPLICIT NONE
-      real(kind=8) ezero, errmax, incr
+      REAL*8 ezero, errmax, incr
       INCLUDE 'debugAD.inc'
       INTEGER label
-      character(len=40) startstring
-      character(len=40) placestring
-      real(kind=8) bigsum
+      CHARACTER*40 startstring
+      CHARACTER*40 placestring
+      REAL*8 bigsum
       dbad_mode = -1
       dbad_phase = 2
       dbad_file = 5
@@ -648,7 +648,7 @@ C end FOR DEBUG OF DEBUG ONLY.
       CHARACTER unitname*(*)
       INCLUDE 'debugAD.inc'
       INTEGER label
-      character(len=40) refcallstring, herecallstring
+      CHARACTER*40 refcallstring, herecallstring
       label = 999
       IF (dbad_callindex.eq.0.OR.dbad_calltraced(dbad_callindex)) THEN
          call POPINTEGER4(label)
@@ -681,7 +681,7 @@ C end FOR DEBUG OF DEBUG ONLY.
       CHARACTER placename*(*)
       INCLUDE 'debugAD.inc'
       INTEGER label
-      character(len=40) refplacestring, hereplacestring
+      CHARACTER*40 refplacestring, hereplacestring
       label = 999
       IF (dbad_callindex.eq.0.OR.dbad_calltraced(dbad_callindex)) THEN
          call POPINTEGER4(label)
@@ -723,7 +723,7 @@ C DEBUG PRIMITIVES FOR THE ADJOINT MODE, BOTH SWEEPS (DOT-PRODUCT METHOD)
 
       SUBROUTINE DEBUG_ADJ_rwREAL4(vard)
       IMPLICIT NONE
-      real(kind=4) vard
+      REAL*4 vard
       INCLUDE 'debugAD.inc'
       CALL DEBUG_ADJ_INCRCOEFF()
       dbad_sum = dbad_sum + dbad_coeff*vard
@@ -732,7 +732,7 @@ C DEBUG PRIMITIVES FOR THE ADJOINT MODE, BOTH SWEEPS (DOT-PRODUCT METHOD)
 
       SUBROUTINE DEBUG_ADJ_rREAL4(vard)
       IMPLICIT NONE
-      real(kind=4) vard
+      REAL*4 vard
       INCLUDE 'debugAD.inc'
       CALL DEBUG_ADJ_INCRCOEFF()
       dbad_sum = dbad_sum + dbad_coeff*vard
@@ -740,7 +740,7 @@ C DEBUG PRIMITIVES FOR THE ADJOINT MODE, BOTH SWEEPS (DOT-PRODUCT METHOD)
 
       SUBROUTINE DEBUG_ADJ_wREAL4(vard)
       IMPLICIT NONE
-      real(kind=4) vard
+      REAL*4 vard
       INCLUDE 'debugAD.inc'
       CALL DEBUG_ADJ_INCRCOEFF()
       vard = dbad_coeff
@@ -749,7 +749,7 @@ C DEBUG PRIMITIVES FOR THE ADJOINT MODE, BOTH SWEEPS (DOT-PRODUCT METHOD)
       SUBROUTINE DEBUG_ADJ_rwREAL4ARRAY(vard, length)
       IMPLICIT NONE
       INTEGER length
-      real(kind=4) vard(length)
+      REAL*4 vard(length)
       INTEGER i
       DO i=1,length
          CALL DEBUG_ADJ_rwREAL4(vard(i))
@@ -759,7 +759,7 @@ C DEBUG PRIMITIVES FOR THE ADJOINT MODE, BOTH SWEEPS (DOT-PRODUCT METHOD)
       SUBROUTINE DEBUG_ADJ_rREAL4ARRAY(vard, length)
       IMPLICIT NONE
       INTEGER length
-      real(kind=4) vard(length)
+      REAL*4 vard(length)
       INTEGER i
       DO i=1,length
          CALL DEBUG_ADJ_rREAL4(vard(i))
@@ -769,7 +769,7 @@ C DEBUG PRIMITIVES FOR THE ADJOINT MODE, BOTH SWEEPS (DOT-PRODUCT METHOD)
       SUBROUTINE DEBUG_ADJ_wREAL4ARRAY(vard, length)
       IMPLICIT NONE
       INTEGER length
-      real(kind=4) vard(length)
+      REAL*4 vard(length)
       INTEGER i
       DO i=1,length
          CALL DEBUG_ADJ_wREAL4(vard(i))
@@ -778,7 +778,7 @@ C DEBUG PRIMITIVES FOR THE ADJOINT MODE, BOTH SWEEPS (DOT-PRODUCT METHOD)
 
       SUBROUTINE DEBUG_ADJ_rwREAL8(vard)
       IMPLICIT NONE
-      real(kind=8) vard
+      REAL*8 vard
       INCLUDE 'debugAD.inc'
       CALL DEBUG_ADJ_INCRCOEFF()
       dbad_sum = dbad_sum + dbad_coeff*vard
@@ -787,7 +787,7 @@ C DEBUG PRIMITIVES FOR THE ADJOINT MODE, BOTH SWEEPS (DOT-PRODUCT METHOD)
 
       SUBROUTINE DEBUG_ADJ_rREAL8(vard)
       IMPLICIT NONE
-      real(kind=8) vard
+      REAL*8 vard
       INCLUDE 'debugAD.inc'
       CALL DEBUG_ADJ_INCRCOEFF()
       dbad_sum = dbad_sum + dbad_coeff*vard
@@ -795,7 +795,7 @@ C DEBUG PRIMITIVES FOR THE ADJOINT MODE, BOTH SWEEPS (DOT-PRODUCT METHOD)
 
       SUBROUTINE DEBUG_ADJ_wREAL8(vard)
       IMPLICIT NONE
-      real(kind=8) vard
+      REAL*8 vard
       INCLUDE 'debugAD.inc'
       CALL DEBUG_ADJ_INCRCOEFF()
       vard = dbad_coeff
@@ -804,7 +804,7 @@ C DEBUG PRIMITIVES FOR THE ADJOINT MODE, BOTH SWEEPS (DOT-PRODUCT METHOD)
       SUBROUTINE DEBUG_ADJ_rwREAL8ARRAY(vard, length)
       IMPLICIT NONE
       INTEGER length
-      real(kind=8) vard(length)
+      REAL*8 vard(length)
       INTEGER i
       DO i=1,length
          CALL DEBUG_ADJ_rwREAL8(vard(i))
@@ -814,7 +814,7 @@ C DEBUG PRIMITIVES FOR THE ADJOINT MODE, BOTH SWEEPS (DOT-PRODUCT METHOD)
       SUBROUTINE DEBUG_ADJ_rREAL8ARRAY(vard, length)
       IMPLICIT NONE
       INTEGER length
-      real(kind=8) vard(length)
+      REAL*8 vard(length)
       INTEGER i
       DO i=1,length
          CALL DEBUG_ADJ_rREAL8(vard(i))
@@ -824,7 +824,7 @@ C DEBUG PRIMITIVES FOR THE ADJOINT MODE, BOTH SWEEPS (DOT-PRODUCT METHOD)
       SUBROUTINE DEBUG_ADJ_wREAL8ARRAY(vard, length)
       IMPLICIT NONE
       INTEGER length
-      real(kind=8) vard(length)
+      REAL*8 vard(length)
       INTEGER i
       DO i=1,length
          CALL DEBUG_ADJ_wREAL8(vard(i))
