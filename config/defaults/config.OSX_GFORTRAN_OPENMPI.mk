@@ -20,7 +20,8 @@ CGNS_LINKER_FLAGS=-L$(CGNS_HOME)/lib -lcgns
 FF90_GEN_FLAGS = -fPIC 
 CC_GEN_FLAGS   = -fPIC
 
-FF90_OPT_FLAGS   =  -fPIC -fdefault-real-8 -O2 -std=f2008
+FF77_OPT_FLAGS   =  -fPIC -fdefault-real-8 -O2 -std=f2008
+FF90_OPT_FLAGS   =  ${FF77_OPT_FLAGS} -std=f2008
 CC_OPT_FLAGS     = -O2
 
 # ------- Define Linker Flags ------------------------------------------
