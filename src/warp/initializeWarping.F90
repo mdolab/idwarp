@@ -8,12 +8,12 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
   implicit none
 
   ! Input
-  real(kind=realType), intent(in) :: pts(ndofLocal), uniquePts(3, nUnique)
   integer(kind=intType), intent(in) :: ndoflocal, nUnique, nLink
+  real(kind=realType), intent(in) :: pts(ndofLocal), uniquePts(3, nUnique)
+  integer(kind=intType), intent(in) :: nFaceSizes, nFaceConn
   integer(kind=intType), dimension(nFaceSizes), intent(in) :: faceSizes
   integer(kind=intType), dimension(nFaceConn), intent(in) :: faceConn
   integer(kind=intType), dimension(nLink), intent(in) :: link
-  integer(kind=intType), intent(in) :: nFaceSizes, nFaceConn
   character*(*) :: restartFile
   ! Working
   integer(kind=intType) :: nNodesTotal, ierr, iStart, iEnd, iProc

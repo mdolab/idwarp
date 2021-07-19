@@ -198,9 +198,9 @@ subroutine averageNormal(pts, conn, faceSizes, nPts, nConn, nFaceSizes, avgNorm)
   implicit none
 
   ! Input/Output
+  integer(kind=intType), intent(in) :: nPts, nConn, nFaceSizes
   real(kind=realType), intent(in) :: pts(nPts)
   integer(kind=intType), intent(in) :: conn(nConn), faceSizes(nFaceSizes)
-  integer(kind=intType), intent(in) :: nPts, nConn, nFaceSizes
   real(kind=realType), intent(out) :: avgNorm(3)
 
   ! Working

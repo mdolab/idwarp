@@ -13,7 +13,7 @@ subroutine readCGNS(cgns_file)
   integer(kind=intType) :: cg, ierr, i
   integer(kind=intType):: CellDim, PhysDim, nZones, base, nbases
   integer(kind=intType) :: nstructured, nunstructured, zoneType
-  character*32 :: baseName
+  character(len=32) :: baseName
 
   ! Set the default family names
   defaultFamName(BCAxisymmetricWedge) = 'axi'

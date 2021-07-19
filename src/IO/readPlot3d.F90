@@ -11,7 +11,7 @@ subroutine readPlot3d(plot3d_file)
 
   ! Working
   integer(kind=intType) :: ierr, iStart
-  character*12 :: zoneName
+  character(len=12) :: zoneName
   integer(kind=intType) :: i, j, k, ii, iZone, iend, localsize, iProc
   integer(kind=intType):: nZones, nNodes, dims(3)
   real(kind=realType), dimension(:, :, :), allocatable :: coorX, coorY, coorZ
@@ -45,7 +45,7 @@ subroutine readPlot3d(plot3d_file)
         zones(iZone)%il = sizes(1, iZone)
         zones(iZone)%jl = sizes(2, iZone)
         zones(iZone)%kl = sizes(3, iZone)
-        write(zoneName, "((a) (I5))")  'Domain.', i
+        write(zoneName, "((a), (I5))")  'Domain.', i
         zones(iZone)%name = zoneName
      end do
 
