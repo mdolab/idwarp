@@ -22,7 +22,7 @@ FF90_FLAGS = ${FF77_FLAGS} -std=f2008
 C_FLAGS    = -fPIC -O2
 
 # ------- Define Linker Flags ------------------------------------------
-LINKER_FLAGS = -undefined dynamic_lookup
+LINKER_FLAGS = -fPIC -undefined dynamic_lookup
 
 # ------- Define Petsc Info --- Should not need to modify this -----
 include ${PETSC_DIR}/lib/petsc/conf/variables # PETSc 3.6

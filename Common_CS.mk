@@ -43,7 +43,7 @@ MAKE_CLEAN_ARGUMENTS = *~ *.o *.mod *.il *.stb c_* *.so
 #      *                                                                *
 #      ******************************************************************
 
-FF90_ALL_FLAGS   = -I$(MODDIR) -I. \
+FF90_ALL_FLAGS = -I$(MODDIR) -I. \
 		$(CGNS_INCLUDE_FLAGS) \
 		$(FF90_FLAGS) \
 		$(PETSC_INCLUDE_FLAGS) \
