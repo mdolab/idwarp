@@ -15,7 +15,6 @@ Written by Andre C. Marta          Last updated: Apr 6, 2007
 
 import os
 import sys
-import string
 
 # Specify file extension
 
@@ -76,13 +75,13 @@ for f in os.listdir(DIR_ORI):
 
                     for i in range(nEdits):
                         if line_mod[0 : len(LINE_ID[i])] == LINE_ID[i]:
-                            line_mod = string.replace(line_mod, STR_OLD[i], STR_NEW[i])
+                            line_mod = line_mod.replace(STR_OLD[i], STR_NEW[i])
                         # end if
                     # end for
                 # end if
 
                 for key in STR_REPLACE_ALL:
-                    line_mod = string.replace(line_mod, key, STR_REPLACE_ALL[key])
+                    line_mod = line_mod.replace(key, STR_REPLACE_ALL[key])
                 # end for
 
                 # write the modified line to new file
