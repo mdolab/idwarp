@@ -8,8 +8,8 @@
    & , normalb)
    USE CONSTANTS
    IMPLICIT NONE
+   ! Subroutine Variables
    INTEGER(kind=inttype), INTENT(IN) :: npts
-   ! subroutine Variables
    REAL(kind=realtype), DIMENSION(3, npts), INTENT(IN) :: points
    REAL(kind=realtype), DIMENSION(3, npts) :: pointsb
    REAL(kind=realtype), DIMENSION(3) :: normal

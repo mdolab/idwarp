@@ -11,7 +11,7 @@
 	@echo
 
 .f.o:	Makefile
-	$(FF90) $(FF90_ALL_FLAGS) -c $< -o $(OBJDIR)/$(@F)
+	$(FF90) $(FF77_ALL_FLAGS) -c $< -o $(OBJDIR)/$(@F)
 	@echo
 	@echo "        --- Compiled $*.f successfully ---"
 	@echo

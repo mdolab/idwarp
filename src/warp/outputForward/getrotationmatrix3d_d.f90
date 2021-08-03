@@ -20,6 +20,7 @@
    REAL(kind=realtype) :: magv2b, axismagb, angleb, argb
    REAL(kind=realtype), DIMENSION(3, 3) :: a, c
    REAL(kind=realtype), DIMENSION(3, 3) :: ab, cb
+   REAL(kind=realtype), PARAMETER :: tol=1.4901161193847656e-08
    INTRINSIC MIN
    INTRINSIC ACOS
    INTRINSIC SIN
@@ -34,7 +35,9 @@
    CALL CROSS_PRODUCT_3D_D(v1, v1b, v2, v2b, axis, axisb)
    ! Now Normalize
    CALL GETMAG_D(axis, axisb, axismag, axismagb)
-   IF (axismag .LT. 1.0e-8) THEN
+   ! When axisMag is less that sqrt(eps), the acos 'arg' value will be
+   ! exactly one which will give a nan in complex mode. 
+   IF (axismag .LT. tol) THEN
    ! no rotation at this point, angle is 0
    angle = zero
    ! the axis doesn't matter so set to x

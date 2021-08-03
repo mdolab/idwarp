@@ -12,8 +12,8 @@ subroutine createCommonGrid(volNodes, nVolLocal)
   implicit none
 
   ! Subroutine variables
-  real(kind=realType), dimension(3, nVolLocal), intent(in) :: volNodes
   integer(kind=intType), intent(in) :: nVolLocal
+  real(kind=realType), dimension(3, nVolLocal), intent(in) :: volNodes
 
   ! Working variables
   integer(kind=intType) :: i, j, nVol, ierr, nSurface
