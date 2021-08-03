@@ -45,13 +45,11 @@ MAKE_CLEAN_ARGUMENTS = *~ *.o *.mod *.il *.stb c_* *.so
 
 FF90_ALL_FLAGS   = -I$(MODDIR) -I. \
 		$(CGNS_INCLUDE_FLAGS) \
-		$(FF90_GEN_FLAGS) \
-		$(FF90_OPT_FLAGS) \
+		$(FF90_FLAGS) \
 		$(PETSC_INCLUDE_FLAGS) \
 		-DUSE_COMPLEX
 
 CC_ALL_FLAGS = -I$(MODDIR) -I. \
 		$(CGNS_INCLUDE_FLAGS) \
-		$(CC_GEN_FLAGS) \
-		$(CC_OPT_FLAGS) \
+		$(C_FLAGS) \
 		$(PETSC_INCLUDE_FLAGS)
