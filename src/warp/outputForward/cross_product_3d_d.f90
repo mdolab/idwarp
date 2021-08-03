@@ -16,7 +16,7 @@
    REAL(kind=realtype), DIMENSION(3), INTENT(IN) :: v1b, v2b
    REAL(kind=realtype), DIMENSION(3), INTENT(OUT) :: cross
    REAL(kind=realtype), DIMENSION(3), INTENT(OUT) :: crossb
-   crossb(1) = v1b(2)*v2(3) + v1(2)*v2b(3) - v1b(3)*v2(2) - v1(3)*v2b(2)
+   crossb(2) = v1b(2)*v2(3) + v1(2)*v2b(3) - v1b(3)*v2(2) - v1(3)*v2b(2)
    cross(1) = v1(2)*v2(3) - v1(3)*v2(2)
    crossb(2) = v1b(3)*v2(1) + v1(3)*v2b(1) - v1b(1)*v2(3) - v1(1)*v2b(3)
    cross(2) = v1(3)*v2(1) - v1(1)*v2(3)
