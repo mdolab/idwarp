@@ -1,15 +1,15 @@
 trigger:
-- master
+  - master
 
 pr:
-- master
+  - master
 
 resources:
   repositories:
-  - repository: azure_template
-    type: github
-    name: mdolab/.github
-    endpoint: mdolab
+    - repository: azure_template
+      type: github
+      name: mdolab/.github
+      endpoint: mdolab
 
 extends:
   template: azure/azure_template.yaml@azure_template
@@ -19,3 +19,4 @@ extends:
     coverage: true
     GCC_CONFIG: config/defaults/config.LINUX_GFORTRAN_OPENMPI.mk
     INTEL_CONFIG: config/defaults/config.LINUX_INTEL_OPENMPI.mk
+    TAPENADE: true
