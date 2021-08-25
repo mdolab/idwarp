@@ -115,8 +115,8 @@ test_params = [
 class Test_USmesh(unittest.TestCase):
     """
     Defines the tests for IDwarp.
-    'train_' methods are not run by default by testflo.
-    Use `$ testflo ./ -m "train_*"` to re-generate the .ref files used as benchmark.
+    ``train_`` methods are not run by default by testflo.
+    Use ``$ testflo ./ -m "train_*"`` to re-generate the .ref files used as benchmark.
     Note that, in the current state, you will get a few FAIL messages when training - that's due to an issue with parameterize, the .ref files will be generated correctly.
 
     Also note that the `handler` BaseRegTest class will automatically take care to benchmark or train the tests (including file IO)
