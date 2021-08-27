@@ -314,7 +314,7 @@ class MultiUSMesh(object):
         for instanceID, mesh in enumerate(self.meshes):
 
             # Get current set of points
-            currPts = self.meshes[instanceID].getSurfaceCoordinates()
+            currPts = mesh.getSurfaceCoordinates()
 
             # Assign this set of points to the full one
             pts[self.filtered2fullMaps[instanceID], :] = currPts
