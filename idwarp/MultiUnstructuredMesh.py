@@ -38,25 +38,6 @@ except ImportError:
     cs = None
 
 
-class Warning(object):
-    """
-    Format a warning message
-    """
-
-    def __init__(self, message):
-        msg = "\n+" + "-" * 78 + "+" + "\n" + "| IDWarp Warning: "
-        i = 17
-        for word in message.split():
-            if len(word) + i + 1 > 78:  # Finish line and start new one
-                msg += " " * (78 - i) + "|\n| " + word + " "
-                i = 1 + len(word) + 1
-            else:
-                msg += word + " "
-                i += len(word) + 1
-        msg += " " * (78 - i) + "|\n" + "+" + "-" * 78 + "+" + "\n"
-        print(msg)
-
-
 # =============================================================================
 # MultiUnstructuredMesh class
 # =============================================================================
@@ -333,7 +314,7 @@ class MultiUSMesh(object):
         for instanceID, mesh in enumerate(self.meshes):
 
             # Get current set of points
-            currPts = self.meshes[instanceID].getSurfaceCoordinates()
+            currPts = mesh.getSurfaceCoordinates()
 
             # Assign this set of points to the full one
             pts[self.filtered2fullMaps[instanceID], :] = currPts

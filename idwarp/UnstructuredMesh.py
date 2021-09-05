@@ -1,4 +1,3 @@
-#!/usr/bin/python
 """Unstructured Mesh
 
 The UnstructuredMesh module is used for interacting with an
@@ -26,30 +25,12 @@ History
 # =============================================================================
 import os
 import shutil
+import warnings
 import numpy as np
 from mpi4py import MPI
 from .MExt import MExt
 from baseclasses import BaseSolver
 from baseclasses.utils import Error
-
-
-class Warning(object):
-    """
-    Format a warning message
-    """
-
-    def __init__(self, message):
-        msg = "\n+" + "-" * 78 + "+" + "\n" + "| IDWarp Warning: "
-        i = 17
-        for word in message.split():
-            if len(word) + i + 1 > 78:  # Finish line and start new one
-                msg += " " * (78 - i) + "|\n| " + word + " "
-                i = 1 + len(word) + 1
-            else:
-                msg += word + " "
-                i += len(word) + 1
-        msg += " " * (78 - i) + "|\n" + "+" + "-" * 78 + "+" + "\n"
-        print(msg)
 
 
 # =============================================================================
@@ -541,8 +522,7 @@ class USMesh(BaseSolver):
             Filename to use. Should end in .dat for tecplot ascii file.
         """
         if not self.OFData:
-            Warning("Cannot write OpenFOAM tecplot file since there is " "no OpenFOAM data present")
-            return
+            raise ValueError("Cannot write OpenFOAM tecplot file since there is " "no OpenFOAM data present")
 
         if self.comm.size == 1:
             f = open(fileName, "w")
@@ -630,7 +610,7 @@ class USMesh(BaseSolver):
             return
 
         if self.comm.rank == 0:
-            Warning(
+            warnings.warn(
                 "Using internally generated IDWarp surfaces. If "
                 "this mesh object is to be used with an "
                 "external solver, ensure the mesh object is "
@@ -754,7 +734,7 @@ class USMesh(BaseSolver):
             if self.comm.rank == 0:
                 if usedFams < surfaceFamilies:
                     missing = list(surfaceFamilies - usedFams)
-                    Warning(
+                    warnings.warn(
                         "Not all specified surface families that "
                         "were given were found the CGNS file. "
                         "The families not found are %s." % (repr(missing))
@@ -890,7 +870,7 @@ class USMesh(BaseSolver):
                 if self.comm.rank == 0:
                     if usedFams < symmFamilies:
                         missing = list(symmFamilies - usedFams)
-                        Warning(
+                        warnings.warn(
                             "Not all specified symm families that "
                             "were given were found the CGNS file. "
                             "The families not found are %s." % (repr(missing))
