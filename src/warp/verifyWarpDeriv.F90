@@ -60,7 +60,7 @@ subroutine verifyWarpDeriv(dXv_f, ndof_warp, dof_start, dof_end, h)
         call EChk(ierr, __FILE__, __LINE__)
 
         val = orig_value(1) + h
-        call VecSetValue(Xs, dof, val, INSERT_VALUES, ierr)
+        call VecSetValue(Xs, (/dof/), val, INSERT_VALUES, ierr)
         call EChk(ierr, __FILE__, __LINE__)
      end if
 
@@ -83,7 +83,7 @@ subroutine verifyWarpDeriv(dXv_f, ndof_warp, dof_start, dof_end, h)
      ! Subtract 2h from dof to get x(dof)-h
      if (dof >= istart .and. dof < iend) then
         val = orig_value(1) - h
-        call VecSetValue(Xs, dof, val, INSERT_VALUES, ierr)
+        call VecSetValue(Xs, (/dof/), val, INSERT_VALUES, ierr)
         call EChk(ierr, __FILE__, __LINE__)
      end if
 
@@ -106,7 +106,7 @@ subroutine verifyWarpDeriv(dXv_f, ndof_warp, dof_start, dof_end, h)
 
      ! reset the original value
      if (dof >= istart .and. dof < iend) then
-        call VecSetValue(Xs, (/dof/), orig_value, INSERT_VALUES, ierr)
+        call VecSetValue(Xs, (/dof/), orig_value(1), INSERT_VALUES, ierr)
         call EChk(ierr, __FILE__, __LINE__)
      end if
 
