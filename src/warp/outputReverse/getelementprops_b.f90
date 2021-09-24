@@ -22,15 +22,16 @@
    REAL(kind=realtype), DIMENSION(3, npts) :: radialvecb
    REAL(kind=realtype), DIMENSION(3) :: center, cross
    REAL(kind=realtype), DIMENSION(3) :: centerb, crossb
-   REAL(kind=realtype) :: crossnorm
-   REAL(kind=realtype) :: crossnormb
+   REAL(kind=realtype), DIMENSION(1) :: crossnorm
+   REAL(kind=realtype), DIMENSION(1) :: crossnormb
    INTRINSIC SQRT
    REAL(kind=realtype), DIMENSION(3) :: tmp
    INTEGER :: branch
    REAL(kind=realtype) :: temp0
+   REAL(kind=realtype) :: tempb1
    REAL(kind=realtype) :: tempb0
    REAL(kind=realtype) :: tmpb(3)
-   REAL(kind=realtype) :: tempb
+   REAL(kind=realtype) :: tempb(3)
    REAL(kind=realtype) :: temp
    ! Compute the element center:
    center(:) = zero
@@ -56,37 +57,41 @@
    CALL CROSS_PRODUCT_3D(radialvec(:, i), radialvec(:, 1), cross)
    CALL PUSHCONTROL1B(1)
    END IF
-   CALL PUSHREAL8ARRAY(crossnorm, realtype/8)
-   crossnorm = SQRT(cross(1)**2 + cross(2)**2 + cross(3)**2 + 1e-15)
-   normal = normal + cross/crossnorm
+   CALL PUSHREAL8ARRAY(crossnorm(1), realtype/8)
+   crossnorm(1) = SQRT(cross(1)**2 + cross(2)**2 + cross(3)**2 + 1e-15)
+   normal = normal + cross/crossnorm(1)
    END DO
    temp = normal(1)**2 + normal(2)**2 + normal(3)**2
    temp0 = SQRT(temp)
    tmpb = normalb
    normalb = tmpb/temp0
    IF (temp .EQ. 0.0_8) THEN
-   tempb0 = 0.0
+   tempb1 = 0.0
    ELSE
-   tempb0 = SUM(-(normal*tmpb/temp0))/(temp0**2*2.0)
+   tempb1 = SUM(-(normal*tmpb/temp0))/(temp0**2*2.0)
    END IF
-   normalb(1) = normalb(1) + 2*normal(1)*tempb0
-   normalb(2) = normalb(2) + 2*normal(2)*tempb0
-   normalb(3) = normalb(3) + 2*normal(3)*tempb0
+   normalb(1) = normalb(1) + 2*normal(1)*tempb1
+   normalb(2) = normalb(2) + 2*normal(2)*tempb1
+   normalb(3) = normalb(3) + 2*normal(3)*tempb1
    crossb = 0.0_8
    radialvecb = 0.0_8
+   crossnormb = 0.0_8
    DO i=npts,1,-1
-   crossb = crossb + normalb/crossnorm
-   crossnormb = half*areab + SUM(-(cross*normalb/crossnorm))/crossnorm
-   CALL POPREAL8ARRAY(crossnorm, realtype/8)
+   tempb = normalb/crossnorm(1)
+   crossb = crossb + tempb
+   crossnormb(1) = crossnormb(1) + half*areab + SUM(-(cross*tempb/&
+   &     crossnorm(1)))
+   CALL POPREAL8ARRAY(crossnorm(1), realtype/8)
    IF (cross(1)**2 + cross(2)**2 + cross(3)**2 + 1e-15 .EQ. 0.0_8) THEN
-   tempb = 0.0
+   tempb0 = 0.0
    ELSE
-   tempb = crossnormb/(2.0*SQRT(cross(1)**2+cross(2)**2+cross(3)**2+&
-   &       1e-15))
+   tempb0 = crossnormb(1)/(2.0*SQRT(cross(1)**2+cross(2)**2+cross(3)&
+   &       **2+1e-15))
    END IF
-   crossb(1) = crossb(1) + 2*cross(1)*tempb
-   crossb(2) = crossb(2) + 2*cross(2)*tempb
-   crossb(3) = crossb(3) + 2*cross(3)*tempb
+   crossb(1) = crossb(1) + 2*cross(1)*tempb0
+   crossb(2) = crossb(2) + 2*cross(2)*tempb0
+   crossb(3) = crossb(3) + 2*cross(3)*tempb0
+   crossnormb(1) = 0.0_8
    CALL POPCONTROL1B(branch)
    IF (branch .EQ. 0) THEN
    CALL POPREAL8ARRAY(cross, realtype*3/8)
