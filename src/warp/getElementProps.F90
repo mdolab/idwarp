@@ -12,7 +12,7 @@ subroutine getElementProps(points, nPts, area, normal)
   integer(kind=intType):: i
   real(kind=realType), dimension(3, nPts) :: radialVec
   real(kind=realType),dimension(3) :: center, cross
-  real(kind=realType) :: crossNOrm
+  real(kind=realType),dimension(1) :: crossNorm
 
   ! Compute the element center:
   center(:) = zero
@@ -35,9 +35,9 @@ subroutine getElementProps(points, nPts, area, normal)
      else
         call cross_product_3d(radialVec(:, i), radialVec(:, 1), cross)
      end if
-     crossNorm = sqrt(cross(1)**2 + cross(2)**2 + cross(3)**2 + 1e-15)
-     area  = area + half * crossNorm
-     normal = normal + cross/crossNorm
+     crossNorm(1) = sqrt(cross(1)**2 + cross(2)**2 + cross(3)**2 + 1e-15)
+     area  = area + half * crossNorm(1)
+     normal = normal + cross/crossNorm(1)
   end do
      
   ! Also make the normal a unit lenth
