@@ -12,7 +12,6 @@ Please see the [documentation](https://mdolab-idwarp.readthedocs-hosted.com/en/l
 To locally build the documentation, enter the `doc` folder and enter `make html` in terminal.
 You can then view the built documentation in the `_build` folder.
 
-
 ## Citation
 If you use IDWarp in any publication for which you find it useful, please cite this paper.
 
