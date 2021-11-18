@@ -1104,7 +1104,7 @@ Contains
           CALL PUSHINTEGER4(kk-1)
           CALL PUSHREAL8ARRAY(facenormal, realtype*3/8)
           CALL GETELEMENTPROPS(points, npts, facearea, facenormal)
-          CALL PUSHREAL8ARRAY(da, realtype/8)
+          CALL PUSHREAL8(da, realtype/8)
           ! For face 'ind' how many nodes are on the element?
           da = facearea/(tp%faceptr(ind)-tp%faceptr(ind-1))
           sumarea = sumarea + da
@@ -1143,7 +1143,7 @@ Contains
           dab = sumareab + SUM(facenormal*sumnormalb)
           facenormalb = da*sumnormalb
           ind = tp%nodetoelem(1+jj, i)
-          CALL POPREAL8ARRAY(da, realtype/8)
+          CALL POPREAL8(da, realtype/8)
           faceareab = dab/(tp%faceptr(ind)-tp%faceptr(ind-1))
           npts = tp%faceptr(ind) - tp%faceptr(ind-1)
           CALL POPREAL8ARRAY(facenormal, realtype*3/8)

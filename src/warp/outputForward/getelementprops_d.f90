@@ -22,8 +22,8 @@
    REAL(kind=realtype), DIMENSION(3, npts) :: radialvecb
    REAL(kind=realtype), DIMENSION(3) :: center, cross
    REAL(kind=realtype), DIMENSION(3) :: centerb, crossb
-   REAL(kind=realtype) :: crossnorm
-   REAL(kind=realtype) :: crossnormb
+   REAL(kind=realtype), DIMENSION(1) :: crossnorm
+   REAL(kind=realtype), DIMENSION(1) :: crossnormb
    INTRINSIC SQRT
    REAL(kind=realtype) :: arg1
    REAL(kind=realtype) :: arg1b
@@ -50,6 +50,7 @@
    areab = 0.0_8
    normalb = 0.0_8
    crossb = 0.0_8
+   crossnormb = 0.0_8
    DO i=1,npts
    IF (i .LT. npts) THEN
    CALL CROSS_PRODUCT_3D_D(radialvec(:, i), radialvecb(:, i), &
@@ -64,15 +65,16 @@
    &     crossb(3)
    arg1 = cross(1)**2 + cross(2)**2 + cross(3)**2 + 1e-15
    IF (arg1 .EQ. 0.0_8) THEN
-   crossnormb = 0.0_8
+   crossnormb(1) = 0.0_8
    ELSE
-   crossnormb = arg1b/(2.0*SQRT(arg1))
+   crossnormb(1) = arg1b/(2.0*SQRT(arg1))
    END IF
-   crossnorm = SQRT(arg1)
-   areab = areab + half*crossnormb
-   area = area + half*crossnorm
-   normalb = normalb + (crossb*crossnorm-cross*crossnormb)/crossnorm**2
-   normal = normal + cross/crossnorm
+   crossnorm(1) = SQRT(arg1)
+   areab = areab + half*crossnormb(1)
+   area = area + half*crossnorm(1)
+   normalb = normalb + (crossb*crossnorm(1)-cross*crossnormb(1))/&
+   &     crossnorm(1)**2
+   normal = normal + cross/crossnorm(1)
    END DO
    ! Also make the normal a unit lenth
    arg1b = 2*normal(1)*normalb(1) + 2*normal(2)*normalb(2) + 2*normal(3)*&
