@@ -30,6 +30,7 @@ import os
 import numpy as np
 from mpi4py import MPI
 from .MExt import MExt
+from . import USMesh
 from baseclasses.utils import Error
 
 try:
@@ -90,6 +91,9 @@ class MultiUSMesh(object):
 
         # Store original file name
         self.CGNSFile = CGNSFile
+
+        # Get rank of the current proc
+        self.myID = self.comm.Get_rank()
 
         # Store scalar type
         self.dtype = dtype
@@ -186,9 +190,9 @@ class MultiUSMesh(object):
 
                 # Initialize an IDWarp instance with the current options
                 if self.dtype == "d":
-                    currMesh = self.warp.USMesh(options=optionsDict[zoneName], comm=self.comm)
+                    currMesh = USMesh(options=optionsDict[zoneName], comm=self.comm)
                 elif self.dtype == "D":
-                    currMesh = self.warp.USMesh_C(options=optionsDict[zoneName], comm=self.comm)
+                    currMesh = USMesh_C(options=optionsDict[zoneName], comm=self.comm)
 
             else:
 
@@ -224,19 +228,18 @@ class MultiUSMesh(object):
                         fid.write("1 iLow BCwall wall\n")
 
                     # Use CGNS utils to modify the BCs
-                    os.system("cgns_utils overwritebc tmp_bg_file.cgns tmp_bcdata.dat")
+                    os.system("cgns_utils overwriteBC tmp_bg_file.cgns tmp_bcdata.dat")
 
                 # Create dummy set of options just to load the CGNS file
                 dummyOptions = {
                     "gridFile": "tmp_bg_file.cgns",
-                    "warpType": "unstructured",
                 }
 
                 # Initialize an IDWarp instance with the current options
                 if self.dtype == "d":
-                    currMesh = self.warp.USMesh(options=dummyOptions, comm=self.comm)
+                    currMesh = USMesh(options=dummyOptions, comm=self.comm)
                 elif self.dtype == "D":
-                    currMesh = self.warp.USMesh_C(options=dummyOptions, comm=self.comm)
+                    currMesh = USMesh_C(options=dummyOptions, comm=self.comm)
 
                 # Initialize a dummy surface in the background mesh
                 """
