@@ -4,13 +4,11 @@ TAPENADE_PRECISION = -i4 -dr8 -r8
 PREPROCESS_DIR = preprocess_temp
 TAPENADE_SRC =	$(TAPENADE_DIRSRC)/warp/getElementProps.F90\
 		$(TAPENADE_DIRSRC)/utils/vectorUtils.f90\
-		$(TAPENADE_DIRSRC)/modules/gridData.F90\
 		$(TAPENADE_DIRSRC)/modules/gridInput.f90\
 		$(TAPENADE_DIRSRC)/modules/constants.F90\
 		$(TAPENADE_DIRSRC)/modules/precision.F90\
 		$(TAPENADE_DIRSRC)/modules/communication.f90\
 		$(TAPENADE_DIRSRC)/modules/kd_tree.F90\
-		$(TAPENADE_DIRSRC)/warp/warpMesh.F90\
 
 PREPROCESSED_FILES = $(addprefix $(PREPROCESS_DIR)/,$(notdir $(TAPENADE_SRC)))
 
