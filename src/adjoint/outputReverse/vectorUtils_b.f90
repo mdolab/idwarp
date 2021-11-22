@@ -185,3 +185,56 @@
    CALL CROSS_PRODUCT_3D_B(v1, v1b, v2, v2b, axis, axisb)
    CALL GETMAG_B(v2, v2b, magv2, magv2b)
    END SUBROUTINE GETROTATIONMATRIX3D_B
+   !  Differentiation of cross_product_3d in reverse (adjoint) mode (with options noISIZE i4 dr8 r8):
+   !   gradient     of useful results: cross v1 v2
+   !   with respect to varying inputs: cross v1 v2
+   ! ====================================================================
+   ! File: vectorUtils.f90
+   ! Author: C.A.(Sandy) Mader
+   ! Date Started: July 14, 2014
+   ! Date Modified:
+   SUBROUTINE CROSS_PRODUCT_3D_B(v1, v1b, v2, v2b, cross, crossb)
+   USE CONSTANTS
+   IMPLICIT NONE
+   REAL(kind=realtype), DIMENSION(3), INTENT(IN) :: v1, v2
+   REAL(kind=realtype), DIMENSION(3) :: v1b, v2b
+   REAL(kind=realtype), DIMENSION(3) :: cross
+   REAL(kind=realtype), DIMENSION(3) :: crossb
+   v1b(1) = v1b(1) + v2(2)*crossb(3)
+   v2b(2) = v2b(2) + v1(1)*crossb(3)
+   v1b(2) = v1b(2) - v2(1)*crossb(3)
+   v2b(1) = v2b(1) - v1(2)*crossb(3)
+   crossb(3) = 0.0_8
+   v1b(3) = v1b(3) + v2(1)*crossb(2)
+   v2b(1) = v2b(1) + v1(3)*crossb(2)
+   v1b(1) = v1b(1) - v2(3)*crossb(2)
+   v2b(3) = v2b(3) - v1(1)*crossb(2)
+   crossb(2) = 0.0_8
+   v1b(2) = v1b(2) + v2(3)*crossb(1)
+   v2b(3) = v2b(3) + v1(2)*crossb(1)
+   v1b(3) = v1b(3) - v2(2)*crossb(1)
+   v2b(2) = v2b(2) - v1(3)*crossb(1)
+   crossb(1) = 0.0_8
+   END SUBROUTINE CROSS_PRODUCT_3D_B
+   !  Differentiation of getmag in reverse (adjoint) mode (with options noISIZE i4 dr8 r8):
+   !   gradient     of useful results: v mag
+   !   with respect to varying inputs: v
+   SUBROUTINE GETMAG_B(v, vb, mag, magb)
+   USE CONSTANTS
+   IMPLICIT NONE
+   ! Subroutine Variables
+   REAL(kind=realtype), DIMENSION(3), INTENT(IN) :: v
+   REAL(kind=realtype), DIMENSION(3) :: vb
+   REAL(kind=realtype) :: mag
+   REAL(kind=realtype) :: magb
+   INTRINSIC SQRT
+   REAL(kind=realtype) :: tempb
+   IF (v(1)**2 + v(2)**2 + v(3)**2 + 1e-30 .EQ. 0.0_8) THEN
+   tempb = 0.0
+   ELSE
+   tempb = magb/(2.0*SQRT(v(1)**2+v(2)**2+v(3)**2+1e-30))
+   END IF
+   vb(1) = vb(1) + 2*v(1)*tempb
+   vb(2) = vb(2) + 2*v(2)*tempb
+   vb(3) = vb(3) + 2*v(3)*tempb
+   END SUBROUTINE GETMAG_B
