@@ -33,7 +33,7 @@ STR_NEW = [""]
 STR_REPLACE_ALL = {"_CD": ""}
 # Also, entirely ignore lines with these strings:
 LINE_IGNORE = []
-FILE_IGNORE = ["griddata_d.F90"]
+FILE_IGNORE = ["gridData_d.f90", "kd_tree_d.f90", "warpMesh_d.f90"]
 # Some feedback
 
 print("Directory of input source files  :", DIR_ORI)
