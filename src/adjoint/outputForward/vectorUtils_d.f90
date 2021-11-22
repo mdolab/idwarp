@@ -124,3 +124,48 @@
    &   -COS(angle))*cb
    mi = mi + SIN(angle)*a + (one-COS(angle))*c
    END SUBROUTINE GETROTATIONMATRIX3D_D
+      !  Differentiation of cross_product_3d in forward (tangent) mode (with options noISIZE i4 dr8 r8):
+   !   variations   of useful results: cross
+   !   with respect to varying inputs: cross v1 v2
+   ! ====================================================================
+   ! File: vectorUtils.f90
+   ! Author: C.A.(Sandy) Mader
+   ! Date Started: July 14, 2014
+   ! Date Modified:
+   SUBROUTINE CROSS_PRODUCT_3D_D(v1, v1b, v2, v2b, cross, crossb)
+   USE CONSTANTS
+   IMPLICIT NONE
+   REAL(kind=realtype), DIMENSION(3), INTENT(IN) :: v1, v2
+   REAL(kind=realtype), DIMENSION(3), INTENT(IN) :: v1b, v2b
+   REAL(kind=realtype), DIMENSION(3), INTENT(OUT) :: cross
+   REAL(kind=realtype), DIMENSION(3), INTENT(OUT) :: crossb
+   crossb(1) = v1b(2)*v2(3) + v1(2)*v2b(3) - v1b(3)*v2(2) - v1(3)*v2b(2)
+   cross(1) = v1(2)*v2(3) - v1(3)*v2(2)
+   crossb(2) = v1b(3)*v2(1) + v1(3)*v2b(1) - v1b(1)*v2(3) - v1(1)*v2b(3)
+   cross(2) = v1(3)*v2(1) - v1(1)*v2(3)
+   crossb(3) = v1b(1)*v2(2) + v1(1)*v2b(2) - v1b(2)*v2(1) - v1(2)*v2b(1)
+   cross(3) = v1(1)*v2(2) - v1(2)*v2(1)
+   END SUBROUTINE CROSS_PRODUCT_3D_D
+   !  Differentiation of getmag in forward (tangent) mode (with options noISIZE i4 dr8 r8):
+   !   variations   of useful results: mag
+   !   with respect to varying inputs: v
+   SUBROUTINE GETMAG_D(v, vb, mag, magb)
+   USE CONSTANTS
+   IMPLICIT NONE
+   ! Subroutine Variables
+   REAL(kind=realtype), DIMENSION(3), INTENT(IN) :: v
+   REAL(kind=realtype), DIMENSION(3), INTENT(IN) :: vb
+   REAL(kind=realtype), INTENT(OUT) :: mag
+   REAL(kind=realtype), INTENT(OUT) :: magb
+   INTRINSIC SQRT
+   REAL(kind=realtype) :: arg1
+   REAL(kind=realtype) :: arg1b
+   arg1b = 2*v(1)*vb(1) + 2*v(2)*vb(2) + 2*v(3)*vb(3)
+   arg1 = v(1)**2 + v(2)**2 + v(3)**2 + 1e-30
+   IF (arg1 .EQ. 0.0_8) THEN
+   magb = 0.0_8
+   ELSE
+   magb = arg1b/(2.0*SQRT(arg1))
+   END IF
+   mag = SQRT(arg1)
+   END SUBROUTINE GETMAG_D
