@@ -29,3 +29,4 @@ idwarp.egg-info
 input_files/*/
 input_files/*.tar.gz
 testflo_report.out
+doc/_build
