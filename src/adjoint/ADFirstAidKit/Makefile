@@ -4,7 +4,7 @@
 # G. K. W. Kenway Sept 30, 2014
 #*********************************************************
 
-MAIN_DIR = ../../
+MAIN_DIR = ../../../
 COMMON_FILE = $(MAIN_DIR)/Common.mk
 RULES_FILE  = $(MAIN_DIR)/Rules.mk
 include ${COMMON_FILE}

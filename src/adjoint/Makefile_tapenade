@@ -1,7 +1,7 @@
 # -*- makefile -*-
 TAPENADE_DIRSRC = '../'
 TAPENADE_PRECISION = -i4 -dr8 -r8
-
+PREPROCESS_DIR = preprocess_temp
 TAPENADE_SRC =	$(TAPENADE_DIRSRC)/warp/getElementProps.F90\
 		$(TAPENADE_DIRSRC)/utils/vectorUtils.f90\
 		$(TAPENADE_DIRSRC)/modules/gridData.F90\
@@ -12,19 +12,18 @@ TAPENADE_SRC =	$(TAPENADE_DIRSRC)/warp/getElementProps.F90\
 		$(TAPENADE_DIRSRC)/modules/kd_tree.F90\
 		$(TAPENADE_DIRSRC)/warp/warpMesh.F90\
 
-PREPROCESSED_FILES := $(TAPENADE_SRC:%=%.f90)
+PREPROCESSED_FILES = $(addprefix $(PREPROCESS_DIR)/,$(notdir $(TAPENADE_SRC)))
 
 cleanpreprocess: 
 	@echo "Cleaning up preprocessed file ..."
-	@for file in $(TAPENADE_SRC); do \
-		rm $$file.f90; \
-	done
+	rm -rf $(PREPROCESS_DIR)
 
 preprocess: 
 	@echo "Processing input files for AD..."
+	mkdir -p $(PREPROCESS_DIR)
 	@for file in $(TAPENADE_SRC); do \
 		echo Preprocssing $$file; \
-		cpp -DUSE_TAPENADE -traditional -P $$file $$file.f90; \
+		cpp -DUSE_TAPENADE -traditional -P $$file $(PREPROCESS_DIR)/"$$(basename $$file)"; \
 	done
 
 ad_reverse:
@@ -50,7 +49,7 @@ ad_forward:
 	mkdir -p temp_forward
 	make -f Makefile_tapenade preprocess
 
-# the following ist he actual tapenade command to run
+# the following is the actual tapenade command to run
 	$(TAPENADE_HOME)/bin/tapenade \
 	-head "kd_tree%computeNodalProperties(XsPtr, tp%Mi, tp%Bi)>(tp%Mi, tp%Bi)" \
 	-noisize \
