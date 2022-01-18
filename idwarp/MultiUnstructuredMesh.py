@@ -1,14 +1,12 @@
 #!/usr/bin/python
 """
-Multiple USMesh instances contained in this MultiUSMesh object.
 
-The MultiUnstructuredMesh module is used for interacting with multiple
-unstructured (or structured!) meshes - typically used in a 3D CFD
-program.
+The MultiUnstructuredMesh module is used for creating multiple
+USMesh instances, typically from a structured overset mesh.
 
 It contains the following classes:
 
-MultiUSMesh: General class for working with multiple unstructured meshes
+MultiUSMesh: General class for working with multi-component meshes
 
 Copyright (c) 2017 by John Jasa
 All rights reserved. Not to be used for commercial purposes.
@@ -30,7 +28,7 @@ import os
 import numpy as np
 from mpi4py import MPI
 from .MExt import MExt
-from . import USMesh
+from . import USMesh, USMesh_C
 from baseclasses.utils import Error
 
 try:
