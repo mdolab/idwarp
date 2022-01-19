@@ -884,24 +884,6 @@ class MultiUSMesh(object):
         # RETURNS
         return dXv
 
-    '''
-    def verifyWarpDeriv(self, dXv=None, solverVec=True, dofStart=0,
-                        dofEnd=10, h=1e-6, randomSeed=314):
-        """Run an internal verification of the solid warping
-        derivatives"""
-
-        if dXv is None:
-            np.random.seed(randomSeed) # 'Random' seed to ensure runs are same
-            dXvWarp = np.random.random(self.warp.griddata.warpmeshdof)
-        else:
-            if solverVec:
-                dXvWarp = np.zeros(self.warp.griddata.warpmeshdof, self.dtype)
-                self.warp.solver_to_warp_grid(dXv, dXvWarp)
-            else:
-                dXvWarp = dXv
-
-        self.warp.verifywarpderiv(dXvWarp, dofStart, dofEnd, h)
-    '''
     # ==========================================================================
     #                        Output Functionality
     # ==========================================================================
