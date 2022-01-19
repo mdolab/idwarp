@@ -618,18 +618,12 @@ class MultiUSMesh(object):
             print("Done")
             print("")
 
-    '''
-    def getWarpGrid(self, warp_to_common=True):
+    def getWarpGrid(self):
         """
         Return the current grids. This function is typically unused. See
         getSolverGrid for the more useful interface functionality.
 
         This only returns the nearfield meshes.
-
-        warp_to_common is a flag indicating if we should do an scatter
-        operation to update commonGridVec with the values in Xv.
-        If you want to get grid coordinates prior to initializing the full
-        warping procedure, then you can set this value to false.
 
         Returns
         -------
@@ -657,7 +651,7 @@ class MultiUSMesh(object):
             # Get volume nodes.
             # volNodes is a flattened vector that contains the background
             # mesh volume nodes that belong to the current proc.
-            volNodes = currMesh.getCommonGrid(warp_to_common)
+            volNodes = currMesh.getCommonGrid()
 
             # Store the nodes of the current instance in the list
             volNodesList.append(volNodes)
@@ -674,7 +668,6 @@ class MultiUSMesh(object):
 
         # RETURNS
         return volNodesList, numCoorTotal
-    '''
 
     def getdXs(self):
         """Return the current values in dXs. This is the result from a
