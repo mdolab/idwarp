@@ -26,6 +26,7 @@ History
 # =============================================================================
 import os
 import numpy as np
+from random import randint
 from mpi4py import MPI
 from .MExt import MExt
 from . import USMesh, USMesh_C
@@ -96,6 +97,9 @@ class MultiUSMesh(object):
         # Store scalar type
         self.dtype = dtype
 
+        # Set a random prefix to avoid I/O clashes between instances
+        prefix = f"tmp{randint(1, 1e5)}"
+
         # Only the root processor will take the combined CGNS file
         # and explode it by instance.
         if self.myID == 0:
@@ -126,7 +130,7 @@ class MultiUSMesh(object):
 
             # Save temporary grid files with the exploded zones
             for grid, zoneName in zip(grids, zoneNames):
-                grid.writeToCGNS("_" + zoneName + ".cgns")
+                grid.writeToCGNS(f"{prefix}_{zoneName}.cgns")
 
                 # Store the number of blocks in each zone
                 self.cgnsBlockIntervals.append([blockCounter, blockCounter + len(grid.blocks)])
@@ -184,7 +188,7 @@ class MultiUSMesh(object):
                 # Assign the name of the temporary CGNS file to the options.
                 # This is the file that contains the mesh o a single component.
                 # Remember that we should use the temporary grid file.
-                optionsDict[zoneName]["gridFile"] = "_" + zoneName + ".cgns"
+                optionsDict[zoneName]["gridFile"] = f"{prefix}_{zoneName}.cgns"
 
                 # Initialize an IDWarp instance with the current options
                 if self.dtype == "d":
@@ -197,7 +201,7 @@ class MultiUSMesh(object):
                 # We have a background mesh
 
                 # Regenerate the temporary filename for the background grid
-                bgFile = "_" + zoneName + ".cgns"
+                bgFile = f"{prefix}_{zoneName}.cgns"
 
                 # ------------------------------------------------------
                 # READING BACKGROUND MESHES
@@ -219,18 +223,18 @@ class MultiUSMesh(object):
                 if self.myID == 0:
 
                     # Make a copy of the background mesh file
-                    os.system("cp " + bgFile + " tmp_bg_file.cgns")
+                    os.system(f"cp {bgFile} {prefix}_bg_file.cgns")
 
                     # Create a temporary BC file
-                    with open("tmp_bcdata.dat", "w") as fid:
+                    with open(f"{prefix}_bcdata.dat", "w") as fid:
                         fid.write("1 iLow BCwall wall\n")
 
                     # Use CGNS utils to modify the BCs
-                    os.system("cgns_utils overwriteBC tmp_bg_file.cgns tmp_bcdata.dat")
+                    os.system(f"cgns_utils overwriteBC {prefix}_bg_file.cgns {prefix}_bcdata.dat")
 
                 # Create dummy set of options just to load the CGNS file
                 dummyOptions = {
-                    "gridFile": "tmp_bg_file.cgns",
+                    "gridFile": f"{prefix}_bg_file.cgns",
                 }
 
                 # Initialize an IDWarp instance with the current options
@@ -269,8 +273,8 @@ class MultiUSMesh(object):
                 if self.myID == 0:
 
                     # Make a copy of the background mesh file
-                    os.system("rm tmp_bg_file.cgns")
-                    os.system("rm tmp_bcdata.dat")
+                    os.system(f"rm {prefix}_bg_file.cgns")
+                    os.system(f"rm {prefix}_bcdata.dat")
 
                 # Store the ID of this zone
                 self.backgroundInstanceIDs.append(zoneNumber)
@@ -283,7 +287,7 @@ class MultiUSMesh(object):
         # Now the root proc can remove the temporary grid files
         if self.myID == 0:
             for zoneName in zoneNames:
-                os.system("rm _" + zoneName + ".cgns")
+                os.system(f"rm {prefix}_{zoneName}.cgns")
 
         # ------------------------------------------------------
         # Initialize other fields for completness
