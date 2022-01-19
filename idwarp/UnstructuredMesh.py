@@ -406,7 +406,7 @@ class USMesh(BaseSolver):
 
         Parameters
         ----------
-        solverdXv :  numpy array
+        dXv :  numpy array
             Vector of size external solver_grid. This is typically
             obtained from the external solver's dRdx^T * psi
             calculation.

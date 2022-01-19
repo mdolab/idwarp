@@ -744,7 +744,7 @@ class MultiUSMesh(object):
             print("IDWarpMulti successfully warped all instances!")
             print("")
 
-    def warpDeriv(self, dXv):
+    def warpDeriv(self, dXv, solverVec=True):
         """Compute the warping derivative (dXv/dXs^T)*Vec (where vec is the
         dXv argument to this function.
 
@@ -753,7 +753,7 @@ class MultiUSMesh(object):
 
         Parameters
         ----------
-        solverdXv :  numpy array
+        dXv :  numpy array
             Vector of size external solver_grid. This is typically
             obtained from the external solver's dRdx^T * psi
             calculation.
@@ -796,7 +796,7 @@ class MultiUSMesh(object):
 
             # Run reverse AD.
             # This will update the surface seeds inside the mesh object
-            mesh.warpDeriv(curr_dXv)
+            mesh.warpDeriv(curr_dXv, solverVec=solverVec)
 
             # Print log
             if self.myID == 0:
