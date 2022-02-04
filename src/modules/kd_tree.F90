@@ -45,6 +45,7 @@ Module kd_tree
      integer(kind=intType) :: maxDepth
      real(kind=realType) :: Ldef, Ldef0
      real(kind=realType) :: alphaToBExp
+     real(kind=realType) :: aExp, bExp
      real(kind=realType) , dimension(:), pointer :: Ai
      logical             , dimension(:), allocatable :: isCorner
      real(kind=realType) , dimension(:, :), pointer :: Bi, Bib
@@ -672,7 +673,7 @@ Contains
     real(kind=realType), intent(inout), dimension(3) :: num
     real(kind=realType), intent(inout) :: den
     real(kind=realType), dimension(3) :: rr, Si
-    real(kind=realType) :: LdefoDist, LdefoDist3
+    real(kind=realType) :: LdefoDist
     real(kind=realType) :: Wi
     integer(kind=intType) :: i
 
@@ -681,8 +682,7 @@ Contains
        rr(2) = r(2) - tp%Xu0(2, i)
        rr(3) = r(3) - tp%Xu0(3, i)
        LdefoDist = tp%Ldef/sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2+eps)
-       Ldefodist3 = LdefoDist**3
-       Wi = tp%Ai(i)*(Ldefodist3 + tp%alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
+       Wi = tp%Ai(i)*(LdefoDist**tp%aExp + tp%alphaToBexp*LdefoDist**tp%bExp)
        Si = tp%Mi(:, 1, i)*r(1) + tp%Mi(:, 2, i)*r(2) + tp%Mi(:, 3, i)*r(3) + tp%bi(:, i) - r(:)
        num = num + Wi*Si
        den = den + Wi
@@ -700,12 +700,11 @@ Contains
     real(kind=realType), intent(in) :: dist, r(3)
     real(kind=realType), intent(out), dimension(3) :: num
     real(kind=realType), intent(out) :: den
-    real(kind=realType) :: LdefoDist, LdefoDist3
+    real(kind=realType) :: LdefoDist
     real(kind=realType) :: Wi, Si(3)
 
     LdefoDist = tp%Ldef/dist
-    Ldefodist3 = LdefoDist**3
-    Wi = np%Ai*(Ldefodist3 + tp%alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
+    Wi = np%Ai*(LdefoDist**tp%aExp + tp%alphaToBexp*LdefoDist**tp%bExp)
     Si(1) = np%Mi(1, 1)*r(1) + np%Mi(1, 2)*r(2) + np%Mi(1, 3)*r(3) + np%bi(1) - r(1)
     Si(2) = np%Mi(2, 1)*r(1) + np%Mi(2, 2)*r(2) + np%Mi(2, 3)*r(3) + np%bi(2) - r(2)
     Si(3) = np%Mi(3, 1)*r(1) + np%Mi(3, 2)*r(2) + np%Mi(3, 3)*r(3) + np%bi(3) - r(3)
@@ -762,15 +761,14 @@ Contains
     real(kind=realType), intent(in), dimension(3) :: r
     real(kind=realType), intent(inout) :: den
     real(kind=realType), dimension(3) :: rr
-    real(kind=realType) :: dist, LdefoDist, LdefoDist3
+    real(kind=realType) :: dist, LdefoDist
     integer(kind=intType) :: i
     if (np%dnum == 0) then
        ! Leaf node. Do regular calc:
        do i=np%l, np%u
           rr = r - tp%Xu0(:, i)
           LdefoDist = tp%Ldef/sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2+1e-16)
-          Ldefodist3 = LdefoDist**3
-          den = den + tp%Ai(i)*(Ldefodist3 + tp%alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
+          den = den + tp%Ai(i)*(LdefoDist**tp%aExp + tp%alphaToBexp*LdefoDist**tp%bExp)
        end do
     else
        rr = r - np%X
@@ -779,8 +777,7 @@ Contains
        if (dist*np%oradius > 5.0) then
           ! Far field calc is ok:
           LdefoDist = tp%Ldef/dist
-          Ldefodist3 = LdefoDist**3
-          den = den + np%Ai*(Ldefodist3 + tp%alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
+          den = den + np%Ai*(LdefoDist**tp%aExp + tp%alphaToBexp*LdefoDist**tp%bExp)
        else
           ! To far away, recursively call the children
           call getWiEstimate(tp, np%left, r, den)
@@ -844,7 +841,7 @@ Contains
     real(kind=realType) , dimension(3, 20) :: vpts
     real(kind=realType) , dimension(3, 12) :: fpts
     real(kind=realType) :: dExact(20), dApprox(20), rr(3)
-    real(kind=realType) :: LdefoDist, LdefODist3, dist
+    real(kind=realType) :: LdefoDist, dist
     integer(kind=intType) :: ii, i, j
 
     if (np%dnum /= 0) then
@@ -860,16 +857,14 @@ Contains
                 rr = vpts(:, ii) - tp%Xu0(:, i)
                 dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2)
                 LdefoDist = tp%Ldef/dist
-                Ldefodist3 = LdefoDist**3
-                dExact(ii) = dExact(ii) + tp%Ai(i)*(Ldefodist3 + tp%alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
+                dExact(ii) = dExact(ii) + tp%Ai(i)*(LdefoDist**tp%aExp + tp%alphaToBexp*LdefoDist**tp%bExp)
              end do
 
              ! And the approx value:
              rr = vpts(:, ii) - np%X
              dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2)
              LdefoDist = tp%Ldef/dist
-             Ldefodist3 = LdefoDist**3
-             dApprox(ii) = dApprox(ii) + np%Ai*(Ldefodist3 + tp%alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
+             dApprox(ii) = dApprox(ii) + np%Ai*(LdefoDist**tp%aExp + tp%alphaToBexp*LdefoDist**tp%bExp)
 
              ! Now set the nodal error:
              np%err(j) = np%err(j) + (dExact(ii) - dApprox(ii))**2
@@ -997,7 +992,7 @@ Contains
     real(kind=realType), dimension(3) :: rr
     real(kind=realType), dimension(:, :) :: Bib
     real(kind=realType), dimension(:, :, :) :: Mib
-    real(kind=realType) :: dist, LdefoDist, LdefoDist3, sib(3)
+    real(kind=realType) :: dist, LdefoDist, sib(3)
     real(kind=realType) :: Wi
 
     do i=np%l,np%u
@@ -1007,8 +1002,7 @@ Contains
 
        dist = SQRT(rr(1)**2 + rr(2)**2 + rr(3)**2 + eps)
        ldefodist = tp%ldef/dist
-       ldefodist3 = ldefodist**3
-       wi = tp%Ai(i)*(ldefodist3+tp%alphatobexp*ldefodist3*ldefodist*ldefodist)
+       wi = tp%Ai(i)*(ldefodist**tp%aexp+tp%alphatobexp*ldefodist**tp%bexp)
        Sib = wi*numb
        mib(:, 1, i) = mib(:, 1, i) + r(1)*sib
        mib(:, 2, i) = mib(:, 2, i) + r(2)*sib
@@ -1025,11 +1019,10 @@ Contains
     Type (tree_node), Pointer :: np
     real(kind=realType), intent(in) :: dist, r(3)
     real(kind=realType), dimension(3) :: numb
-    real(kind=realType) :: LdefoDist, LdefoDist3, Wi, sib(3)
+    real(kind=realType) :: LdefoDist, Wi, sib(3)
 
     ldefodist = tp%ldef/dist
-    ldefodist3 = ldefodist**3
-    wi = np%ai*(ldefodist3+tp%alphatobexp*ldefodist3*ldefodist*ldefodist)
+    wi = np%ai*(ldefodist**tp%aexp+tp%alphatobexp*ldefodist**tp%bexp)
     Sib = wi*numb
     np%mib(:, 1) = np%mib(:, 1) + r(1)*sib
     np%mib(:, 2) = np%mib(:, 2) + r(2)*sib
@@ -1217,7 +1210,7 @@ Contains
     real(kind=realType), intent(in), dimension(3) :: r
     real(kind=realType), intent(inout), dimension(3) :: numd
     real(kind=realType), dimension(3) :: rr, Sib
-    real(kind=realType) :: dist, LdefoDist, LdefoDist3
+    real(kind=realType) :: dist, LdefoDist
     real(kind=realType) :: Wi
     integer(kind=intType) :: i
 
@@ -1227,8 +1220,7 @@ Contains
        rr(3) = r(3) - tp%Xu0(3, i)
        dist = sqrt(rr(1)**2 + rr(2)**2 + rr(3)**2+eps)
        LdefoDist = tp%Ldef/dist
-       Ldefodist3 = LdefoDist**3
-       Wi = tp%Ai(i)*(Ldefodist3 + tp%alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
+       Wi = tp%Ai(i)*(LdefoDist**tp%aExp + tp%alphaToBexp*LdefoDist**tp%bExp)
        Sib = tp%Mib(:, 1, i)*r(1) + tp%Mib(:, 2, i)*r(2) + tp%Mib(:, 3, i)*r(3) + tp%bib(:, i)
        numd = numd + Wi*Sib
     end do
@@ -1242,11 +1234,10 @@ Contains
     Type (tree_node), Pointer :: np
     real(kind=realType), intent(in) :: dist
     real(kind=realType), dimension(3) :: numd, r
-    real(kind=realType) :: LdefoDist, LdefoDist3, Wi, sib(3)
+    real(kind=realType) :: LdefoDist, Wi, sib(3)
 
     LdefoDist = tp%Ldef/dist
-    Ldefodist3 = LdefoDist**3
-    Wi = np%Ai*(Ldefodist3 + tp%alphaToBexp*Ldefodist3*LdefoDist*LdefoDist)
+    Wi = np%Ai*(LdefoDist**tp%aExp + tp%alphaToBexp*LdefoDist**tp%bExp)
     Sib(1) = np%Mib(1, 1)*r(1) + np%Mib(1, 2)*r(2) + np%Mib(1, 3)*r(3) + np%bib(1)
     Sib(2) = np%Mib(2, 1)*r(1) + np%Mib(2, 2)*r(2) + np%Mib(2, 3)*r(3) + np%bib(2)
     Sib(3) = np%Mib(3, 1)*r(1) + np%Mib(3, 2)*r(2) + np%Mib(3, 3)*r(3) + np%bib(3)
@@ -1535,6 +1526,8 @@ Contains
     ! Set the input parameters to the module
     tp%Ldef = tp%Ldef0 * LdefFact
     tp%alphaToBexp = alpha**bExp
+    tp%aExp = aExp
+    tp%bExp = bExp
     tp%errTol = errTol
 
     ! Define where we will check errors. Note that there is no
