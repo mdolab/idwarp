@@ -40,13 +40,13 @@ symmetryPlanes:
 
 aExp:
   desc: >
-    This is the first exponent in the inverse distance calc.
-    However, for efficiency reasons this value is hard-coded and not currently available to be changed by the user.
+    This is the first exponent in the inverse distance weighting function.
+    The default is usually the most robust, but changing this value slightly might help with some edge cases.
 
 bExp:
   desc: >
-    This is the second exponent in the inverse distance calc.
-    However, for efficiency reasons this value is hard-coded and not currently available to be changed by the user.
+    This is the second exponent in the inverse distance weighting function.
+    The default is usually the most robust, but changing this value slightly might help with some edge cases.
 
 LdefFact:
   desc: >
