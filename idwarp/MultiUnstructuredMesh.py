@@ -719,6 +719,7 @@ class MultiUSMesh(object):
         if self.myID == 0:
             print("")
             print("Starting IDWarpMulti mesh warping")
+            print("")
 
         # Set mesh counter
         meshCounter = 1
@@ -728,16 +729,10 @@ class MultiUSMesh(object):
 
             # Print log
             if self.myID == 0:
-                print("")
-                print(" warping mesh", meshCounter, "of", len(self.meshes))
+                print(" Warping mesh", meshCounter, "of", len(self.meshes))
 
             # Warp current instance
             mesh.warpMesh()
-
-            # Print log
-            if self.myID == 0:
-                print("")
-                print(" Done")
 
             # Increment counter
             meshCounter = meshCounter + 1
@@ -745,7 +740,7 @@ class MultiUSMesh(object):
         # Print log
         if self.myID == 0:
             print("")
-            print("IDWarpMulti successfully warped all instances!")
+            print("IDWarpMulti finished warping all instances")
             print("")
 
     def warpDeriv(self, dXv, solverVec=True):
@@ -783,6 +778,7 @@ class MultiUSMesh(object):
         if self.myID == 0:
             print("")
             print("Starting IDWarpMulti reverse AD")
+            print("")
 
         # ---------------------------------------------------
         # RUN REVERSE AD ON EACH INSTANCE
@@ -792,7 +788,6 @@ class MultiUSMesh(object):
 
             # Print log
             if self.myID == 0:
-                print("")
                 print(" Working on mesh", instanceID + 1, "of", len(self.meshes))
 
             # Get current seeds
@@ -802,15 +797,10 @@ class MultiUSMesh(object):
             # This will update the surface seeds inside the mesh object
             mesh.warpDeriv(curr_dXv, solverVec=solverVec)
 
-            # Print log
-            if self.myID == 0:
-                print("")
-                print(" Done")
-
         # Print log
         if self.myID == 0:
             print("")
-            print("IDWarpMulti successfully finished reverse AD on all instances!")
+            print("IDWarpMulti finished reverse AD on all instances")
             print("")
 
         # Get derivative seeds
@@ -848,6 +838,7 @@ class MultiUSMesh(object):
         if self.myID == 0:
             print("")
             print("Starting IDWarpMulti forward AD")
+            print("")
 
         # ---------------------------------------------------
         # SPLIT SURFACE SEEDS ACROSS ALL INSTANCES AND GATHER
@@ -861,7 +852,6 @@ class MultiUSMesh(object):
 
             # Print log
             if self.myID == 0:
-                print("")
                 print(" Working on mesh", instanceID + 1, "of", len(self.meshes))
 
             # Get current surface node forward AD seeds
@@ -873,15 +863,10 @@ class MultiUSMesh(object):
             # Add seeds to the full volume vector
             dXv[self.cgnsVolNodeMasks[instanceID]] = curr_dXvWarp
 
-            # Print log
-            if self.myID == 0:
-                print("")
-                print(" Done")
-
         # Print log
         if self.myID == 0:
             print("")
-            print("IDWarpMulti successfully finished forward AD on all instances!")
+            print("IDWarpMulti finished forward AD on all instances")
             print("")
 
         # ---------------------------------------------------
