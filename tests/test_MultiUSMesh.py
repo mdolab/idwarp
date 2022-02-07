@@ -16,6 +16,7 @@ from parameterized import parameterized_class
 # =============================================================================
 from idwarp import MultiUSMesh, MultiUSMesh_C
 from baseclasses import BaseRegTest
+from baseclasses.utils import readJSON
 
 baseDir = os.path.dirname(os.path.abspath(__file__))  # Path to current directory
 
@@ -41,7 +42,7 @@ def eval_warp(handler, test_name, gridFile, optionsDict, isComplex, N_PROCS):
 
     # Get mesh data from JSON file to avoid needing ADflow for the test
     jsonFile = os.path.join(baseDir, "../input_files/onera_m6.json")
-    meshData = BaseRegTest.readRefJSON(jsonFile)
+    meshData = readJSON(jsonFile)
 
     # Set the mesh surface from data
     mesh.setExternalMeshIndices(meshData["meshInd"])
