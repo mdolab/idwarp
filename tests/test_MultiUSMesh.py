@@ -153,22 +153,28 @@ class Test_MultiUSMesh(unittest.TestCase):
             test_name = "Test_onera_m6"
             gridFile = os.path.join(baseDir, "../input_files/onera_m6.cgns")
 
-            meshOptions = {
+            # This instance tests default options
+            nearTipOptions = {
                 "gridFile": gridFile,
-                "aExp": 3.0,
-                "bExp": 5.0,
-                "LdefFact": 1.0,
-                "alpha": 0.25,
-                "errTol": 0.0005,
-                "evalMode": "fast",
-                "symmTol": 1e-6,
-                "useRotations": True,
-                "bucketSize": 8,
+            }
+
+            # This instance tests non-default options
+            nearWingOptions = {
+                "gridFile": gridFile,
+                "aExp": 4.0,
+                "bExp": 6.0,
+                "LdefFact": 100.0,
+                "alpha": 0.3,
+                "errTol": 1e-5,
+                "useRotations": False,
+                "zeroCornerRotations": False,
+                "cornerAngle": 45.0,
+                "bucketSize": 4,
             }
 
             optionsDict = {
-                "near_tip_vol_L3": meshOptions,
-                "near_wing_vol_L3": meshOptions,
+                "near_tip_vol_L3": nearTipOptions,
+                "near_wing_vol_L3": nearWingOptions,
             }
 
             # Call warping test function
