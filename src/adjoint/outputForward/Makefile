@@ -11,10 +11,8 @@ include ${COMMON_FILE}
 include ${RULES_FILE}
 vpath %.o $(OBJDIR)
 
-FF90_OBJECTS =	cross_product_3d_d.o\
-		getelementprops_d.o\
-		getmag_d.o\
-		getrotationmatrix3d_d.o
+FF90_OBJECTS =	vectorUtils_d.o\
+		getElementProps_d.o
 
 all:
 	$(PMAKE)  src
