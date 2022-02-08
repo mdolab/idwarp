@@ -1,0 +1,23 @@
+{
+    "Test_onera_m6 - Sum of dXs:": 300303.80115047796,
+    "Test_onera_m6 - Sums of Initial Volume Coords:": {
+        "__ndarray__": [
+            274789.83833522064,
+            75732.81670770115
+        ],
+        "dtype": "float64",
+        "shape": [
+            2
+        ]
+    },
+    "Test_onera_m6 - Sums of Warped Volume Coords:": {
+        "__ndarray__": [
+            309457.45451071725,
+            84883.14062531918
+        ],
+        "dtype": "float64",
+        "shape": [
+            2
+        ]
+    }
+}
