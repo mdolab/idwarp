@@ -20,3 +20,4 @@ extends:
     GCC_CONFIG: config/defaults/config.LINUX_GFORTRAN_OPENMPI.mk
     INTEL_CONFIG: config/defaults/config.LINUX_INTEL_OPENMPI.mk
     TAPENADE: true
+    TAPENADE_VERSION: "3.16"
