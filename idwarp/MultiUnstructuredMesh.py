@@ -1,14 +1,12 @@
 #!/usr/bin/python
 """
-Multiple USMesh instances contained in this MultiUSMesh object.
 
-The MultiUnstructuredMesh module is used for interacting with multiple
-unstructured (or structured!) meshes - typically used in a 3D CFD
-program.
+The MultiUnstructuredMesh module is used for creating multiple
+USMesh instances, typically from a structured overset mesh.
 
 It contains the following classes:
 
-MultiUSMesh: General class for working with multiple unstructured meshes
+MultiUSMesh: General class for working with multi-component meshes
 
 Copyright (c) 2017 by John Jasa
 All rights reserved. Not to be used for commercial purposes.
@@ -28,8 +26,10 @@ History
 # =============================================================================
 import os
 import numpy as np
+from random import randint
 from mpi4py import MPI
 from .MExt import MExt
+from . import USMesh, USMesh_C
 from baseclasses.utils import Error
 
 try:
@@ -91,8 +91,14 @@ class MultiUSMesh(object):
         # Store original file name
         self.CGNSFile = CGNSFile
 
+        # Get rank of the current proc
+        self.myID = self.comm.Get_rank()
+
         # Store scalar type
         self.dtype = dtype
+
+        # Set a random prefix to avoid I/O clashes between instances
+        prefix = f"tmp{randint(1, 1e5)}"
 
         # Only the root processor will take the combined CGNS file
         # and explode it by instance.
@@ -124,7 +130,7 @@ class MultiUSMesh(object):
 
             # Save temporary grid files with the exploded zones
             for grid, zoneName in zip(grids, zoneNames):
-                grid.writeToCGNS("_" + zoneName + ".cgns")
+                grid.writeToCGNS(f"{prefix}_{zoneName}.cgns")
 
                 # Store the number of blocks in each zone
                 self.cgnsBlockIntervals.append([blockCounter, blockCounter + len(grid.blocks)])
@@ -182,20 +188,20 @@ class MultiUSMesh(object):
                 # Assign the name of the temporary CGNS file to the options.
                 # This is the file that contains the mesh o a single component.
                 # Remember that we should use the temporary grid file.
-                optionsDict[zoneName]["gridFile"] = "_" + zoneName + ".cgns"
+                optionsDict[zoneName]["gridFile"] = f"{prefix}_{zoneName}.cgns"
 
                 # Initialize an IDWarp instance with the current options
                 if self.dtype == "d":
-                    currMesh = self.warp.USMesh(options=optionsDict[zoneName], comm=self.comm)
+                    currMesh = USMesh(options=optionsDict[zoneName], comm=self.comm)
                 elif self.dtype == "D":
-                    currMesh = self.warp.USMesh_C(options=optionsDict[zoneName], comm=self.comm)
+                    currMesh = USMesh_C(options=optionsDict[zoneName], comm=self.comm)
 
             else:
 
                 # We have a background mesh
 
                 # Regenerate the temporary filename for the background grid
-                bgFile = "_" + zoneName + ".cgns"
+                bgFile = f"{prefix}_{zoneName}.cgns"
 
                 # ------------------------------------------------------
                 # READING BACKGROUND MESHES
@@ -217,26 +223,25 @@ class MultiUSMesh(object):
                 if self.myID == 0:
 
                     # Make a copy of the background mesh file
-                    os.system("cp " + bgFile + " tmp_bg_file.cgns")
+                    os.system(f"cp {bgFile} {prefix}_bg_file.cgns")
 
                     # Create a temporary BC file
-                    with open("tmp_bcdata.dat", "w") as fid:
+                    with open(f"{prefix}_bcdata.dat", "w") as fid:
                         fid.write("1 iLow BCwall wall\n")
 
                     # Use CGNS utils to modify the BCs
-                    os.system("cgns_utils overwritebc tmp_bg_file.cgns tmp_bcdata.dat")
+                    os.system(f"cgns_utils overwriteBC {prefix}_bg_file.cgns {prefix}_bcdata.dat")
 
                 # Create dummy set of options just to load the CGNS file
                 dummyOptions = {
-                    "gridFile": "tmp_bg_file.cgns",
-                    "warpType": "unstructured",
+                    "gridFile": f"{prefix}_bg_file.cgns",
                 }
 
                 # Initialize an IDWarp instance with the current options
                 if self.dtype == "d":
-                    currMesh = self.warp.USMesh(options=dummyOptions, comm=self.comm)
+                    currMesh = USMesh(options=dummyOptions, comm=self.comm)
                 elif self.dtype == "D":
-                    currMesh = self.warp.USMesh_C(options=dummyOptions, comm=self.comm)
+                    currMesh = USMesh_C(options=dummyOptions, comm=self.comm)
 
                 # Initialize a dummy surface in the background mesh
                 """
@@ -268,8 +273,8 @@ class MultiUSMesh(object):
                 if self.myID == 0:
 
                     # Make a copy of the background mesh file
-                    os.system("rm tmp_bg_file.cgns")
-                    os.system("rm tmp_bcdata.dat")
+                    os.system(f"rm {prefix}_bg_file.cgns")
+                    os.system(f"rm {prefix}_bcdata.dat")
 
                 # Store the ID of this zone
                 self.backgroundInstanceIDs.append(zoneNumber)
@@ -282,7 +287,7 @@ class MultiUSMesh(object):
         # Now the root proc can remove the temporary grid files
         if self.myID == 0:
             for zoneName in zoneNames:
-                os.system("rm _" + zoneName + ".cgns")
+                os.system(f"rm {prefix}_{zoneName}.cgns")
 
         # ------------------------------------------------------
         # Initialize other fields for completness
@@ -617,18 +622,12 @@ class MultiUSMesh(object):
             print("Done")
             print("")
 
-    '''
-    def getWarpGrid(self, warp_to_common=True):
+    def getWarpGrid(self):
         """
         Return the current grids. This function is typically unused. See
         getSolverGrid for the more useful interface functionality.
 
         This only returns the nearfield meshes.
-
-        warp_to_common is a flag indicating if we should do an scatter
-        operation to update commonGridVec with the values in Xv.
-        If you want to get grid coordinates prior to initializing the full
-        warping procedure, then you can set this value to false.
 
         Returns
         -------
@@ -656,7 +655,7 @@ class MultiUSMesh(object):
             # Get volume nodes.
             # volNodes is a flattened vector that contains the background
             # mesh volume nodes that belong to the current proc.
-            volNodes = currMesh.getCommonGrid(warp_to_common)
+            volNodes = currMesh.getCommonGrid()
 
             # Store the nodes of the current instance in the list
             volNodesList.append(volNodes)
@@ -673,7 +672,6 @@ class MultiUSMesh(object):
 
         # RETURNS
         return volNodesList, numCoorTotal
-    '''
 
     def getdXs(self):
         """Return the current values in dXs. This is the result from a
@@ -721,6 +719,7 @@ class MultiUSMesh(object):
         if self.myID == 0:
             print("")
             print("Starting IDWarpMulti mesh warping")
+            print("")
 
         # Set mesh counter
         meshCounter = 1
@@ -730,16 +729,10 @@ class MultiUSMesh(object):
 
             # Print log
             if self.myID == 0:
-                print("")
-                print(" warping mesh", meshCounter, "of", len(self.meshes))
+                print(" Warping mesh", meshCounter, "of", len(self.meshes))
 
             # Warp current instance
             mesh.warpMesh()
-
-            # Print log
-            if self.myID == 0:
-                print("")
-                print(" Done")
 
             # Increment counter
             meshCounter = meshCounter + 1
@@ -747,10 +740,10 @@ class MultiUSMesh(object):
         # Print log
         if self.myID == 0:
             print("")
-            print("IDWarpMulti successfully warped all instances!")
+            print("IDWarpMulti finished warping all instances")
             print("")
 
-    def warpDeriv(self, dXv):
+    def warpDeriv(self, dXv, solverVec=True):
         """Compute the warping derivative (dXv/dXs^T)*Vec (where vec is the
         dXv argument to this function.
 
@@ -759,7 +752,7 @@ class MultiUSMesh(object):
 
         Parameters
         ----------
-        solverdXv :  numpy array
+        dXv :  numpy array
             Vector of size external solver_grid. This is typically
             obtained from the external solver's dRdx^T * psi
             calculation.
@@ -785,6 +778,7 @@ class MultiUSMesh(object):
         if self.myID == 0:
             print("")
             print("Starting IDWarpMulti reverse AD")
+            print("")
 
         # ---------------------------------------------------
         # RUN REVERSE AD ON EACH INSTANCE
@@ -794,7 +788,6 @@ class MultiUSMesh(object):
 
             # Print log
             if self.myID == 0:
-                print("")
                 print(" Working on mesh", instanceID + 1, "of", len(self.meshes))
 
             # Get current seeds
@@ -802,17 +795,12 @@ class MultiUSMesh(object):
 
             # Run reverse AD.
             # This will update the surface seeds inside the mesh object
-            mesh.warpDeriv(curr_dXv)
-
-            # Print log
-            if self.myID == 0:
-                print("")
-                print(" Done")
+            mesh.warpDeriv(curr_dXv, solverVec=solverVec)
 
         # Print log
         if self.myID == 0:
             print("")
-            print("IDWarpMulti successfully finished reverse AD on all instances!")
+            print("IDWarpMulti finished reverse AD on all instances")
             print("")
 
         # Get derivative seeds
@@ -850,6 +838,7 @@ class MultiUSMesh(object):
         if self.myID == 0:
             print("")
             print("Starting IDWarpMulti forward AD")
+            print("")
 
         # ---------------------------------------------------
         # SPLIT SURFACE SEEDS ACROSS ALL INSTANCES AND GATHER
@@ -863,7 +852,6 @@ class MultiUSMesh(object):
 
             # Print log
             if self.myID == 0:
-                print("")
                 print(" Working on mesh", instanceID + 1, "of", len(self.meshes))
 
             # Get current surface node forward AD seeds
@@ -875,39 +863,16 @@ class MultiUSMesh(object):
             # Add seeds to the full volume vector
             dXv[self.cgnsVolNodeMasks[instanceID]] = curr_dXvWarp
 
-            # Print log
-            if self.myID == 0:
-                print("")
-                print(" Done")
-
         # Print log
         if self.myID == 0:
             print("")
-            print("IDWarpMulti successfully finished forward AD on all instances!")
+            print("IDWarpMulti finished forward AD on all instances")
             print("")
 
         # ---------------------------------------------------
         # RETURNS
         return dXv
 
-    '''
-    def verifyWarpDeriv(self, dXv=None, solverVec=True, dofStart=0,
-                        dofEnd=10, h=1e-6, randomSeed=314):
-        """Run an internal verification of the solid warping
-        derivatives"""
-
-        if dXv is None:
-            np.random.seed(randomSeed) # 'Random' seed to ensure runs are same
-            dXvWarp = np.random.random(self.warp.griddata.warpmeshdof)
-        else:
-            if solverVec:
-                dXvWarp = np.zeros(self.warp.griddata.warpmeshdof, self.dtype)
-                self.warp.solver_to_warp_grid(dXv, dXvWarp)
-            else:
-                dXvWarp = dXv
-
-        self.warp.verifywarpderiv(dXvWarp, dofStart, dofEnd, h)
-    '''
     # ==========================================================================
     #                        Output Functionality
     # ==========================================================================

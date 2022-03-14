@@ -1,7 +1,7 @@
 #!/usr/bin/python
 """
-This is the complex version of the Unstructured mesh warping. See
-UnstructuredMesh.py for more info.
+This is the complex version of the MultiUSMesh class.
+See MultiUnstructuredMesh.py for more info.
 """
 
 # =============================================================================
@@ -18,7 +18,7 @@ from . import MExt
 
 class MultiUSMesh_C(MultiUSMesh):
     """
-    Represents a (Complex) Unstructured mesh
+    Represents a (complex) multi-component mesh
     """
 
     def __init__(self, *args, **kwargs):

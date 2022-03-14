@@ -28,5 +28,6 @@ src_cs/f2py/get_f2py.py
 idwarp.egg-info
 input_files/*/
 input_files/*.tar.gz
+input_files/*.json
 testflo_report.out
 doc/_build
