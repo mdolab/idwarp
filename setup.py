@@ -1,36 +1,21 @@
 from setuptools import setup
 import re
+import os
 
 __version__ = re.findall(
     r"""__version__ = ["']+([0-9\.]*)["']+""",
     open("idwarp/__init__.py").read(),
 )[0]
 
+this_directory = os.path.abspath(os.path.dirname(__file__))
+with open(os.path.join(this_directory, "README.md"), encoding="utf-8") as f:
+    long_description = f.read()
+
 setup(
     name="idwarp",
     version=__version__,
     description="idwarp is a package deforming volume meshes with derivatives for optimization",
-    long_description="""
-
-      # IDWarp
-      [![Build Status](https://travis-ci.com/mdolab/idwarp.svg?branch=master)](https://travis-ci.com/mdolab/idwarp)
-      [![Documentation Status](https://readthedocs.com/projects/mdolab-idwarp/badge/?version=latest)](https://mdolab-idwarp.readthedocs-hosted.com/en/latest/?badge=latest)
-
-
-      IDWarp uses an inverse distance method to modify the location of mesh volume nodes given a perturbation of the surface nodes.
-
-      ## Documentation
-
-      Please see the [documentation](https://mdolab-idwarp.readthedocs-hosted.com/en/latest/) for installation details and API documentation.
-
-      To locally build the documentation, enter the `doc` folder and enter `make html` in terminal.
-      You can then view the built documentation in the `_build` folder.
-
-
-      ## Citation
-
-      IDWarp is based on the theory presented in [this journal article](https://doi.org/10.1016/j.jcp.2011.09.021).
-      """,
+    long_description=long_description,
     long_description_content_type="text/markdown",
     keywords="mesh-warping warping mesh mesh-deformation optimization",
     author="",
