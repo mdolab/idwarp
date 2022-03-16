@@ -8,12 +8,12 @@
 #      ******************************************************************
 
 SUBDIR_SRC = src/modules \
-	         src/IO	\
-	         src/utils \
-		     src/warp \
-			 src/adjoint/ADFirstAidKit \
-		     src/adjoint/outputReverse \
-		     src/adjoint/outputForward \
+	src/IO \
+	src/utils \
+	src/warp \
+	src/adjoint/ADFirstAidKit \
+	src/adjoint/outputReverse \
+	src/adjoint/outputForward \
 
 
 WARP_SUBDIRS       = $(SUBDIR_SRC)
