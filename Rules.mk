@@ -22,5 +22,3 @@
 	@echo "        --- Compiled $*.c successfully ---"
 	@echo
 
-
-%.o: %.mod
