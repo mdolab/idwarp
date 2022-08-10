@@ -30,7 +30,7 @@
    REAL(kind=realtype) :: v1b(3)
    CALL GETMAG(v1, magv1)
    CALL GETMAG_D(v2, v2b, magv2, magv2b)
-   ! Start by determining the rotation axis by getting the 
+   ! Start by determining the rotation axis by getting the
    ! cross product between v1, v2
    axisb = 0.0_8
    v1b = 0.0_8
@@ -38,7 +38,7 @@
    ! Now Normalize
    CALL GETMAG_D(axis, axisb, axismag, axismagb)
    ! When axisMag is less that sqrt(eps), the acos 'arg' value will be
-   ! exactly one which will give a nan in complex mode. 
+   ! exactly one which will give a nan in complex mode.
    IF (axismag .LT. tol) THEN
    ! no rotation at this point, angle is 0
    angle = zero
@@ -69,7 +69,7 @@
    angle = ACOS(arg)
    END IF
    ! Now that we have an axis and an angle,build the rotation Matrix
-   ! A skew symmetric representation of the normalized axis 
+   ! A skew symmetric representation of the normalized axis
    a(1, 1) = zero
    ab = 0.0_8
    ab(1, 2) = -axisb(3)
@@ -117,7 +117,7 @@
    cb(3, 3) = a(1, 3)*ab(3, 1) + a(3, 1)*ab(1, 3) + a(2, 3)*ab(3, 2) + a(&
    &   3, 2)*ab(2, 3) + 2*a(3, 3)*ab(3, 3)
    c(3, 3) = a(3, 1)*a(1, 3) + a(3, 2)*a(2, 3) + a(3, 3)*a(3, 3)
-   ! Rodrigues formula for the rotation matrix 
+   ! Rodrigues formula for the rotation matrix
    mi = zero
    mi(1, 1) = one
    mi(2, 2) = one
