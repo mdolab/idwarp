@@ -21,3 +21,4 @@ extends:
     INTEL_CONFIG: config/defaults/config.LINUX_INTEL_OPENMPI.mk
     TAPENADE: true
     TAPENADE_VERSION: "3.16"
+    FPRETTIFY: true

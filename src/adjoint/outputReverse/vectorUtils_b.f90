@@ -29,13 +29,13 @@
    REAL(kind=realtype) :: v1b(3)
    CALL GETMAG(v1, magv1)
    CALL GETMAG(v2, magv2)
-   ! Start by determining the rotation axis by getting the 
+   ! Start by determining the rotation axis by getting the
    ! cross product between v1, v2
    CALL CROSS_PRODUCT_3D(v1, v2, axis)
    ! Now Normalize
    CALL GETMAG(axis, axismag)
    ! When axisMag is less that sqrt(eps), the acos 'arg' value will be
-   ! exactly one which will give a nan in complex mode. 
+   ! exactly one which will give a nan in complex mode.
    IF (axismag .LT. tol) THEN
    ! no rotation at this point, angle is 0
    angle = zero
@@ -61,7 +61,7 @@
    CALL PUSHCONTROL1B(1)
    END IF
    ! Now that we have an axis and an angle,build the rotation Matrix
-   ! A skew symmetric representation of the normalized axis 
+   ! A skew symmetric representation of the normalized axis
    a(1, 1) = zero
    a(1, 2) = -axis(3)
    a(1, 3) = axis(2)
@@ -81,7 +81,7 @@
    c(3, 1) = a(3, 1)*a(1, 1) + a(3, 2)*a(2, 1) + a(3, 3)*a(3, 1)
    c(3, 2) = a(3, 1)*a(1, 2) + a(3, 2)*a(2, 2) + a(3, 3)*a(3, 2)
    c(3, 3) = a(3, 1)*a(1, 3) + a(3, 2)*a(2, 3) + a(3, 3)*a(3, 3)
-   ! Rodrigues formula for the rotation matrix 
+   ! Rodrigues formula for the rotation matrix
    ab = 0.0_8
    cb = 0.0_8
    angleb = COS(angle)*SUM(a*mib) + SIN(angle)*SUM(c*mib)
