@@ -40,3 +40,17 @@ configuration file, run ``make clean`` before attempting a new build.
 Lastly, to build the Python interface, go to the root directory and type::
 
    pip install .
+
+Some features require additional dependencies.
+Using IDWarp with OpenFOAM meshes in DAFoam requires ``pyOFM``.
+This dependency can be checked with
+
+.. prompt:: bash
+
+    pip install .[dafoam]
+
+Using MultiUSMesh requires ``cgnsUtilities``, which can be checked with
+
+.. prompt:: bash
+
+    pip install .[multi]

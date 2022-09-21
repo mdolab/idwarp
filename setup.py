@@ -11,6 +11,9 @@ this_directory = os.path.abspath(os.path.dirname(__file__))
 with open(os.path.join(this_directory, "README.md"), encoding="utf-8") as f:
     long_description = f.read()
 
+with open("doc/requirements.txt") as f:
+    docs_require = f.read().splitlines()
+
 setup(
     name="idwarp",
     version=__version__,
@@ -28,10 +31,14 @@ setup(
     package_data={"idwarp": ["*.so"]},
     install_requires=[
         "numpy>=1.16",
-        "petsc4py>=3.11",
         "mpi4py>=3.0",
         "mdolab-baseclasses>=1.4",
     ],
-    extras_require={"testing": ["parameterized", "testflo"]},
+    extras_require={
+        "docs": docs_require,
+        "testing": ["parameterized", "testflo"],
+        "dafoam": ["pyofm"],
+        "multi": ["cgnsutilities>=2.7"],
+    },
     classifiers=["Operating System :: Linux", "Programming Language :: Python, Fortran"],
 )
