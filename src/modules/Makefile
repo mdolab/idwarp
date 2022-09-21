@@ -12,8 +12,6 @@ include ${RULES_FILE}
 vpath %.o $(OBJDIR)
 
 # Name of files to be compiled...Order here matters!
-FF90_OBJECTS_0 = complexify.o\
-
 FF90_OBJECTS_1 = precision.o\
 
 FF90_OBJECTS_2 = constants.o\
@@ -36,13 +34,9 @@ FILES_TO_COMPLEXIFY =	precision.F90\
 			cgnsGrid.F90\
 			kd_tree2.f90\
 
-FILES_TO_COPY = complexify.f90\
-
-
 default: all
 
-all: 
-	make $(FF90_OBJECTS_0)
+all:
 	make $(FF90_OBJECTS_1)
 	make $(FF90_OBJECTS_2)
 	make $(FF90_OBJECTS_3)
@@ -58,14 +52,8 @@ complexify:
 	@for file in $(FILES_TO_COMPLEXIFY); do \
 		if [ $$file -nt ../../src_cs/modules/$$file -o ! -e ../../src_cs/modules/$$file ]; then \
 			echo complexifying file $$file; \
-			python ../complexify.py $$file; \
+			complexify $$file; \
 			mv c_$$file ../../src_cs/modules/$$file; \
-		fi;\
-		done
-	@for file in $(FILES_TO_COPY); do \
-		if [ $$file -nt ../../src_cs/modules/$$file -o ! -e ../../src_cs/modules/$$file ]; then \
-			echo copying file $$file; \
-			cp $$file ../../src_cs/modules/$$file; \
 		fi;\
 		done
 	cp Makefile ../../src_cs/modules

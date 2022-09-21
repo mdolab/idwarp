@@ -26,14 +26,14 @@ FILES_TO_COMPLEXIFY = \
 	warpDeriv.F90\
 	warpDerivFwd.F90\
 
-FILES_TO_COPY = 
+FILES_TO_COPY =
 
 ALL_FILES = $(FILES_TO_COMPLEXIFY) $(FILES_TO_COPY)
 OFILES := $(ALL_FILES:%.f90=%.o) $(ALL_FILES:%.F90=%.o) $(ALL_FILES:%.c=%.o)
 
 default: all
 
-all: 
+all:
 	$(PMAKE) src
 
 clean:
@@ -46,7 +46,7 @@ complexify:
 	@for file in $(FILES_TO_COMPLEXIFY); do \
 		if [ $$file -nt ../../src_cs/warp/$$file -o ! -e ../../src_cs/warp/$$file ]; then \
 			echo complexifying file $$file; \
-			python ../complexify.py $$file; \
+			complexify $$file; \
 			mv c_$$file ../../src_cs/warp/$$file; \
 		fi;\
 		done
