@@ -4,7 +4,11 @@ import os
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument("name", type=str, help="Library name (example: libpackage.so). Note: This script must be run in the same dir as the library.")
+parser.add_argument(
+    "name",
+    type=str,
+    help="Library name (example: libpackage.so). Note: This script must be run in the same dir as the library.",
+)
 args = parser.parse_args()
 
 # Only get the filename without the extension
