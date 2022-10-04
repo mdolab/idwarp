@@ -8,7 +8,7 @@ LINKER_ALL_FLAGS = $(FF90_FLAGS) -L$(LIBDIR) -lidwarp_cs $(PETSC_LINKER_FLAGS) $
 
 PYTHON_OBJECTS = fortranobject.o \
 		 libidwarp_csmodule.o \
-		 libidwarp_cs-f2pywrappers2.o 
+		 libidwarp_cs-f2pywrappers2.o
 
 default: all
 all:
@@ -41,10 +41,10 @@ all:
 
         # Compiled f2py generated wrapper file
         # $(FF90) $(FF90_ALL_FLAGS) -I$(MAIN_DIR)/mod -c libidwarp-f2pywrappers.f
-	$(FF90) $(FF90_ALL_FLAGS) -I$(MAIN_DIR)/mod -c libidwarp_cs-f2pywrappers2.f90 
+	$(FF90) $(FF90_ALL_FLAGS) -I$(MAIN_DIR)/mod -c libidwarp_cs-f2pywrappers2.f90
 
 	$(FF90) -shared $(PYTHON_OBJECTS) $(LINKER_ALL_FLAGS) -o libidwarp_cs.so
-	$(PYTHON) importTest.py
+	$(PYTHON) ../../src/f2py/importTest.py libidwarp_cs.so
 	mv libidwarp_cs.so ../../idwarp
 
 # Clean up temporary files
