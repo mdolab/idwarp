@@ -20,7 +20,7 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
     integer(kind=intType) :: i, j, ii, kk
     real(kind=realType), dimension(:), allocatable :: costs, procEndCosts, cumNodesProc
     integer(kind=intType), dimension(:), allocatable :: procSplits, procSplitsLocal
-    real(kind=realType), dimension(:), allocatable :: denomenator0Copy
+    real(kind=realType), dimension(:), allocatable :: denominator0Copy
     real(kind=realtype) :: costOffset, totalCost, averageCost, c, tmp, r(3)
     integer(kind=intType) :: nVol, curBin, newBin, newDOFProc, totalDOF
     integer(kind=intType) :: stat
@@ -78,11 +78,11 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
     call VecGetArrayF90(commonGridVec, Xv0Ptr, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
-    ! Allocate the denomenator estimate and costs. These may be loaded
+    ! Allocate the denominator estimate and costs. These may be loaded
     ! from the restart file.
     nVol = size(Xv0Ptr) / 3
-    allocate (denomenator0(nVol), costs(nVol))
-    denomenator0 = zero
+    allocate (denominator0(nVol), costs(nVol))
+    denominator0 = zero
     costs = zero
 
     ! Get the ownership ranges for common grid vector, we need that to
@@ -169,7 +169,7 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
             call mpi_file_seek(fileHandle, offset, MPI_SEEK_SET, ierr)
             call EChk(ierr, __FILE__, __LINE__)
 
-            call MPI_file_read(fileHandle, denomenator0, size(denomenator0), &
+            call MPI_file_read(fileHandle, denominator0, size(denominator0), &
                                MPI_REAL8, status, ierr)
             call EChk(ierr, __FILE__, __LINE__)
 
@@ -203,9 +203,9 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
                     call getWiEstimate(mytrees(1)%tp, mytrees(1)%tp%root, r, tmp)
                 end do
                 ! Do a relative check:
-                if (1 - tmp / denomenator0(j) > eps) then
+                if (1 - tmp / denominator0(j) > eps) then
                     localBadFile = .True.
-                    print *, myid, j, tmp, denomenator0(j), eps
+                    print *, myid, j, tmp, denominator0(j), eps
                     exit wiLoop_check
                 end if
             end do wiLoop_check
@@ -234,15 +234,15 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
 
     if (recompute) then
         if (myid == 0) then
-            print *, 'Computing Denomenator Estimate...'
+            print *, 'Computing Denominator Estimate...'
         end if
 
-        ! Compute the (approx) denomenator. This needs to be done only once.
+        ! Compute the (approx) denominator. This needs to be done only once.
         do kk = 1, nLoop
             wiLoop: do j = 1, nVol
                 call getMirrorPt(Xv0Ptr(3 * j - 2:3 * j), r, kk)
                 call getWiEstimate(mytrees(1)%tp, mytrees(1)%tp%root, r, &
-                                   denomenator0(j))
+                                   denominator0(j))
             end do wiLoop
         end do
 
@@ -259,7 +259,7 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
             dryRunLoop: do j = 1, nVol
                 c = zero
                 call getMirrorPt(Xv0Ptr(3 * j - 2:3 * j), r, kk)
-                call dryRun(mytrees(1)%tp, mytrees(1)%tp%root, r, denomenator0(j), c)
+                call dryRun(mytrees(1)%tp, mytrees(1)%tp%root, r, denominator0(j), c)
                 costs(j) = costs(j) + c / mytrees(1)%tp%n
             end do dryRunLoop
         end do
@@ -294,7 +294,7 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
         call mpi_file_seek(fileHandle, offset, MPI_SEEK_SET, ierr)
         call EChk(ierr, __FILE__, __LINE__)
 
-        call MPI_file_write(fileHandle, denomenator0, size(denomenator0), &
+        call MPI_file_write(fileHandle, denominator0, size(denominator0), &
                             MPI_REAL8, MPI_STATUS_IGNORE, ierr)
         call EChk(ierr, __FILE__, __LINE__)
 
@@ -450,25 +450,25 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
     call VecCopy(Xv, Xv0, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
-    ! We also want to scatter denomenator0 since that was kinda costly
+    ! We also want to scatter denominator0 since that was kinda costly
     ! to compute. So we vecPlace it into commonGridVec and take it out
-    ! of Xv. However, denomenator is only a third of the size of the
+    ! of Xv. However, denominator is only a third of the size of the
     ! gridVec. So we dump it into a temporary vector, which *is* the
     ! right size and the copy after
 
-    ! We can now also allocate the final space for the denomenator
+    ! We can now also allocate the final space for the denominator
     allocate (numerator(3, newDOFProc / 3))
-    allocate (denomenator(newDOFProc / 3))
-    allocate (denomenator0Copy(nVol * 3))
+    allocate (denominator(newDOFProc / 3))
+    allocate (denominator0Copy(nVol * 3))
     do i = 1, nVol
-        denomenator0Copy(3 * i - 2) = denomenator0(i)
+        denominator0Copy(3 * i - 2) = denominator0(i)
     end do
 
-    ! Clear the current denomenator0 and make the right size.
-    deallocate (denomenator0)
-    allocate (denomenator0(newDOFProc / 3))
+    ! Clear the current denominator0 and make the right size.
+    deallocate (denominator0)
+    allocate (denominator0(newDOFProc / 3))
 
-    call VecPlaceArray(commonGridVec, denomenator0Copy, ierr)
+    call VecPlaceArray(commonGridVec, denominator0Copy, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
     call VecPlaceArray(Xv, numerator, ierr)
@@ -490,16 +490,16 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
     call VecResetArray(Xv, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
-    ! Copy denomenator0 out of 'numerator'
+    ! Copy denominator0 out of 'numerator'
     do i = 1, newDOFProc / 3
-        denomenator0(i) = numerator(1, i)
+        denominator0(i) = numerator(1, i)
     end do
     warpMeshDOF = newDOFProc
     commonMeshDOF = nVol * 3
 
     ! Deallocate the memory from this subroutine
     deallocate (cumNodesProc)
-    deallocate (costs, procEndCosts, procSplits, procSplitsLocal, denomenator0Copy)
+    deallocate (costs, procEndCosts, procSplits, procSplitsLocal, denominator0Copy)
 
     if (myid == 0) then
         print *, 'Finished Mesh Initialization.'

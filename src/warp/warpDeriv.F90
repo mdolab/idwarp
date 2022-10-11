@@ -73,7 +73,7 @@ subroutine warpDeriv(dXv_f, ndof_warp)
             call getMirrorPt(Xv0Ptr(3 * j - 2:3 * j), r, kk)
 
             ! Numerator derivative
-            oden = one / denomenator(j)
+            oden = one / denominator(j)
 
             numb = xvptrb(3 * j - 2:3 * j) * oden
             call getMirrorNumerator_b(numb, kk)
@@ -82,7 +82,7 @@ subroutine warpDeriv(dXv_f, ndof_warp)
                 call evalNodeExact_b(mytrees(1)%tp, mytrees(1)%tp%root, r, numb, Bib, Mib)
             else
                 call evalNode_b(mytrees(1)%tp, mytrees(1)%tp%root, r, numb, &
-                                denomenator0(j), Bib, Mib)
+                                denominator0(j), Bib, Mib)
             end if
         end do
     end do
