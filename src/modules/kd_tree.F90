@@ -663,7 +663,7 @@ Contains
 
     subroutine evalNodeExact(tp, np, r, num, den)
         ! Loop over the owned nodes and evaluate the exact numerator and
-        ! denomenator at the requesed r. Note that this rouine *may* be
+        ! denominator at the requesed r. Note that this rouine *may* be
         ! called on *any* node including the root node. When called on the
         ! root node this is actually the exact scheme.
         implicit none
@@ -750,7 +750,7 @@ Contains
 
     recursive subroutine getWiEstimate(tp, np, r, den)
         ! This routine needs to be only called once. Essentialy what we are
-        ! dong is computing just the denomenator (Wi) computation. This is
+        ! dong is computing just the denominator (Wi) computation. This is
         ! used as a reference value for the 'real' mesh warp, to be used for
         ! checking against the errors. A hard coded R-limit of 5.0 is used
         ! here. This should be sufficient to get an good estimate of Wi.
@@ -831,7 +831,7 @@ Contains
 
     recursive subroutine computeErrors(tp, np)
         ! This routine computes an estimate of the error to be induced in
-        ! the denomenator at each tree node. Then, when we are evaluating
+        ! the denominator at each tree node. Then, when we are evaluating
         ! the displacment we can determine if the errors induced by the
         ! approximation are acceptable or not.
 

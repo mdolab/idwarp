@@ -75,7 +75,7 @@ subroutine warpDerivFwd(Xsdot, cDof, Xvdot, meshDOF)
                 call evalNodeExact_d(mytrees(1)%tp, mytrees(1)%tp%root, r, numd)
             else
                 call evalNode_d(mytrees(1)%tp, mytrees(1)%tp%root, r, numd, &
-                                denomenator0(j))
+                                denominator0(j))
             end if
 
             call getMirrorNumerator_d(numd, kk)
@@ -92,7 +92,7 @@ subroutine warpDerivFwd(Xsdot, cDof, Xvdot, meshDOF)
     call deallocDerivValues(mytrees(1)%tp)
 
     updateLoop: do j = 1, nVol
-        oden = one / denomenator(j)
+        oden = one / denominator(j)
         Xvdot(3 * j - 2) = numerator(1, j) * oden
         Xvdot(3 * j - 1) = numerator(2, j) * oden
         Xvdot(3 * j) = numerator(3, j) * oden

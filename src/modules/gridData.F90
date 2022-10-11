@@ -53,7 +53,7 @@ module gridData
     integer(kind=intTYpe) :: initializationSet = 0
 
     real(kind=realType), dimension(:), allocatable :: d2wall
-    real(kind=realType), dimension(:), allocatable :: denomenator, denomenator0
+    real(kind=realType), dimension(:), allocatable :: denominator, denominator0
     real(kind=realType), dimension(:, :), allocatable :: numerator
 
     ! Symmetry Information

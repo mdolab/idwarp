@@ -41,7 +41,7 @@ subroutine warpMesh()
     mytrees(1)%tp%errTol = errTol
     call setData(mytrees(1)%tp, mytrees(1)%tp%root)
 
-    denomenator = zero
+    denominator = zero
     numerator = zero
     do kk = 1, nLoop
         volLoop: do j = 1, nVol
@@ -51,19 +51,19 @@ subroutine warpMesh()
             if (evalMode == EVAL_EXACT) then
                 call evalNodeExact(mytrees(1)%tp, mytrees(1)%tp%root, r, num, den)
             else
-                call evalNode(mytrees(1)%tp, mytrees(1)%tp%root, r, num, den, denomenator0(j))
+                call evalNode(mytrees(1)%tp, mytrees(1)%tp%root, r, num, den, denominator0(j))
             end if
 
             call getMirrorNumerator(num, kk)
             numerator(1, j) = numerator(1, j) + num(1)
             numerator(2, j) = numerator(2, j) + num(2)
             numerator(3, j) = numerator(3, j) + num(3)
-            denomenator(j) = denomenator(j) + den
+            denominator(j) = denominator(j) + den
         end do volLoop
     end do
 
     updateLoop: do j = 1, nVol
-        oden = one / denomenator(j)
+        oden = one / denominator(j)
         XvPtr(3 * j - 2) = Xv0Ptr(3 * j - 2) + numerator(1, j) * oden
         XvPtr(3 * j - 1) = Xv0Ptr(3 * j - 1) + numerator(2, j) * oden
         XvPtr(3 * j) = Xv0Ptr(3 * j) + numerator(3, j) * oden
