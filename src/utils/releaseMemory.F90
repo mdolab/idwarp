@@ -47,7 +47,7 @@ subroutine releaseMemory
         call EChk(ierr, __FILE__, __LINE__)
 
         ! Deallocate the num/den data
-        deallocate (numerator, denomenator, denomenator0)
+        deallocate (numerator, denominator, denominator0)
 
         initializationSet = 0
     end if
