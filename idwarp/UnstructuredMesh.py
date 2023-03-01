@@ -610,7 +610,8 @@ class USMesh(BaseSolver):
                 "passed to the solver immediatedly after it is created. "
                 "The external solver must then call "
                 "'setExternalMeshIndices()' and 'setSurfaceDefinition()' "
-                "routines."
+                "routines.",
+                stacklevel=2,
             )
 
         conn = []
@@ -726,7 +727,8 @@ class USMesh(BaseSolver):
                     warnings.warn(
                         "Not all specified surface families that "
                         "were given were found the CGNS file. "
-                        "The families not found are %s." % (repr(missing))
+                        "The families not found are %s." % (repr(missing)),
+                        stacklevel=2,
                     )
                 if len(usedFams) == 0:
                     raise Error(
@@ -858,7 +860,8 @@ class USMesh(BaseSolver):
                         warnings.warn(
                             "Not all specified symm families that "
                             "were given were found the CGNS file. "
-                            "The families not found are %s." % (repr(missing))
+                            "The families not found are %s." % (repr(missing)),
+                            stacklevel=2,
                         )
 
             elif self.fileType in ["OpenFOAM", "PLOT3D"]:
