@@ -322,7 +322,6 @@ def join_lines(i, lines):
 
 
 def fix_line(line, implicit_found):
-
     # skip commented lines
     if patt_comment.search(line) != None:
         return (line, implicit_found)

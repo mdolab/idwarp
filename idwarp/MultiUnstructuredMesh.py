@@ -103,7 +103,6 @@ class MultiUSMesh(object):
         # Only the root processor will take the combined CGNS file
         # and explode it by instance.
         if self.myID == 0:
-
             # Initialize list to store the block IDs that belong to each IDWarp instance.
             # For example, suppose that our combined CGNS file has 21 blocks.
             # Blocks 1 to 5 belong to the fuselage
@@ -154,7 +153,6 @@ class MultiUSMesh(object):
             del combined_file
 
         else:
-
             # Initialize variables to get results in the end
             zoneNames = None
             self.cgnsBlockIntervals = None
@@ -177,10 +175,8 @@ class MultiUSMesh(object):
 
         # Loop over all zones that we found in the combined CGNS file
         for zoneNumber, zoneName in enumerate(zoneNames):
-
             # Check if the zone belongs to a nearfield mesh
             if zoneName in nearfieldNames:
-
                 # ------------------------------------------------------
                 # READING NEARFIELD MESHES (The ones that will be warped)
                 #
@@ -197,7 +193,6 @@ class MultiUSMesh(object):
                     currMesh = USMesh_C(options=optionsDict[zoneName], comm=self.comm)
 
             else:
-
                 # We have a background mesh
 
                 # Regenerate the temporary filename for the background grid
@@ -221,7 +216,6 @@ class MultiUSMesh(object):
 
                 # Only the root proc will modify the input file
                 if self.myID == 0:
-
                     # Make a copy of the background mesh file
                     os.system(f"cp {bgFile} {prefix}_bg_file.cgns")
 
@@ -271,7 +265,6 @@ class MultiUSMesh(object):
 
                 # The root proc can remove the temporary files
                 if self.myID == 0:
-
                     # Make a copy of the background mesh file
                     os.system(f"rm {prefix}_bg_file.cgns")
                     os.system(f"rm {prefix}_bcdata.dat")
@@ -317,7 +310,6 @@ class MultiUSMesh(object):
 
         # Loop over every instance to get their contributions
         for instanceID, mesh in enumerate(self.meshes):
-
             # Get current set of points
             currPts = mesh.getSurfaceCoordinates()
 
@@ -346,7 +338,6 @@ class MultiUSMesh(object):
 
         # Loop over every mesh object to get a slice of the surface point array
         for instanceID, mesh in enumerate(self.meshes):
-
             # Extract set of points that belong to this instance
             currPts = pts[self.filtered2fullMaps[instanceID], :]
 
@@ -398,7 +389,6 @@ class MultiUSMesh(object):
 
         # Loop over every instance
         for instanceID, mesh in enumerate(self.meshes):
-
             # Get CGNS bounds of the current instance
             startIndex = self.cgnsVolNodeIntervals[instanceID][0]
             endIndex = self.cgnsVolNodeIntervals[instanceID][1]
@@ -427,10 +417,8 @@ class MultiUSMesh(object):
         # Now that we populated the default volume node vector, we can delete the background
         # mesh instances
         for instanceID in reversed(range(len(self.meshes))):
-
             # Check if the current instance is a background mesh
             if instanceID in self.backgroundInstanceIDs:
-
                 # Delete current instance
                 del self.meshes[instanceID]
 
@@ -469,7 +457,6 @@ class MultiUSMesh(object):
 
         # Loop over each instance to gather volume nodes
         for instanceID, mesh in enumerate(self.meshes):
-
             # Get volume nodes of the current instance
             currVolNodes = mesh.getSolverGrid()
 
@@ -540,7 +527,6 @@ class MultiUSMesh(object):
 
         # Now we use the block ID bounds of each instance to flag the instance IDs
         for ii in range(len(self.meshes)):
-
             # Get indices of the first and last CGNS block that belongs to the current IDWarp instance
             indexStart = self.cgnsBlockIntervals[ii][0]
             indexEnd = self.cgnsBlockIntervals[ii][1]
@@ -558,7 +544,6 @@ class MultiUSMesh(object):
         self.filtered2fullMaps = []
 
         for ii in range(len(self.meshes)):
-
             # Initialize list to hold connectivities and face sizes for the current instance
             currConn = []
             currFaceSizes = []
@@ -568,13 +553,11 @@ class MultiUSMesh(object):
 
             # Now loop over every element to gather just the ones that belong to the current proc
             for elemID in range(numElems):
-
                 # Get the size of the current element
                 elemFaceSize = faceSizes[elemID]
 
                 # Check if the current element belongs to the current IDWarp instance
                 if self.instanceIDs[elemID] == ii:
-
                     # Store its faceSize
                     currFaceSizes.append(elemFaceSize)
 
@@ -606,7 +589,6 @@ class MultiUSMesh(object):
 
             # Loop over every mapping:
             for filteredID, fullID in enumerate(filtered2fullMap):
-
                 # Find all elements of currConn that share the same fullID and replace them
                 # with the new ID
                 currConn[currConn == fullID] = filteredID
@@ -651,7 +633,6 @@ class MultiUSMesh(object):
 
         # Loop over the multiple CGNS files to initialize the corresponding IDWarp instances
         for currMesh in self.meshes:
-
             # Get volume nodes.
             # volNodes is a flattened vector that contains the background
             # mesh volume nodes that belong to the current proc.
@@ -697,7 +678,6 @@ class MultiUSMesh(object):
 
         # Loop over all instances
         for instanceID, mesh in enumerate(self.meshes):
-
             # Get the surface seeds of the current instance
             curr_dXs = mesh.getdXs()
 
@@ -726,7 +706,6 @@ class MultiUSMesh(object):
 
         # Loop over all instances
         for mesh in self.meshes:
-
             # Print log
             if self.myID == 0:
                 print(" Warping mesh", meshCounter, "of", len(self.meshes))
@@ -785,7 +764,6 @@ class MultiUSMesh(object):
 
         # Loop over all instances
         for instanceID, mesh in enumerate(self.meshes):
-
             # Print log
             if self.myID == 0:
                 print(" Working on mesh", instanceID + 1, "of", len(self.meshes))
@@ -849,7 +827,6 @@ class MultiUSMesh(object):
 
         # Loop over every mesh object to get a slice of the surface seeds array
         for instanceID, mesh in enumerate(self.meshes):
-
             # Print log
             if self.myID == 0:
                 print(" Working on mesh", instanceID + 1, "of", len(self.meshes))
@@ -891,7 +868,6 @@ class MultiUSMesh(object):
 
         # We need to reexplode the original file
         if self.myID == 0:
-
             # Load the CGNS file
             combined_file = cs.readGrid(self.CGNSFile)
 
@@ -913,7 +889,6 @@ class MultiUSMesh(object):
 
         # Loop over all instances to write their meshes
         for instanceID, mesh in enumerate(self.meshes):
-
             # Generate a fileName
             fileName = baseName + "_inst%03d.cgns" % (instanceID)
 

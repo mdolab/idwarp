@@ -148,7 +148,6 @@ class Test_MultiUSMesh(unittest.TestCase):
     def test_onera_m6(self, train=False):
         ref_file = os.path.join(baseDir, "ref/test_onera_m6.ref")
         with BaseRegTest(ref_file, train=train) as handler:
-
             # Test the ONERA M6 overset mesh
             test_name = "Test_onera_m6"
             gridFile = os.path.join(baseDir, "../input_files/onera_m6.cgns")
