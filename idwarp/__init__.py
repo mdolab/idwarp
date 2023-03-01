@@ -1,4 +1,4 @@
-__version__ = "2.6.0"
+__version__ = "2.6.1"
 
 from .UnstructuredMesh import USMesh
 from .UnstructuredMesh_C import USMesh_C
