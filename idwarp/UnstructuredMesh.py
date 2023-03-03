@@ -610,7 +610,8 @@ class USMesh(BaseSolver):
                 "passed to the solver immediatedly after it is created. "
                 "The external solver must then call "
                 "'setExternalMeshIndices()' and 'setSurfaceDefinition()' "
-                "routines."
+                "routines.",
+                stacklevel=2,
             )
 
         conn = []
@@ -619,7 +620,6 @@ class USMesh(BaseSolver):
 
         if self.fileType == "CGNS":
             if self.comm.rank == 0:
-
                 # Do the necessary fortran preprocessing
                 if self.warp.cgnsgrid.cgnsstructured:
                     self.warp.processstructuredpatches()
@@ -651,7 +651,6 @@ class USMesh(BaseSolver):
             usedFams = set()
             if self.warp.cgnsgrid.cgnsstructured:
                 if self.comm.rank == 0:
-
                     # Pull out data and convert to 0-based ordering
                     fullPatchSizes = self.warp.cgnsgrid.surfacesizes.T
 
@@ -687,7 +686,6 @@ class USMesh(BaseSolver):
 
             else:  # unstructured
                 if self.comm.rank == 0:
-
                     # Pull out data and convert to 0-based ordering
                     fullPtr = self.warp.cgnsgrid.surfaceptr - 1
                     fullPatchPtr = self.warp.cgnsgrid.surfacepatchptr - 1
@@ -698,7 +696,6 @@ class USMesh(BaseSolver):
                     # to the families we are using.
                     curOffset = 0
                     for i in range(len(fullPatchNames)):
-
                         # Start/end indices into fullPtr array
                         iStart = fullPatchPtr[i]
                         iEnd = fullPatchPtr[i + 1]
@@ -730,7 +727,8 @@ class USMesh(BaseSolver):
                     warnings.warn(
                         "Not all specified surface families that "
                         "were given were found the CGNS file. "
-                        "The families not found are %s." % (repr(missing))
+                        "The families not found are %s." % (repr(missing)),
+                        stacklevel=2,
                     )
                 if len(usedFams) == 0:
                     raise Error(
@@ -740,7 +738,6 @@ class USMesh(BaseSolver):
                     )
 
         elif self.fileType == "OpenFOAM":
-
             faceSizes, conn, pts = self._computeOFConn()
 
             # Run the "external" command
@@ -776,7 +773,6 @@ class USMesh(BaseSolver):
             planes = []
             if self.fileType == "CGNS":
                 if self.comm.rank == 0:
-
                     # Do the necessary fortran preprocessing
                     if self.warp.cgnsgrid.cgnsstructured:
                         self.warp.processstructuredpatches()
@@ -804,7 +800,6 @@ class USMesh(BaseSolver):
                 usedFams = set()
                 if self.warp.cgnsgrid.cgnsstructured:
                     if self.comm.rank == 0:
-
                         # Pull out data and convert to 0-based ordering
                         fullPatchSizes = self.warp.cgnsgrid.surfacesizes.T
 
@@ -840,7 +835,6 @@ class USMesh(BaseSolver):
                     # end for (root proc)
 
                 else:  # unstructured
-
                     # We won't do this in general. The issue is that
                     # each of the elements needs to be checked
                     # individually since one sym BC may have multiple
@@ -866,11 +860,11 @@ class USMesh(BaseSolver):
                         warnings.warn(
                             "Not all specified symm families that "
                             "were given were found the CGNS file. "
-                            "The families not found are %s." % (repr(missing))
+                            "The families not found are %s." % (repr(missing)),
+                            stacklevel=2,
                         )
 
             elif self.fileType in ["OpenFOAM", "PLOT3D"]:
-
                 # We could probably implement this at some point, but
                 # it is not critical
 
@@ -966,7 +960,6 @@ class USMesh(BaseSolver):
     # =========================================================================
 
     def _computeOFConn(self):
-
         """
         The user has specified an OpenFOAM mesh. Loop through the mesh data and
         create the arrays necessary to initialize the warping.
