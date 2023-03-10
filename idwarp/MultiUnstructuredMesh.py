@@ -66,8 +66,6 @@ class MultiUSMesh(object):
         The domains of the full CGNS file that do not have a corresponding entry in optionsDict will
         not be warped. For instance, if the CGNS file has the domains wing.00000, wing.00001, and wing.00002
         associated with a wing mesh that we want to warp, then optionsDict should have an entry for 'wing'.
-
-        Ney Secco 2017-02
         """
 
         # Check if cs was imported correctly:
@@ -296,8 +294,6 @@ class MultiUSMesh(object):
         pts : numpy array size (N,3)
             Specified surface coordinates residing on this
             processor. This may be empty array, size (0,3)
-
-        Ney Secco 2017-02
         """
 
         # Check if the user already set the surface definition
@@ -327,8 +323,6 @@ class MultiUSMesh(object):
         pts : numpy array, size(N, 3)
             The coordinate to set. This MUST be exactly the same size as
             the array obtained from getSurfaceCoordinates()
-
-        Ney Secco 2017-02
         """
 
         # Check if the user already set the surface definition
@@ -358,8 +352,6 @@ class MultiUSMesh(object):
               ind[3*i:3*i+3] represents the position of each coordinate of the i-th ADflow node
               in the CGNS file.
               ind has 0-based indices.
-
-        Ney Secco 2017-02
         """
 
         # Here is the main logic of the function:
@@ -446,8 +438,6 @@ class MultiUSMesh(object):
            The output is returned in flatted 1D coordinate
            format. The len of the array is 3*len(indices) as
            set by setExternalMeshIndices()
-
-        Ney Secco 2017-02
         """
 
         # Initialize array that will hold all volume nodes in the current proc in solver ordering.
@@ -484,8 +474,6 @@ class MultiUSMesh(object):
             Block ID, in CGNS ordering, that contains each element.
         distTol: Distance tolerance to flag that a given surface node does not
                  belong to the current IDWarp surface definition in the current proc.
-
-        Ney Secco 2017-02
         """
 
         # Here is the main logic of this function:
@@ -618,8 +606,6 @@ class MultiUSMesh(object):
         the i-th IDWarp instance.
 
         numCoorTotal: The total number of coordinates, across all procs and IDWarp instances.
-
-        Ney Secco 2017-02
         """
 
         # Initialize list to hold volume nodes (in the current proc) of all instances.
@@ -669,8 +655,6 @@ class MultiUSMesh(object):
             size as the array obtained with getSurfaceCoordiantes(). N may
             be zero if this processor does not have any surface coordinates.
             These can be, for instance, reverse AD seeds.
-
-        Ney Secco 2017-03
         """
 
         # Initialize array to hold seeds of all surface point of this proc
@@ -691,8 +675,6 @@ class MultiUSMesh(object):
         This calls the mesh warping method for each IDWarp instance.
 
         This will update the volume coordinates internally in each instance.
-
-        Ney Secco 2017-02
         """
 
         # Print log
@@ -749,8 +731,6 @@ class MultiUSMesh(object):
             size as the array obtained with getSurfaceCoordiantes(). N may
             be zero if this processor does not have any surface coordinates.
             These can be, for instance, reverse AD seeds.
-
-        Ney Secco 2017-03
         """
 
         # Print log
@@ -792,12 +772,12 @@ class MultiUSMesh(object):
 
         This routine is not used for "regular" optimization; it is
         used for matrix-free type optimization. dXs is assumed to be
-        the the peturbation on all the surface nodes.
+        the the perturbation on all the surface nodes.
 
         Parameters
         ----------
         dXs : array, size Nsx3
-            This is the forward mode peturbation seed. Same size as the
+            This is the forward mode perturbation seed. Same size as the
             surface mesh from getSurfaceCoordinates().
         solverVec : bool
             Whether or not to convert to the solver ordering.
@@ -805,11 +785,9 @@ class MultiUSMesh(object):
         Returns
         -------
         dXv : array
-            The peturbation on the volume meshes. It may be
+            The perturbation on the volume meshes. It may be
             in warp ordering or solver ordering depending on
             the solverVec flag.
-
-        Ney Secco 2017-03
         """
 
         # Print log
@@ -862,8 +840,6 @@ class MultiUSMesh(object):
         baseName : str or None
             a base namve that will be used to generate filenames for
             all instance mesh files.
-
-        Ney Secco 2017-03
         """
 
         # We need to reexplode the original file
