@@ -16,6 +16,7 @@ Developers:
 -----------
 - C.A.(Sandy) Mader (CAM)
 - Gaetan. K. W. Kenway (GKK)
+
 History
 -------
     v. 1.0 - Initial Class Creation (CAM, 2014)
