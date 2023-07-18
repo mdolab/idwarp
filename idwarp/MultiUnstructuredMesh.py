@@ -230,7 +230,10 @@ class MultiUSMesh(object):
                         fid.write("1 iLow BCwall wall\n")
 
                     # Use CGNS utils to modify the BCs
-                    os.system(f"cgns_utils overwriteBC {prefix}_bg_file.cgns {prefix}_bcdata.dat")
+                    tmpgrid = cs.readGrid(f"{prefix}_bg_file.cgns")
+                    tmpgrid.overwriteBCs(f"{prefix}_bcdata.dat")
+                    tmpgrid.writeToCGNS(f"{prefix}_bg_file.cgns")
+                    del tmpgrid
 
                 # Create dummy set of options just to load the CGNS file
                 dummyOptions = {
