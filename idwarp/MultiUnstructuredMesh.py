@@ -66,8 +66,6 @@ class MultiUSMesh(object):
         The domains of the full CGNS file that do not have a corresponding entry in optionsDict will
         not be warped. For instance, if the CGNS file has the domains wing.00000, wing.00001, and wing.00002
         associated with a wing mesh that we want to warp, then optionsDict should have an entry for 'wing'.
-
-        Ney Secco 2017-02
         """
 
         # Check if cs was imported correctly:
@@ -103,7 +101,6 @@ class MultiUSMesh(object):
         # Only the root processor will take the combined CGNS file
         # and explode it by instance.
         if self.myID == 0:
-
             # Initialize list to store the block IDs that belong to each IDWarp instance.
             # For example, suppose that our combined CGNS file has 21 blocks.
             # Blocks 1 to 5 belong to the fuselage
@@ -154,7 +151,6 @@ class MultiUSMesh(object):
             del combined_file
 
         else:
-
             # Initialize variables to get results in the end
             zoneNames = None
             self.cgnsBlockIntervals = None
@@ -177,10 +173,8 @@ class MultiUSMesh(object):
 
         # Loop over all zones that we found in the combined CGNS file
         for zoneNumber, zoneName in enumerate(zoneNames):
-
             # Check if the zone belongs to a nearfield mesh
             if zoneName in nearfieldNames:
-
                 # ------------------------------------------------------
                 # READING NEARFIELD MESHES (The ones that will be warped)
                 #
@@ -197,7 +191,6 @@ class MultiUSMesh(object):
                     currMesh = USMesh_C(options=optionsDict[zoneName], comm=self.comm)
 
             else:
-
                 # We have a background mesh
 
                 # Regenerate the temporary filename for the background grid
@@ -221,7 +214,6 @@ class MultiUSMesh(object):
 
                 # Only the root proc will modify the input file
                 if self.myID == 0:
-
                     # Make a copy of the background mesh file
                     os.system(f"cp {bgFile} {prefix}_bg_file.cgns")
 
@@ -274,7 +266,6 @@ class MultiUSMesh(object):
 
                 # The root proc can remove the temporary files
                 if self.myID == 0:
-
                     # Make a copy of the background mesh file
                     os.system(f"rm {prefix}_bg_file.cgns")
                     os.system(f"rm {prefix}_bcdata.dat")
@@ -306,8 +297,6 @@ class MultiUSMesh(object):
         pts : numpy array size (N,3)
             Specified surface coordinates residing on this
             processor. This may be empty array, size (0,3)
-
-        Ney Secco 2017-02
         """
 
         # Check if the user already set the surface definition
@@ -320,7 +309,6 @@ class MultiUSMesh(object):
 
         # Loop over every instance to get their contributions
         for instanceID, mesh in enumerate(self.meshes):
-
             # Get current set of points
             currPts = mesh.getSurfaceCoordinates()
 
@@ -338,8 +326,6 @@ class MultiUSMesh(object):
         pts : numpy array, size(N, 3)
             The coordinate to set. This MUST be exactly the same size as
             the array obtained from getSurfaceCoordinates()
-
-        Ney Secco 2017-02
         """
 
         # Check if the user already set the surface definition
@@ -349,7 +335,6 @@ class MultiUSMesh(object):
 
         # Loop over every mesh object to get a slice of the surface point array
         for instanceID, mesh in enumerate(self.meshes):
-
             # Extract set of points that belong to this instance
             currPts = pts[self.filtered2fullMaps[instanceID], :]
 
@@ -370,8 +355,6 @@ class MultiUSMesh(object):
               ind[3*i:3*i+3] represents the position of each coordinate of the i-th ADflow node
               in the CGNS file.
               ind has 0-based indices.
-
-        Ney Secco 2017-02
         """
 
         # Here is the main logic of the function:
@@ -401,7 +384,6 @@ class MultiUSMesh(object):
 
         # Loop over every instance
         for instanceID, mesh in enumerate(self.meshes):
-
             # Get CGNS bounds of the current instance
             startIndex = self.cgnsVolNodeIntervals[instanceID][0]
             endIndex = self.cgnsVolNodeIntervals[instanceID][1]
@@ -430,10 +412,8 @@ class MultiUSMesh(object):
         # Now that we populated the default volume node vector, we can delete the background
         # mesh instances
         for instanceID in reversed(range(len(self.meshes))):
-
             # Check if the current instance is a background mesh
             if instanceID in self.backgroundInstanceIDs:
-
                 # Delete current instance
                 del self.meshes[instanceID]
 
@@ -461,8 +441,6 @@ class MultiUSMesh(object):
            The output is returned in flatted 1D coordinate
            format. The len of the array is 3*len(indices) as
            set by setExternalMeshIndices()
-
-        Ney Secco 2017-02
         """
 
         # Initialize array that will hold all volume nodes in the current proc in solver ordering.
@@ -472,7 +450,6 @@ class MultiUSMesh(object):
 
         # Loop over each instance to gather volume nodes
         for instanceID, mesh in enumerate(self.meshes):
-
             # Get volume nodes of the current instance
             currVolNodes = mesh.getSolverGrid()
 
@@ -500,8 +477,6 @@ class MultiUSMesh(object):
             Block ID, in CGNS ordering, that contains each element.
         distTol: Distance tolerance to flag that a given surface node does not
                  belong to the current IDWarp surface definition in the current proc.
-
-        Ney Secco 2017-02
         """
 
         # Here is the main logic of this function:
@@ -543,7 +518,6 @@ class MultiUSMesh(object):
 
         # Now we use the block ID bounds of each instance to flag the instance IDs
         for ii in range(len(self.meshes)):
-
             # Get indices of the first and last CGNS block that belongs to the current IDWarp instance
             indexStart = self.cgnsBlockIntervals[ii][0]
             indexEnd = self.cgnsBlockIntervals[ii][1]
@@ -561,7 +535,6 @@ class MultiUSMesh(object):
         self.filtered2fullMaps = []
 
         for ii in range(len(self.meshes)):
-
             # Initialize list to hold connectivities and face sizes for the current instance
             currConn = []
             currFaceSizes = []
@@ -571,13 +544,11 @@ class MultiUSMesh(object):
 
             # Now loop over every element to gather just the ones that belong to the current proc
             for elemID in range(numElems):
-
                 # Get the size of the current element
                 elemFaceSize = faceSizes[elemID]
 
                 # Check if the current element belongs to the current IDWarp instance
                 if self.instanceIDs[elemID] == ii:
-
                     # Store its faceSize
                     currFaceSizes.append(elemFaceSize)
 
@@ -609,7 +580,6 @@ class MultiUSMesh(object):
 
             # Loop over every mapping:
             for filteredID, fullID in enumerate(filtered2fullMap):
-
                 # Find all elements of currConn that share the same fullID and replace them
                 # with the new ID
                 currConn[currConn == fullID] = filteredID
@@ -639,8 +609,6 @@ class MultiUSMesh(object):
         the i-th IDWarp instance.
 
         numCoorTotal: The total number of coordinates, across all procs and IDWarp instances.
-
-        Ney Secco 2017-02
         """
 
         # Initialize list to hold volume nodes (in the current proc) of all instances.
@@ -654,7 +622,6 @@ class MultiUSMesh(object):
 
         # Loop over the multiple CGNS files to initialize the corresponding IDWarp instances
         for currMesh in self.meshes:
-
             # Get volume nodes.
             # volNodes is a flattened vector that contains the background
             # mesh volume nodes that belong to the current proc.
@@ -691,8 +658,6 @@ class MultiUSMesh(object):
             size as the array obtained with getSurfaceCoordiantes(). N may
             be zero if this processor does not have any surface coordinates.
             These can be, for instance, reverse AD seeds.
-
-        Ney Secco 2017-03
         """
 
         # Initialize array to hold seeds of all surface point of this proc
@@ -700,7 +665,6 @@ class MultiUSMesh(object):
 
         # Loop over all instances
         for instanceID, mesh in enumerate(self.meshes):
-
             # Get the surface seeds of the current instance
             curr_dXs = mesh.getdXs()
 
@@ -714,8 +678,6 @@ class MultiUSMesh(object):
         This calls the mesh warping method for each IDWarp instance.
 
         This will update the volume coordinates internally in each instance.
-
-        Ney Secco 2017-02
         """
 
         # Print log
@@ -729,7 +691,6 @@ class MultiUSMesh(object):
 
         # Loop over all instances
         for mesh in self.meshes:
-
             # Print log
             if self.myID == 0:
                 print(" Warping mesh", meshCounter, "of", len(self.meshes))
@@ -773,8 +734,6 @@ class MultiUSMesh(object):
             size as the array obtained with getSurfaceCoordiantes(). N may
             be zero if this processor does not have any surface coordinates.
             These can be, for instance, reverse AD seeds.
-
-        Ney Secco 2017-03
         """
 
         # Print log
@@ -788,7 +747,6 @@ class MultiUSMesh(object):
 
         # Loop over all instances
         for instanceID, mesh in enumerate(self.meshes):
-
             # Print log
             if self.myID == 0:
                 print(" Working on mesh", instanceID + 1, "of", len(self.meshes))
@@ -817,12 +775,12 @@ class MultiUSMesh(object):
 
         This routine is not used for "regular" optimization; it is
         used for matrix-free type optimization. dXs is assumed to be
-        the the peturbation on all the surface nodes.
+        the the perturbation on all the surface nodes.
 
         Parameters
         ----------
         dXs : array, size Nsx3
-            This is the forward mode peturbation seed. Same size as the
+            This is the forward mode perturbation seed. Same size as the
             surface mesh from getSurfaceCoordinates().
         solverVec : bool
             Whether or not to convert to the solver ordering.
@@ -830,11 +788,9 @@ class MultiUSMesh(object):
         Returns
         -------
         dXv : array
-            The peturbation on the volume meshes. It may be
+            The perturbation on the volume meshes. It may be
             in warp ordering or solver ordering depending on
             the solverVec flag.
-
-        Ney Secco 2017-03
         """
 
         # Print log
@@ -852,7 +808,6 @@ class MultiUSMesh(object):
 
         # Loop over every mesh object to get a slice of the surface seeds array
         for instanceID, mesh in enumerate(self.meshes):
-
             # Print log
             if self.myID == 0:
                 print(" Working on mesh", instanceID + 1, "of", len(self.meshes))
@@ -888,13 +843,10 @@ class MultiUSMesh(object):
         baseName : str or None
             a base namve that will be used to generate filenames for
             all instance mesh files.
-
-        Ney Secco 2017-03
         """
 
         # We need to reexplode the original file
         if self.myID == 0:
-
             # Load the CGNS file
             combined_file = cs.readGrid(self.CGNSFile)
 
@@ -916,7 +868,6 @@ class MultiUSMesh(object):
 
         # Loop over all instances to write their meshes
         for instanceID, mesh in enumerate(self.meshes):
-
             # Generate a fileName
             fileName = baseName + "_inst%03d.cgns" % (instanceID)
 

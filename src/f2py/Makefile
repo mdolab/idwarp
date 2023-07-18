@@ -55,7 +55,7 @@ all:
 	$(FF90) $(FF90_ALL_FLAGS) -I$(MAIN_DIR)/mod -c libidwarp-f2pywrappers2.f90
 
 	$(FF90) -shared $(PYTHON_OBJECTS) $(LINKER_ALL_FLAGS) -o libidwarp.so
-	$(PYTHON) importTest.py
+	$(PYTHON) importTest.py libidwarp.so
 	mv libidwarp.so ../../idwarp
 
 # Clean up temporary files
