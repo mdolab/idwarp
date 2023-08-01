@@ -80,6 +80,8 @@ Once installed and configured, run the following to build the complexified libra
    export PETSC_ARCH=$PETSC_ARCH_COMPLEX
    make -f Makefile_CS
 
+Note that, ``PETSC_ARCH``, **must** be set and point to the complex PETSc before the code is compiled.
+In the above example, an intermediate convenience variable, ``PETSC_ARCH_COMPLEX``, defines the complex PETSc arch path.
 Once the library is built run the following to install the python module and library into your environment.
 
 .. prompt:: bash
