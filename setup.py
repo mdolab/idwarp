@@ -39,6 +39,7 @@ setup(
         "testing": ["parameterized", "testflo"],
         "dafoam": ["pyofm"],
         "multi": ["cgnsutilities>=2.7"],
+        "complex": ["complexify"],
     },
     classifiers=["Operating System :: Linux", "Programming Language :: Python, Fortran"],
 )
