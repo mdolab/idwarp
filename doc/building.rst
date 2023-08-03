@@ -20,35 +20,33 @@ See the MDO Lab installation guide :ref:`here <mach-aero:installThirdPartyPackag
 All the core computations in IDWarp are coded in Fortran.
 It is therefore necessary to build this library before using IDWarp.
 
-To see a list of architectures that IDWarp has been known to compile on run
+To start, find a configuration file close to your current setup in::
+
+    config/defaults
+
+and copy it to ``config/config.mk``. For example:
+
+.. prompt:: bash
+
+    cp config/defaults/config.LINUX_GFORTRAN_OPENMPI.mk config/config.mk
+
+Once you have copied the config file, compile ADflow by running:
 
 .. prompt:: bash
 
    make
 
-from the root directory.
-
-Follow the instructions and copy the closest architecture file and
-attempt a build using
-
-.. prompt:: bash
-
-   make
-
-If everything was successful, the following lines will be printed to
-the screen (near the end)::
+If everything was successful, the following lines will be printed to the screen (near the end)::
 
    Testing if module idwarp can be imported...
    Module idwarp was successfully imported.
 
-If you don't see this, it will be necessary modify the configure
-options in the config file.
+If you don't see this, it will be necessary to configure the build manually.
+To configure manually, open ``config/config.mk`` and modify options as necessary.
+Common issues are often that dependency variable paths, such as ``CGNS_INCLUDE_FLAGS`` and ``CGNS_LINKER_FLAGS``, point to an incorrect location and need to be updated.
+After changes to the configuration file, run ``make clean`` before attempting a new build.
 
-It will most likely be necessary to modify the ``CGNS_INCLUDE_FLAGS``
-and the ``CGNS_LINKER_FLAGS`` variables. After changes to the
-configuration file, run ``make clean`` before attempting a new build.
-
-Lastly, to build the Python interface, go to the root directory and type
+Lastly, to build and install the Python interface, type
 
 .. prompt:: bash
 
