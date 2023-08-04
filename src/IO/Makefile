@@ -26,7 +26,7 @@ OFILES := $(ALL_FILES:%.f90=%.o) $(ALL_FILES:%.F90=%.o) $(ALL_FILES:%.c=%.o)
 
 default: all
 
-all: 
+all:
 	$(PMAKE) src
 
 clean:
@@ -39,7 +39,7 @@ complexify:
 	@for file in $(FILES_TO_COMPLEXIFY); do \
 		if [ $$file -nt ../../src_cs/IO/$$file -o ! -e ../../src_cs/IO/$$file ]; then \
 			echo complexifying file $$file; \
-			python ../complexify.py $$file; \
+			complexify $$file; \
 			mv c_$$file ../../src_cs/IO/$$file; \
 		fi;\
 		done
