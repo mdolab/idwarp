@@ -30,7 +30,7 @@ and copy it to ``config/config.mk``. For example:
 
     cp config/defaults/config.LINUX_GFORTRAN_OPENMPI.mk config/config.mk
 
-Once you have copied the config file, compile ADflow by running:
+Once you have copied the config file, return to the root directory and compile IDWarp by running:
 
 .. prompt:: bash
 
