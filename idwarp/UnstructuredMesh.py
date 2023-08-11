@@ -504,6 +504,7 @@ class USMesh(BaseSolver):
 
         elif self.fileType == "OpenFOAM":
             from pyofm import PYOFM
+
             ofm = PYOFM(comm=self.comm)
             ofm.writeVolumeMeshPoints(self.getCommonGrid())
 
