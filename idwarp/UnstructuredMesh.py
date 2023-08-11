@@ -503,7 +503,9 @@ class USMesh(BaseSolver):
                 self.warp.writeplot3d(fileName)
 
         elif self.fileType == "OpenFOAM":
-            self._writeOpenFOAMVolumePoints(self.getCommonGrid())
+            from pyofm import PYOFM
+            ofm = PYOFM(comm=self.comm)
+            ofm.writeVolumeMeshPoints(self.getCommonGrid())
 
     def writeOFGridTecplot(self, fileName):
         """
