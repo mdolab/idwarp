@@ -26,11 +26,10 @@ FF90_FLAGS = ${FF77_FLAGS} -stand f08
 C_FLAGS    = -fPIC -O2
 
 # ------- Define Linker Flags ------------------------------------------
-LINKER_FLAGS = -fPIC -nofor_main
+LINKER_FLAGS = -fPIC -nofor-main
 
 # ------- Define Petsc Info --- Should not need to modify this -----
-include ${PETSC_DIR}/lib/petsc/conf/variables # PETSc 3.6
-#include ${PETSC_DIR}/conf/variables # PETSc 3.5
+include ${PETSC_DIR}/lib/petsc/conf/variables
 PETSC_INCLUDE_FLAGS=${PETSC_CC_INCLUDES} -I$(PETSC_DIR)
 PETSC_LINKER_FLAGS=${PETSC_LIB}
 
