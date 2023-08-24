@@ -26,9 +26,9 @@ DIR_MOD = sys.argv[2]
 # Specifiy the list of LINE ID's to find, what to replace and with what
 
 # First set: Find line with 'USE' and replace "_B" with ''
-LINE_ID = ["USE"]
-STR_OLD = ["_B"]
-STR_NEW = [""]
+LINE_ID = ["USE", "INTEGER*4"]
+STR_OLD = ["_B", "INTEGER*4"]
+STR_NEW = ["", "INTEGER"]
 
 STR_REPLACE_ALL = {"_CB": ""}
 # Also, entirely ignore lines with these strings:
@@ -59,7 +59,7 @@ for f in os.listdir(DIR_ORI):
             nIgnores = len(LINE_IGNORE)
 
             for line in file_object_ori:
-                # parse original line for relevante identifier
+                # parse original line for relevant identifier
                 # and replace the string
                 line_mod = line.lstrip()  # Strip out Left-hand leading spaces
 
@@ -67,20 +67,14 @@ for f in os.listdir(DIR_ORI):
                 for i in range(nIgnores):
                     if line_mod.find(LINE_IGNORE[i]) >= 0:
                         found_ignore = True
-                    # end if
-                # end for
 
                 if not found_ignore:
                     for i in range(nEdits):
                         if line_mod[0 : len(LINE_ID[i])] == LINE_ID[i]:
                             line_mod = line_mod.replace(STR_OLD[i], STR_NEW[i])
-                        # end if
-                    # end for
-                # end if
 
                 for key in STR_REPLACE_ALL:
                     line_mod = line_mod.replace(key, STR_REPLACE_ALL[key])
-                # end for
 
                 # write the modified line to new file
                 file_object_mod.write("   " + line_mod)
