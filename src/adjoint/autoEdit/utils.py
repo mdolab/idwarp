@@ -25,11 +25,6 @@ def processFiles(EXT, DIR_ORI, DIR_MOD, LINE_ID, STR_OLD, STR_NEW, STR_REPLACE_A
                 file_object_ori = open(os.path.join(DIR_ORI, f), "r")
                 print(f"\nParsing input file {file_object_ori.name}")
 
-                # read to whole file to string and reposition the pointer
-                # at the first byte for future reading
-                all_src = file_object_ori.read()
-                file_object_ori.seek(0)
-
                 # open modified file in write mode
                 file_object_mod = open(os.path.join(DIR_ORI, f), "w")
 
