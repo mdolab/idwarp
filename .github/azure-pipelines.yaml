@@ -17,8 +17,8 @@ extends:
     REPO_NAME: idwarp
     COMPLEX: true
     coverage: true
-    GCC_CONFIG: config/defaults/config.LINUX_GFORTRAN_OPENMPI.mk
-    INTEL_CONFIG: config/defaults/config.LINUX_INTEL_OPENMPI.mk
+    GCC_CONFIG: config/defaults/config.LINUX_GFORTRAN.mk
+    INTEL_CONFIG: config/defaults/config.LINUX_INTEL.mk
     TAPENADE: true
     TAPENADE_VERSION: "3.16"
     FPRETTIFY: true
