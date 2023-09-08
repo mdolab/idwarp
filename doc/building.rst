@@ -28,7 +28,7 @@ and copy it to ``config/config.mk``. For example:
 
 .. prompt:: bash
 
-    cp config/defaults/config.LINUX_GFORTRAN_OPENMPI.mk config/config.mk
+    cp config/defaults/config.LINUX_GFORTRAN.mk config/config.mk
 
 Once you have copied the config file, return to the root directory and compile IDWarp by running:
 
