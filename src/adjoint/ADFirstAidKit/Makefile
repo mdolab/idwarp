@@ -11,14 +11,12 @@ include ${COMMON_FILE}
 include ${RULES_FILE}
 vpath %.o $(OBJDIR)
 
-FF90_OBJECTS = adBuffer.o\
-	       debugAD.o
-
+FF90_OBJECTS =
 CC_OBJECTS = adStack.o
 
 default: all
 
-all: 
+all:
 	$(PMAKE) src
 
 clean:

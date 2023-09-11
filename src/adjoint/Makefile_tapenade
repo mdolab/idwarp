@@ -12,11 +12,13 @@ TAPENADE_SRC =	$(TAPENADE_DIRSRC)/warp/getElementProps.F90\
 
 PREPROCESSED_FILES = $(addprefix $(PREPROCESS_DIR)/,$(notdir $(TAPENADE_SRC)))
 
-cleanpreprocess: 
-	@echo "Cleaning up preprocessed file ..."
-	rm -rf $(PREPROCESS_DIR)
+# Define temporary tapenade directories
+TEMP_FWD_DIR = temp_forward
+TEMP_REV_DIR = temp_reverse
 
-preprocess: 
+default: ad_forward ad_reverse
+
+preprocess:
 	@echo "Processing input files for AD..."
 	mkdir -p $(PREPROCESS_DIR)
 	@for file in $(TAPENADE_SRC); do \
@@ -24,36 +26,78 @@ preprocess:
 		cpp -DUSE_TAPENADE -traditional -P $$file $(PREPROCESS_DIR)/"$$(basename $$file)"; \
 	done
 
-ad_reverse:
-# Create holding folders and run preprocessor
-	rm -fr temp_reverse
-	mkdir -p temp_reverse
-	make -f Makefile_tapenade preprocess
-
-# the following is the actual tapenade command to run
-	$(TAPENADE_HOME)/bin/tapenade \
-	-head "kd_tree%computeNodalProperties(XsPtr, tp%Mi, tp%Bi)>(tp%Mi, tp%Bi)" \
-	-noisize \
-	-reverse -msglevel 30 \
-	-O temp_reverse $(TAPENADE_PRECISION) $(PREPROCESSED_FILES) -html
-	python autoEdit/autoEditReverse.py temp_reverse outputReverse
-
-# Clean up files
-	make -f Makefile_tapenade cleanpreprocess
-
 ad_forward:
 # Create holding folders and run preprocessor
-	rm -fr temp_forward
-	mkdir -p temp_forward
+	rm -fr $(TEMP_FWD_DIR)
+	mkdir -p $(TEMP_FWD_DIR)
+
 	make -f Makefile_tapenade preprocess
 
-# the following is the actual tapenade command to run
+# The following is the actual tapenade command to run
 	$(TAPENADE_HOME)/bin/tapenade \
+	-html \
 	-head "kd_tree%computeNodalProperties(XsPtr, tp%Mi, tp%Bi)>(tp%Mi, tp%Bi)" \
+	-forward \
+	-tgtvarname %b \
+	-msglevel 30 \
 	-noisize \
-	-forward -msglevel 30  -tgtvarname %b \
-	-O temp_forward $(TAPENADE_PRECISION) $(PREPROCESSED_FILES) -html
-	python autoEdit/autoEditForward.py temp_forward outputForward
+	$(TAPENADE_PRECISION) \
+	-outputdirectory $(TEMP_FWD_DIR) \
+	$(PREPROCESSED_FILES)
+
+# Run autoedit
+	make -f Makefile_tapenade autoedit_forward
 
 # Clean up files
-	make -f Makefile_tapenade cleanpreprocess
+	make -f Makefile_tapenade clean_all_forward
+
+ad_reverse:
+# Create holding folders and run preprocessor
+	rm -fr $(TEMP_REV_DIR)
+	mkdir -p $(TEMP_REV_DIR)
+
+	make -f Makefile_tapenade preprocess
+
+# The following is the actual tapenade command to run
+	$(TAPENADE_HOME)/bin/tapenade \
+	-html \
+	-head "kd_tree%computeNodalProperties(XsPtr, tp%Mi, tp%Bi)>(tp%Mi, tp%Bi)" \
+	-reverse \
+	-msglevel 30 \
+	-noisize \
+	$(TAPENADE_PRECISION) \
+	-outputdirectory $(TEMP_REV_DIR) \
+	$(PREPROCESSED_FILES)
+
+# Run autoedit
+	make -f Makefile_tapenade autoedit_reverse
+
+# Clean up files
+	make -f Makefile_tapenade clean_all_reverse
+
+autoedit_forward:
+	@echo "Running autoedit on forward mode AD files..."
+	python autoEdit/autoEditForward.py $(TEMP_FWD_DIR) outputForward
+
+autoedit_reverse:
+	@echo "Running autoedit on reverse mode AD files..."
+	python autoEdit/autoEditReverse.py $(TEMP_REV_DIR) outputReverse
+
+clean_preprocess:
+	@echo "Cleaning up preprocessed files..."
+	rm -rf $(PREPROCESS_DIR)
+
+clean_temp_forward:
+	@echo "Deleting temporary forward mode AD files..."
+	rm -fr $(TEMP_FWD_DIR)
+
+clean_temp_reverse:
+	@echo "Deleting temporary reverse mode AD files..."
+	rm -fr $(TEMP_REV_DIR)
+
+clean_all_forward: clean_preprocess clean_temp_forward
+clean_all_reverse: clean_preprocess clean_temp_reverse
+clean_all: clean_all_forward clean_all_reverse
+
+clean: clean_all
+
