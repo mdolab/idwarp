@@ -20,7 +20,7 @@ project = "IDWarp"
 extensions.extend(["numpydoc"])  # noqa: F405
 
 # mock import for autodoc
-autodoc_mock_imports = ["numpy", "mpi4py", "petsc4py", "baseclasses"]
+autodoc_mock_imports = ["numpy", "mpi4py", "petsc4py", "baseclasses", "cgnsutilities"]
 
 # Specify the baseurls for the projects I want to link to
 intersphinx_mapping = {
