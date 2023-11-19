@@ -171,6 +171,7 @@ python module libidwarp ! in
        module cgnsgrid
          real(kind=realtype), dimension(:), allocatable :: surfacepoints
          integer(kind=inttype), dimension(:), allocatable :: surfaceconn
+         integer(kind=inttype), dimension(:), allocatable :: bocoTypes
          logical, dimension(:), allocatable :: surfaceiswall
          logical, dimension(:), allocatable :: surfaceissymm
          integer(kind=inttype), dimension(:,:), allocatable :: surfacesizes

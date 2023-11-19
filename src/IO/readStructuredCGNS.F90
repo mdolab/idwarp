@@ -30,6 +30,7 @@ subroutine readStructuredCGNS(cg)
     integer(kind=intType), dimension(:, :), allocatable :: sizes
     integer(kind=intType) :: nSurf, nodeCount, nConn, ni, nj, nx, ny, nz
     integer(kind=intType) :: status(MPI_STATUS_SIZE)
+    integer(kind=intType) :: nTotalBocos
     logical :: lowFace
 
     ! Only do reading on root proc:
@@ -66,6 +67,7 @@ subroutine readStructuredCGNS(cg)
 
         nSurf = 0
         nConn = 0
+        nTotalBocos = 0
         zoneLoop1: do iZone = 1, nZones
             call cg_zone_read_f(cg, base, iZone, zoneName, dims, ierr)
             if (ierr .eq. CG_ERROR) call cg_error_exit_f
@@ -77,6 +79,7 @@ subroutine readStructuredCGNS(cg)
             call cg_nbocos_f(cg, base, iZone, nbocos, ierr)
             if (ierr .eq. ERROR) call cg_error_exit_f
             allocate (zones(iZone)%bocos(nbocos))
+            nTotalBocos = nTotalBocos + nbocos
 
             bocoLoop1: do boco = 1, nbocos
 
@@ -137,6 +140,9 @@ subroutine readStructuredCGNS(cg)
         allocate (surfacePoints(3 * nSurf))
         allocate (surfaceConn(4 * nConn))
 
+        ! Allocate the flattened BC types storage
+        allocate (bocoTypes(nTotalBocos))
+
         ! Reset the counters here
         nSurf = 0
         offSet = 0
@@ -192,6 +198,7 @@ subroutine readStructuredCGNS(cg)
 
             bocoLoop2: do boco = 1, size(zones(iZone)%bocos)
                 bocoType = zones(iZone)%bocos(boco)%type
+                bocoTypes((iZone - 1) * size(zones(iZone)%bocos) + boco) = bocoType
                 pts = zones(iZone)%bocos(boco)%ptRange
 
                 ! Flag the surface nodes

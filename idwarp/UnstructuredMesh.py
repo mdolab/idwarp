@@ -27,12 +27,13 @@ History
 import os
 import shutil
 import warnings
+
 import numpy as np
-from mpi4py import MPI
-from .MExt import MExt
 from baseclasses import BaseSolver
 from baseclasses.utils import Error
+from mpi4py import MPI
 
+from .MExt import MExt
 
 # =============================================================================
 # UnstructuredMesh class
@@ -108,6 +109,11 @@ class USMesh(BaseSolver):
         self.OFData = {}
         self.warpInitialized = False
         self.faceSizes = None
+        self.bocoTypes = set()
+        self.isAxisymm = False
+        self.mirrorPlaneIdxs = None
+        self.rotatedPlaneIdxs = None
+        self.rotationAngle = None
         self.fileType = self.getOption("fileType")
         fileName = self.getOption("gridFile")
 
@@ -115,6 +121,10 @@ class USMesh(BaseSolver):
         if self.fileType == "CGNS":
             # Determine type of CGNS mesh we have
             self.warp.readcgns(fileName)
+            # Store the BCs types for the axisymmetric checking
+            self.bocoTypes.update(self.warp.cgnsgrid.bocoTypes)
+            # Check if we have an axisymmetric mesh
+            self.isAxisymm = self._checkAxisymmetric()
         elif self.fileType == "OpenFOAM":
             self._readOFGrid(fileName)
         elif self.fileType == "PLOT3D":
@@ -221,9 +231,12 @@ class USMesh(BaseSolver):
         else:
             restartFile = self.getOption("restartFile")
 
-        # The symmetry conditions but be set before initializing the
+        # The symmetry conditions must be set before initializing the
         # warping.
-        self._setSymmetryConditions()
+        if self.isAxisymm:
+            self._setSymmetryConditionsAxisymm()
+        else:
+            self._setSymmetryConditions()
 
         allPts = np.vstack(self.comm.allgather(pts))
         allFaceSizes = np.hstack(self.comm.allgather(faceSizes))
@@ -331,7 +344,6 @@ class USMesh(BaseSolver):
            The output is returned in flatted 1D coordinate
            format. The len of the array is 3*len(indices) as
            set by setExternalMeshIndices()
-
         """
         solverGrid = np.zeros(self.warp.griddata.solvermeshdof, self.dtype)
         warpGrid = self.getWarpGrid()
@@ -597,6 +609,13 @@ class USMesh(BaseSolver):
     # =========================================================================
     #                     Internal Private Functions
     # =========================================================================
+    def _checkAxisymmetric(self):
+        # The axisymm boco type is an integer equal to 2
+        if self.bocoTypes and 2 in self.bocoTypes:
+            return True
+
+        return False
+
     def _setInternalSurface(self):
         """This function is used by default if setSurfaceDefinition() is not
         set BEFORE an operation is requested that requires this
@@ -747,6 +766,220 @@ class USMesh(BaseSolver):
             # Run the "external" command
             self.setSurfaceDefinition(pts=pts, conn=conn, faceSizes=faceSizes)
 
+    def _getFullPatchData(self):
+        if self.warp.cgnsgrid.cgnsstructured:
+            self.warp.processstructuredpatches()
+        else:
+            self.warp.processunstructuredpatches()
+
+        fullConn = self.warp.cgnsgrid.surfaceconn - 1
+        fullPts = self.warp.cgnsgrid.surfacepoints
+
+        nPatch = self.warp.cgnsgrid.getnpatch()
+        fullPatchNames = [self.warp.cgnsgrid.getsurf(i + 1).strip().lower() for i in range(nPatch)]
+
+        return fullPatchNames, fullConn, fullPts
+
+    def _getSymmetryFamilies(self):
+        fullPatchNames, *_ = self._getFullPatchData()
+
+        symmFamilies = set()
+        if self.getOption("symmetrySurfaces") is None or self.isAxisymm:
+            symmFamilies.update(
+                [fullPatchNames[i] for i, isSymm in enumerate(self.warp.cgnsgrid.surfaceissymm) if isSymm]
+            )
+        else:
+            symmFamilies.update(self.getOptions("symmetrySurfaces"))
+
+        return symmFamilies
+
+    def _getSymmetryPlanesFromGeometry(self):
+        fullPatchNames, fullConn, fullPts = self._getFullPatchData()
+        symmFamilies = self._getSymmetryFamilies()
+        planes = []
+        usedFams = set()
+
+        fullPatchSizes = self.warp.cgnsgrid.surfacesizes.T
+
+        curNodeIndex = 0
+        curCellIndex = 0
+        curOffset = 0
+        for i, patchName in enumerate(fullPatchNames):
+            # Get the node and cell sizes
+            curNodeSize = fullPatchSizes[i][0] * fullPatchSizes[i][1]
+            curCellSize = (fullPatchSizes[i][0] - 1) * (fullPatchSizes[i][1] - 1)
+
+            if patchName in symmFamilies:
+                # Keep track of the families we've actually used
+                usedFams.add(patchName)
+
+                # Determine the average normal for this patch
+                conn1 = fullConn[curCellIndex : curCellIndex + curCellSize * 4]
+                conn2 = fullConn[curCellIndex]
+                conn = conn1 - conn2 + 1
+
+                idxStart = curNodeIndex
+                idxEnd = curNodeIndex + curNodeSize * 3
+                pts = fullPts[curNodeIndex : curNodeIndex + curNodeSize * 3]
+                avgNorm = self.warp.averagenormal(pts, conn, 4 * np.ones(curCellSize, "intc"))
+
+                # For axisymmetric mesh warping we need to store the start and
+                # end indices of the pts for this symm patch.  These are in
+                # the warp grid indexing.
+                if self.isAxisymm:
+                    planes.append([pts[:3], avgNorm, patchName, (idxStart, idxEnd)])
+                else:
+                    planes.append([pts[:3], avgNorm])
+            else:
+                curOffset += curNodeSize
+
+            curNodeIndex += curNodeSize * 3
+            curCellIndex += curCellSize * 4
+
+        self._checkUsedFamilies(usedFams, symmFamilies)
+
+        return planes, usedFams
+
+    def _checkUsedFamilies(self, usedFams, symmFamilies):
+        if usedFams < symmFamilies:
+            missing = list(symmFamilies - usedFams)
+            warnings.warn(
+                "Not all specified symm families that "
+                "were given were found the CGNS file. "
+                "The families not found are %s." % (repr(missing)),
+                stacklevel=2,
+            )
+
+    def _getUniquePlanes(self, planes):
+        # Now we have a list of planes. We have to reduce them to the
+        # set of independent planes. This is tricky since you can have
+        # have to different normals belonging to the same physical
+        # plane. Since we don't have that many, we just use a dumb
+        # double loop.
+
+        def checkPlane(p1, n1, p2, n2):
+            # Determine if two planes defined by (pt, normal) are
+            # actually the same up to a normal sign.
+
+            # First check the normal...if these are not the same,
+            # cannot be the same plane
+            if 1 - abs(np.dot(n1, n2)) > self.getOption("symmTol"):
+                return False
+
+            # Normals are the same direction. Check if p2 is on the
+            # first plane up to a tolerance.
+
+            d = p2 - p1
+            d1 = p2 - np.dot(d, n1) * n1
+
+            if np.linalg.norm(d1 - p2) / (np.linalg.norm(d) + 1e-30) > 1e-8:
+                return False
+
+            return True
+
+        uniquePlanes = []
+        flagged = np.zeros(len(planes), "intc")
+        for i in range(len(planes)):
+            if not flagged[i]:
+                uniquePlanes.append(planes[i])
+                curPlane = planes[i]
+                # Loop over remainder to check:
+                for j in range(i + 1, len(planes)):
+                    if checkPlane(curPlane[0], curPlane[1], planes[j][0], planes[j][1]):
+                        flagged[j] = 1
+
+        return uniquePlanes
+
+    def _printSymmetryPlanes(self, pts, normals):
+        print("+-------------------- Symmetry Planes -------------------+")
+        print("|           Point                        Normal          |")
+        for i in range(len(pts)):
+            print(
+                "| (%7.3f %7.3f %7.3f)    (%7.3f %7.3f %7.3f) |"
+                % (
+                    np.real(pts[i][0]),
+                    np.real(pts[i][1]),
+                    np.real(pts[i][2]),
+                    np.real(normals[i][0]),
+                    np.real(normals[i][1]),
+                    np.real(normals[i][2]),
+                )
+            )
+        print("+--------------------------------------------------------+")
+
+    def _setSymmetryConditionsAxisymm(self):
+        if self.fileType == "CGNS":
+            if self.comm.rank == 0:
+                if self.getOption("symmetryPlanes") is not None:
+                    raise Error(
+                        "Can't define symmetry planes using 'symmetryPlanes' option "
+                        "when doing axisymmetric mesh warping.  Use option 'symmetrySurfaces' "
+                        "to define the family name of the mirror plane for mesh warping."
+                    )
+
+                symmList = self.getOption("symmetrySurfaces")
+                if symmList is not None:
+                    if len(symmList) > 1:
+                        raise Error(
+                            "Cannot specify more than one symmetry surface "
+                            "using the 'symmetrySurfaces' when doing axisymmetric "
+                            "mesh warping."
+                        )
+
+                    mirrorFamName = symmList[0]
+
+                else:
+                    raise Error(
+                        "Must specify a symmetry surface to use as the mirror plane "
+                        "when doing axisymmetric mesh warping."
+                    )
+
+                # We need the information for all symm planes for axisymmetric warping
+                planes, _ = self._getSymmetryPlanesFromGeometry()
+                uniquePlanes = self._getUniquePlanes(planes)
+
+                # Should only have two symmetry planes for an axisymm mesh
+                if len(uniquePlanes) != 2:
+                    raise Error("Could not detect 2 unique symmetry planes for an axisymmetric mesh.")
+
+                # Get the two symmetry planes
+                plane1 = uniquePlanes[0]
+                plane2 = uniquePlanes[1]
+
+                self._printSymmetryPlanes([plane1[0], plane2[0]], [plane1[1], plane2[1]])
+
+                if plane1[2] == mirrorFamName:
+                    mirrorPts = plane1[0]
+                    mirrorNormal = plane1[1]
+                    rotatedNormal = plane2[1]
+                    self.mirrorPlaneIdxs = plane1[3]
+                    self.rotatedPlaneIdxs = plane2[3]
+                elif plane2[2] == mirrorFamName:
+                    mirrorPts = plane2[0]
+                    mirrorNormal = plane2[1]
+                    rotatedNormal = plane1[1]
+                    self.mirrorPlaneIdxs = plane2[3]
+                    self.rotatedPlaneIdxs = plane1[3]
+
+                # Compute the rotation angle
+                magMirror = np.linalg.norm(mirrorNormal)
+                magRotated = np.linalg.norm(rotatedNormal)
+                # Compute the cosine of the angle
+                cosineTheta = np.dot(mirrorNormal, rotatedNormal) / (magMirror * magRotated)
+
+                # Compute the angle in radians using arccos
+                self.rotationAngle = np.arccos(cosineTheta)
+
+            # We only want to set the mirror plane as the symmetry plane in the
+            # fortran layer.  This "tricks" the mesh warping algorithm so that
+            # the mirroring will get equal weights to preserve the symmetry plane
+            # warping.
+            pts = self.comm.bcast(np.array([mirrorPts]))
+            normals = self.comm.bcast(np.array([mirrorNormal]))
+            self.warp.setsymmetryplanes(pts.T, normals.T)
+        else:
+            raise Error("Axisymmetric mesh warping only implemented for CGNS meshes.")
+
     def _setSymmetryConditions(self):
         """This function determines the symmetry planes used for the
         computation. It has a similar structure to setInternalSurface.
@@ -892,7 +1125,7 @@ class USMesh(BaseSolver):
 
                 # First check the normal...if these are not the same,
                 # cannot be the same plane
-                if abs(np.dot(n1, n2)) < 0.99:
+                if 1 - abs(np.dot(n1, n2)) > self.warp.gridinput.symmtol:
                     return False
 
                 # Normals are the same direction. Check if p2 is on the
