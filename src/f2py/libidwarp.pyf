@@ -205,6 +205,15 @@ python module libidwarp ! in
        module kd_tree
          integer(kind=inttype) :: bucket_size
        end module kd_tree
+
+       subroutine copyrotatevolumecoordinates(imirrorstart,imirrorend,angle,axis) ! in :test:axisymm.F90
+         use griddata
+         use communication
+         integer(kind=inttype) intent(in) :: imirrorstart
+         integer(kind=inttype) intent(in) :: imirrorend
+         real(kind=realtype) intent(in) :: angle
+         real(kind=realtype) dimension(3),intent(in) :: axis
+      end subroutine copyrotatevolumecoordinates
        
     end interface 
 #ifdef USE_COMPLEX

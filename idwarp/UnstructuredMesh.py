@@ -113,7 +113,7 @@ class USMesh(BaseSolver):
         self.isAxisymm = False
         self.mirrorPlaneIdxs = None
         self.rotatedPlaneIdxs = None
-        self.rotationAngle = None
+        self.rotationAngle = self.getOption("axiAngle") * np.pi / 180.0  # Convert to radians
         self.fileType = self.getOption("fileType")
         fileName = self.getOption("gridFile")
 
@@ -121,8 +121,10 @@ class USMesh(BaseSolver):
         if self.fileType == "CGNS":
             # Determine type of CGNS mesh we have
             self.warp.readcgns(fileName)
-            # Store the BCs types for the axisymmetric checking
-            self.bocoTypes.update(self.warp.cgnsgrid.bocoTypes)
+            # Store the BCs types for the axisymmetric check
+            # Need to have the bocoTypes on all procs
+            bocoTypes = self.comm.bcast(self.warp.cgnsgrid.bocoTypes)
+            self.bocoTypes.update(bocoTypes)
             # Check if we have an axisymmetric mesh
             self.isAxisymm = self._checkAxisymmetric()
         elif self.fileType == "OpenFOAM":
@@ -150,6 +152,7 @@ class USMesh(BaseSolver):
             "cornerAngle": [float, 30.0],
             "restartFile": [(str, type(None)), None],
             "bucketSize": [int, 8],
+            "axiAngle": [(float, type(None)), None],
         }
         return defOpts
 
@@ -402,6 +405,16 @@ class USMesh(BaseSolver):
 
         # Now run mesh warp command
         self.warp.warpmesh()
+
+        # If axisymmetric, we need to rotate and copy the points
+        # from the mirror plane to the rotated plane
+        if self.isAxisymm:
+            self.warp.copyrotatevolumecoordinates(
+                self.mirrorPlaneIdxs[0] + 1,
+                self.mirrorPlaneIdxs[1] + 1,
+                self.rotationAngle,
+                np.array([1, 0, 0], "d").T,
+            )
 
     def warpDeriv(self, dXv, solverVec=True):
         """Compute the warping derivative (dXv/dXs^T)*Vec (where vec is the
@@ -909,6 +922,11 @@ class USMesh(BaseSolver):
 
     def _setSymmetryConditionsAxisymm(self):
         if self.fileType == "CGNS":
+            # Initialize these variables on all procs
+            pts = []
+            normals = []
+            mirrorPts = []
+            mirrorNormal = []
             if self.comm.rank == 0:
                 if self.getOption("symmetryPlanes") is not None:
                     raise Error(
@@ -961,14 +979,23 @@ class USMesh(BaseSolver):
                     self.mirrorPlaneIdxs = plane2[3]
                     self.rotatedPlaneIdxs = plane1[3]
 
-                # Compute the rotation angle
-                magMirror = np.linalg.norm(mirrorNormal)
-                magRotated = np.linalg.norm(rotatedNormal)
-                # Compute the cosine of the angle
-                cosineTheta = np.dot(mirrorNormal, rotatedNormal) / (magMirror * magRotated)
+                if self.rotationAngle is None:
+                    # Compute the rotation angle
+                    magMirror = np.linalg.norm(mirrorNormal)
+                    magRotated = np.linalg.norm(rotatedNormal)
+                    # Compute the cosine of the angle
+                    cosineTheta = np.dot(mirrorNormal, rotatedNormal) / (magMirror * magRotated)
 
-                # Compute the angle in radians using arccos
-                self.rotationAngle = np.arccos(cosineTheta)
+                    # Compute the angle in radians using arccos
+                    self.rotationAngle = np.arccos(cosineTheta)
+
+                    if self.rotationAngle * 180 / np.pi > 90.0:
+                        # If the angle is obtuse, we need to subtract from 180
+                        self.rotationAngle = np.pi - self.rotationAngle
+
+            # Broadcast the mirror and rotated plane start/end indices to all procs
+            self.mirrorPlaneIdxs = self.comm.bcast(self.mirrorPlaneIdxs)
+            self.rotatedPlaneIdxs = self.comm.bcast(self.rotatedPlaneIdxs)
 
             # We only want to set the mirror plane as the symmetry plane in the
             # fortran layer.  This "tricks" the mesh warping algorithm so that
