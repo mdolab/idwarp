@@ -112,8 +112,7 @@ class USMesh(BaseSolver):
         self.bocoTypes = set()
         self.isAxisymm = False
         self.mirrorPlaneIdxs = None
-        self.rotatedPlaneIdxs = None
-        self.rotationAngle = self.getOption("axiAngle") * np.pi / 180.0  # Convert to radians
+        self.rotationAngle = self.getOption("axiSymmAngle") * np.pi / 180.0  # Convert to radians
         self.fileType = self.getOption("fileType")
         fileName = self.getOption("gridFile")
 
@@ -125,6 +124,7 @@ class USMesh(BaseSolver):
             # Need to have the bocoTypes on all procs
             bocoTypes = self.comm.bcast(self.warp.cgnsgrid.bocoTypes)
             self.bocoTypes.update(bocoTypes)
+
             # Check if we have an axisymmetric mesh
             self.isAxisymm = self._checkAxisymmetric()
         elif self.fileType == "OpenFOAM":
@@ -152,7 +152,10 @@ class USMesh(BaseSolver):
             "cornerAngle": [float, 30.0],
             "restartFile": [(str, type(None)), None],
             "bucketSize": [int, 8],
-            "axiAngle": [(float, type(None)), None],
+            "axiSymmAngle": [(float, type(None)), None],
+            "axiSymmPlane": [(list, type(None)), None],
+            "axiMirrorSurface": [(str, type(None)), None],
+            "axiSymmAxis": [(list, type(None)), None],
         }
         return defOpts
 
@@ -409,11 +412,15 @@ class USMesh(BaseSolver):
         # If axisymmetric, we need to rotate and copy the points
         # from the mirror plane to the rotated plane
         if self.isAxisymm:
+            axiSymmAxis = self.getOption("axiSymmAxis")
+            if axiSymmAxis is None:
+                raise Error("Must supply an axisymmetric rotational axis for " "axisymmetric mesh warping.")
+            else:
+                axiSymmAxis = np.array(axiSymmAxis, "d")
             self.warp.copyrotatevolumecoordinates(
                 self.mirrorPlaneIdxs[0] + 1,
-                self.mirrorPlaneIdxs[1] + 1,
                 self.rotationAngle,
-                np.array([1, 0, 0], "d").T,
+                axiSymmAxis.T,
             )
 
     def warpDeriv(self, dXv, solverVec=True):
@@ -790,25 +797,27 @@ class USMesh(BaseSolver):
 
         nPatch = self.warp.cgnsgrid.getnpatch()
         fullPatchNames = [self.warp.cgnsgrid.getsurf(i + 1).strip().lower() for i in range(nPatch)]
+        fullPatchNames = [val.decode("utf-8") if isinstance(val, bytes) else val for val in fullPatchNames]
 
         return fullPatchNames, fullConn, fullPts
 
-    def _getSymmetryFamilies(self):
-        fullPatchNames, *_ = self._getFullPatchData()
-
+    def _getSymmetryFamilies(self, fullPatchNames):
         symmFamilies = set()
-        if self.getOption("symmetrySurfaces") is None or self.isAxisymm:
+        if self.getOption("symmetrySurfaces") is None:
             symmFamilies.update(
                 [fullPatchNames[i] for i, isSymm in enumerate(self.warp.cgnsgrid.surfaceissymm) if isSymm]
             )
         else:
-            symmFamilies.update(self.getOptions("symmetrySurfaces"))
+            symmFamilies.update(self.getOption("symmetrySurfaces"))
+
+        # Decode family names that are bytes to convert them to strings
+        symmFamilies = {val.decode("utf-8") if isinstance(val, bytes) else val for val in symmFamilies}
 
         return symmFamilies
 
     def _getSymmetryPlanesFromGeometry(self):
         fullPatchNames, fullConn, fullPts = self._getFullPatchData()
-        symmFamilies = self._getSymmetryFamilies()
+        symmFamilies = self._getSymmetryFamilies(fullPatchNames)
         planes = []
         usedFams = set()
 
@@ -932,7 +941,7 @@ class USMesh(BaseSolver):
                     raise Error(
                         "Can't define symmetry planes using 'symmetryPlanes' option "
                         "when doing axisymmetric mesh warping.  Use option 'symmetrySurfaces' "
-                        "to define the family name of the mirror plane for mesh warping."
+                        "to define the family name of the symmetry planes."
                     )
 
                 symmList = self.getOption("symmetrySurfaces")
@@ -944,13 +953,10 @@ class USMesh(BaseSolver):
                             "mesh warping."
                         )
 
-                    mirrorFamName = symmList[0]
+                mirrorFamName = self.getOption("axiMirrorSurface")
 
-                else:
-                    raise Error(
-                        "Must specify a symmetry surface to use as the mirror plane "
-                        "when doing axisymmetric mesh warping."
-                    )
+                if mirrorFamName is None:
+                    raise Error("Must specify an axiMirrorSurface for axisymmetric mesh warping.")
 
                 # We need the information for all symm planes for axisymmetric warping
                 planes, _ = self._getSymmetryPlanesFromGeometry()
@@ -969,33 +975,14 @@ class USMesh(BaseSolver):
                 if plane1[2] == mirrorFamName:
                     mirrorPts = plane1[0]
                     mirrorNormal = plane1[1]
-                    rotatedNormal = plane2[1]
                     self.mirrorPlaneIdxs = plane1[3]
-                    self.rotatedPlaneIdxs = plane2[3]
                 elif plane2[2] == mirrorFamName:
                     mirrorPts = plane2[0]
                     mirrorNormal = plane2[1]
-                    rotatedNormal = plane1[1]
                     self.mirrorPlaneIdxs = plane2[3]
-                    self.rotatedPlaneIdxs = plane1[3]
-
-                if self.rotationAngle is None:
-                    # Compute the rotation angle
-                    magMirror = np.linalg.norm(mirrorNormal)
-                    magRotated = np.linalg.norm(rotatedNormal)
-                    # Compute the cosine of the angle
-                    cosineTheta = np.dot(mirrorNormal, rotatedNormal) / (magMirror * magRotated)
-
-                    # Compute the angle in radians using arccos
-                    self.rotationAngle = np.arccos(cosineTheta)
-
-                    if self.rotationAngle * 180 / np.pi > 90.0:
-                        # If the angle is obtuse, we need to subtract from 180
-                        self.rotationAngle = np.pi - self.rotationAngle
 
             # Broadcast the mirror and rotated plane start/end indices to all procs
             self.mirrorPlaneIdxs = self.comm.bcast(self.mirrorPlaneIdxs)
-            self.rotatedPlaneIdxs = self.comm.bcast(self.rotatedPlaneIdxs)
 
             # We only want to set the mirror plane as the symmetry plane in the
             # fortran layer.  This "tricks" the mesh warping algorithm so that
@@ -1003,6 +990,18 @@ class USMesh(BaseSolver):
             # warping.
             pts = self.comm.bcast(np.array([mirrorPts]))
             normals = self.comm.bcast(np.array([mirrorNormal]))
+            axiPlane = self.getOption("axiSymmPlane")
+            if axiPlane is None:
+                raise Error(
+                    "Must supply a point and normal vector using the "
+                    "'axiSymmPlane' option to perform axisymmetric mesh warping."
+                )
+
+            # We also need to set a "phantom" plane that preserves zero-warping
+            # along the axisymmetric wedge BC
+            pts = np.vstack((pts, axiPlane[0]))
+            normals = np.vstack((normals, axiPlane[1]))
+
             self.warp.setsymmetryplanes(pts.T, normals.T)
         else:
             raise Error("Axisymmetric mesh warping only implemented for CGNS meshes.")
