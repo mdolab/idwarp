@@ -112,7 +112,9 @@ class USMesh(BaseSolver):
         self.bocoTypes = set()
         self.isAxisymm = False
         self.mirrorPlaneIdxs = None
-        self.rotationAngle = self.getOption("axiSymmAngle") * np.pi / 180.0  # Convert to radians
+        self.rotationAngle = self.getOption("axiSymmAngle")
+        if self.rotationAngle is not None:
+            self.rotationAngle *= np.pi / 180.0  # Convert to radians
         self.fileType = self.getOption("fileType")
         fileName = self.getOption("gridFile")
 
