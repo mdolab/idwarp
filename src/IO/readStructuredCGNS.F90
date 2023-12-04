@@ -28,7 +28,7 @@ subroutine readStructuredCGNS(cg)
 #endif
     integer(kind=intType), dimension(:), allocatable :: surfaceNodes, localSurfaceNodes
     integer(kind=intType), dimension(:, :), allocatable :: sizes
-    integer(kind=intType) :: nSurf, nodeCount, nConn, ni, nj, nx, ny, nz
+    integer(kind=intType) :: nSurf, nodeCount, nConn, ni, nj, nx, ny, nz, bocoIdx
     integer(kind=intType) :: status(MPI_STATUS_SIZE)
     integer(kind=intType) :: nTotalBocos
     logical :: lowFace
@@ -68,6 +68,7 @@ subroutine readStructuredCGNS(cg)
         nSurf = 0
         nConn = 0
         nTotalBocos = 0
+        bocoIdx = 0
         zoneLoop1: do iZone = 1, nZones
             call cg_zone_read_f(cg, base, iZone, zoneName, dims, ierr)
             if (ierr .eq. CG_ERROR) call cg_error_exit_f
@@ -197,8 +198,9 @@ subroutine readStructuredCGNS(cg)
             end do
 
             bocoLoop2: do boco = 1, size(zones(iZone)%bocos)
+                bocoIdx = bocoIdx + 1
                 bocoType = zones(iZone)%bocos(boco)%type
-                bocoTypes((iZone - 1) * size(zones(iZone)%bocos) + boco) = bocoType
+                bocoTypes(bocoIdx) = bocoType
                 pts = zones(iZone)%bocos(boco)%ptRange
 
                 ! Flag the surface nodes
