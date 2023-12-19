@@ -11,7 +11,7 @@ subroutine warpDerivFwd(Xsdot, cDof, Xvdot, meshDOF)
     real(kind=realType), intent(in) :: xsdot(cdof)
 
     ! Output Arguments
-    real(kind=realType), intent(inout), dimension(meshDOF) :: XvDot
+    real(kind=realType), intent(out), dimension(meshDOF) :: XvDot
 #ifndef USE_COMPLEX
     ! Working Data
     integer(kind=intType) :: i, j, kk, istart, iend, ierr, nVol
@@ -29,6 +29,10 @@ subroutine warpDerivFwd(Xsdot, cDof, Xvdot, meshDOF)
         call VecSetValues(dXs, 1, [iStart + i - 1], [XsDot(i)], INSERT_VALUES, ierr)
         call EChk(ierr, __FILE__, __LINE__)
     end do
+
+    ! Create the volume seed vector as a copy of the volume nodes
+    call VecGetArrayF90(dXv, XvPtrd, ierr)
+    call EChk(ierr, __FILE__, __LINE__)
 
     ! While we only set local values, we STILL have to call
     ! VecAssemblyBegin/End
@@ -58,7 +62,7 @@ subroutine warpDerivFwd(Xsdot, cDof, Xvdot, meshDOF)
     call allocDerivValues(mytrees(1)%tp)
     call zeroDeriv(mytrees(1)%tp%root)
 
-    nVol = size(XvPtr) / 3
+    nVol = size(XvPtrd) / 3
     call computeNodalProperties_d(mytrees(1)%tp, .False.)
     mytrees(1)%tp%Ldef = mytrees(1)%tp%Ldef0 * LdefFact
     mytrees(1)%tp%alphaToBexp = alpha**bExp
@@ -93,12 +97,15 @@ subroutine warpDerivFwd(Xsdot, cDof, Xvdot, meshDOF)
 
     updateLoop: do j = 1, nVol
         oden = one / denominator(j)
-        Xvdot(3 * j - 2) = numerator(1, j) * oden
-        Xvdot(3 * j - 1) = numerator(2, j) * oden
-        Xvdot(3 * j) = numerator(3, j) * oden
+        XvPtrd(3 * j - 2) = numerator(1, j) * oden
+        XvPtrd(3 * j - 1) = numerator(2, j) * oden
+        XvPtrd(3 * j) = numerator(3, j) * oden
     end do updateLoop
 
     ! Restore all the arrays
+    call VecRestoreArrayF90(dXv, XvPtrd, ierr)
+    call EChk(ierr, __FILE__, __LINE__)
+
     call VecRestoreArrayF90(XsLocal, XsPtr, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
@@ -107,5 +114,19 @@ subroutine warpDerivFwd(Xsdot, cDof, Xvdot, meshDOF)
 
     call VecRestoreArrayF90(Xv0, Xv0Ptr, ierr)
     call EChk(ierr, __FILE__, __LINE__)
+
+    ! Copy and rotate the seeds if we have axisymmetry
+    if (axiSymm) then
+        call copyRotateVolumeSeeds()
+    end if
+
+    call VecGetArrayF90(dXv, XvPtrd, ierr)
+    call EChk(ierr, __FILE__, __LINE__)
+
+    ! Copy values from XvPtr to XvDot
+    do i = 1, meshDOF
+        XvDot(i) = XvPtrd(i)
+    end do
+
 #endif
 end subroutine warpDerivFwd

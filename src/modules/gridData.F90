@@ -39,7 +39,7 @@ module gridData
 
 #ifndef USE_TAPENADE
     real(kind=realType), pointer, dimension(:) :: XsPtrb, XsPtrd
-    real(kind=realType), pointer, dimension(:) :: XvPtrb, XVPtrd
+    real(kind=realType), pointer, dimension(:) :: XvPtrb, XvPtrd
 #endif
 
     ! Sizes of the three different mesh sizes:
@@ -59,6 +59,13 @@ module gridData
     ! Symmetry Information
     integer(kind=intType) :: nLoop
     real(kind=realType), dimension(:, :), allocatable :: symmPts, symmNormals
+
+    ! Axisymmetric Information
+    logical :: axiSymm = .false.
+    real(kind=realType) :: axiSymmAngle
+    real(kind=realType) :: axiSymmAxis(3)
+    integer(kind=intType), dimension(2) :: mirrorPlaneIdxs
+    integer(kind=intType), dimension(2) :: rotPlaneIdxs
 
 end module gridData
 

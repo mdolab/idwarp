@@ -109,12 +109,7 @@ class USMesh(BaseSolver):
         self.OFData = {}
         self.warpInitialized = False
         self.faceSizes = None
-        self.bocoTypes = set()
-        self.isAxisymm = False
-        self.mirrorPlaneIdxs = None
-        self.rotationAngle = self.getOption("axiSymmAngle")
-        if self.rotationAngle is not None:
-            self.rotationAngle *= np.pi / 180.0  # Convert to radians
+        self.bocoTypes = set()  # Need this for axisymmetric check
         self.fileType = self.getOption("fileType")
         fileName = self.getOption("gridFile")
 
@@ -125,10 +120,12 @@ class USMesh(BaseSolver):
             # Store the BCs types for the axisymmetric check
             # Need to have the bocoTypes on all procs
             bocoTypes = self.comm.bcast(self.warp.cgnsgrid.bocoTypes)
-            self.bocoTypes.update(bocoTypes)
 
-            # Check if we have an axisymmetric mesh
-            self.isAxisymm = self._checkAxisymmetric()
+            if bocoTypes is not None:
+                self.bocoTypes.update(bocoTypes)
+                self.warp.griddata.axisymm = True if 2 in bocoTypes else False
+            else:
+                self.warp.griddata.axisymm = False
         elif self.fileType == "OpenFOAM":
             self._readOFGrid(fileName)
         elif self.fileType == "PLOT3D":
@@ -154,10 +151,10 @@ class USMesh(BaseSolver):
             "cornerAngle": [float, 30.0],
             "restartFile": [(str, type(None)), None],
             "bucketSize": [int, 8],
-            "axiSymmAngle": [(float, type(None)), None],
+            "axiSymmAngle": [float, 0.0],
+            "axiSymmAxis": [list, [1.0, 0.0, 0.0]],
             "axiSymmPlane": [(list, type(None)), None],
             "axiMirrorSurface": [(str, type(None)), None],
-            "axiSymmAxis": [(list, type(None)), None],
         }
         return defOpts
 
@@ -241,7 +238,7 @@ class USMesh(BaseSolver):
 
         # The symmetry conditions must be set before initializing the
         # warping.
-        if self.isAxisymm:
+        if self.warp.griddata.axisymm:
             self._setSymmetryConditionsAxisymm()
         else:
             self._setSymmetryConditions()
@@ -411,20 +408,6 @@ class USMesh(BaseSolver):
         # Now run mesh warp command
         self.warp.warpmesh()
 
-        # If axisymmetric, we need to rotate and copy the points
-        # from the mirror plane to the rotated plane
-        if self.isAxisymm:
-            axiSymmAxis = self.getOption("axiSymmAxis")
-            if axiSymmAxis is None:
-                raise Error("Must supply an axisymmetric rotational axis for " "axisymmetric mesh warping.")
-            else:
-                axiSymmAxis = np.array(axiSymmAxis, "d")
-            self.warp.copyrotatevolumecoordinates(
-                self.mirrorPlaneIdxs[0] + 1,
-                self.rotationAngle,
-                axiSymmAxis.T,
-            )
-
     def warpDeriv(self, dXv, solverVec=True):
         """Compute the warping derivative (dXv/dXs^T)*Vec (where vec is the
         dXv argument to this function.
@@ -480,10 +463,10 @@ class USMesh(BaseSolver):
             in warp ordering or solver ordering depending on
             the solverVec flag.
         """
-
         dXvWarp = np.zeros(self.warp.griddata.warpmeshdof, dtype=self.dtype)
         self.warpMesh()
         self.warp.warpderivfwd(np.ravel(dXs), dXvWarp)
+
         if solverVec:
             dXv = np.zeros(self.warp.griddata.solvermeshdof, dtype=self.dtype)
             self.warp.warp_to_solver_grid(dXvWarp, dXv)
@@ -497,7 +480,7 @@ class USMesh(BaseSolver):
 
         if dXv is None:
             np.random.seed(randomSeed)  # 'Random' seed to ensure runs are same
-            dXvWarp = np.random.random(self.warp.griddata.warpmeshdof, dtype=self.dtype)
+            dXvWarp = np.random.random(self.warp.griddata.warpmeshdof)  # , dtype=self.dtype)
         else:
             if solverVec:
                 dXvWarp = np.zeros(self.warp.griddata.warpmeshdof, self.dtype)
@@ -631,13 +614,6 @@ class USMesh(BaseSolver):
     # =========================================================================
     #                     Internal Private Functions
     # =========================================================================
-    def _checkAxisymmetric(self):
-        # The axisymm boco type is an integer equal to 2
-        if self.bocoTypes and 2 in self.bocoTypes:
-            return True
-
-        return False
-
     def _setInternalSurface(self):
         """This function is used by default if setSurfaceDefinition() is not
         set BEFORE an operation is requested that requires this
@@ -850,7 +826,7 @@ class USMesh(BaseSolver):
                 # For axisymmetric mesh warping we need to store the start and
                 # end indices of the pts for this symm patch.  These are in
                 # the warp grid indexing.
-                if self.isAxisymm:
+                if self.warp.griddata.axisymm:
                     planes.append([pts[:3], avgNorm, patchName, (idxStart, idxEnd)])
                 else:
                     planes.append([pts[:3], avgNorm])
@@ -977,14 +953,17 @@ class USMesh(BaseSolver):
                 if plane1[2] == mirrorFamName:
                     mirrorPts = plane1[0]
                     mirrorNormal = plane1[1]
-                    self.mirrorPlaneIdxs = plane1[3]
+                    self.warp.griddata.rotplaneidxs = np.array(plane2[3]) + 1
+                    self.warp.griddata.mirrorplaneidxs = np.array(plane1[3]) + 1
                 elif plane2[2] == mirrorFamName:
                     mirrorPts = plane2[0]
                     mirrorNormal = plane2[1]
-                    self.mirrorPlaneIdxs = plane2[3]
+                    self.warp.griddata.rotplaneidxs = np.array(plane1[3]) + 1
+                    self.warp.griddata.mirrorplaneidxs = np.array(plane2[3]) + 1
 
             # Broadcast the mirror and rotated plane start/end indices to all procs
-            self.mirrorPlaneIdxs = self.comm.bcast(self.mirrorPlaneIdxs)
+            self.warp.griddata.mirrorplaneidxs = self.comm.bcast(self.warp.griddata.mirrorplaneidxs)
+            self.warp.griddata.rotplaneidxs = self.comm.bcast(self.warp.griddata.rotplaneidxs)
 
             # We only want to set the mirror plane as the symmetry plane in the
             # fortran layer.  This "tricks" the mesh warping algorithm so that
@@ -1325,6 +1304,13 @@ class USMesh(BaseSolver):
             self.warp.gridinput.evalmode = self.warp.gridinput.eval_fast
         elif self.getOption("evalMode") == "exact":
             self.warp.gridinput.evalmode = self.warp.gridinput.eval_exact
+
+        if self.getOption("axiSymmAngle") != 0.0:
+            angle = self.getOption("axiSymmAngle")
+            self.warp.griddata.axisymmangle = angle * (np.pi / 180.0)  # Convert to radians
+
+        if any([i != 0.0 for i in self.getOption("axiSymmAxis")]):
+            self.warp.griddata.axisymmaxis = np.array(self.getOption("axiSymmAxis"), self.dtype)
 
     def _processFortranStringArray(self, strArray):
         """Getting arrays of strings out of Fortran can be kinda nasty. This
