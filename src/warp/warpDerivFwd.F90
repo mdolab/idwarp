@@ -117,7 +117,7 @@ subroutine warpDerivFwd(Xsdot, cDof, Xvdot, meshDOF)
 
     ! Copy and rotate the seeds if we have axisymmetry
     if (axiSymm) then
-        call copyRotateVolumeSeeds()
+        call copyRotateVolumeCoordinates_d()
     end if
 
     call VecGetArrayF90(dXv, XvPtrd, ierr)
@@ -127,6 +127,9 @@ subroutine warpDerivFwd(Xsdot, cDof, Xvdot, meshDOF)
     do i = 1, meshDOF
         XvDot(i) = XvPtrd(i)
     end do
+
+    call VecRestoreArrayF90(dXv, XvPtrd, ierr)
+    call EChk(ierr, __FILE__, __LINE__)
 
 #endif
 end subroutine warpDerivFwd

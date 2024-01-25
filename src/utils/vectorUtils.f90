@@ -115,9 +115,10 @@ subroutine getRotationMatrixAngleAxis(angle, axis, Mi)
 
     ! Working variables
     real(kind=realType), dimension(3, 3) :: A, C
-    real(kind=realType) :: overNorm, axisNorm(3)
+    real(kind=realType) :: overNorm, axisNorm(3), axisMag
 
-    overNorm = 1 / norm2(axis)
+    call getMag(axis, axisMag)
+    overNorm = 1 / axisMag
     axisNorm = axis * overNorm
 
     ! Compute the rotation matrix
