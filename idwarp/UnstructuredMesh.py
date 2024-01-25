@@ -938,7 +938,6 @@ class USMesh(BaseSolver):
 
                 # We need the information for all symm planes for axisymmetric warping
                 planes, _ = self._getSymmetryPlanesFromGeometry()
-                print("num planes: ", len(planes))
                 uniquePlanes = self._getUniquePlanes(planes)
 
                 # Should only have two symmetry planes for an axisymm mesh
