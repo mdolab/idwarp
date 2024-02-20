@@ -123,7 +123,7 @@ class USMesh(BaseSolver):
 
             if bocoTypes is not None:
                 self.bocoTypes.update(bocoTypes)
-                self.warp.griddata.axisymm = True if 2 in bocoTypes else False
+                self.warp.griddata.axisymm = True if 2 in bocoTypes or 17 in bocoTypes else False
             else:
                 self.warp.griddata.axisymm = False
         elif self.fileType == "OpenFOAM":
