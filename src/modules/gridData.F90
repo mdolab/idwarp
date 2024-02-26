@@ -64,9 +64,14 @@ module gridData
     logical :: axiSymm = .false.
     real(kind=realType) :: axiSymmAngle
     real(kind=realType) :: axiSymmAxis(3)
-    integer(kind=intType), dimension(2) :: mirrorPlaneIdxs
-    integer(kind=intType), dimension(2) :: rotPlaneIdxs
+    character(len=maxStringLen) :: mirrorFamily
 
+contains
+
+    subroutine setMirrorFamily(famName)
+        character(len=*), intent(in) :: famName
+        mirrorFamily = famName
+    end subroutine setMirrorFamily
 end module gridData
 
 module plot3dSurface

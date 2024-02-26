@@ -169,8 +169,10 @@ python module libidwarp ! in
          logical, optional :: axisymm=.false.
          real(kind=realtype) :: axisymmangle
          real(kind=realtype) dimension(3) :: axisymmaxis
-         integer(kind=inttype) dimension(2) :: mirrorplaneidxs
-         integer(kind=inttype) dimension(2) :: rotplaneidxs
+
+         subroutine setmirrorfamily(famname) ! in :idwarp:../modules/gridData.f90
+           character*(*) intent(in) :: famname
+         end subroutine setmirrorfamily
        end module griddata
 
        module cgnsgrid

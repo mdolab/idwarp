@@ -21,23 +21,37 @@ History
 -------
     v. 1.0 - Initial Class Creation (CAM, 2014)
 """
+
 # =============================================================================
 # Imports
 # =============================================================================
 import os
 import shutil
 import warnings
+from dataclasses import dataclass
 
 import numpy as np
 from baseclasses import BaseSolver
 from baseclasses.utils import Error
 from mpi4py import MPI
+from numpy.typing import ArrayLike
 
 from .MExt import MExt
 
 # =============================================================================
 # UnstructuredMesh class
 # =============================================================================
+
+
+@dataclass(eq=True, unsafe_hash=True, frozen=True)
+class MeshPatch:
+    idxStart: int
+    idxEnd: int
+    point: ArrayLike
+    normal: ArrayLike
+    nodeSize: int
+    cellSize: int
+    patchName: str
 
 
 class USMesh(BaseSolver):
@@ -796,7 +810,7 @@ class USMesh(BaseSolver):
     def _getSymmetryPlanesFromGeometry(self):
         fullPatchNames, fullConn, fullPts = self._getFullPatchData()
         symmFamilies = self._getSymmetryFamilies(fullPatchNames)
-        planes = []
+        symmPatches = []
         usedFams = set()
 
         fullPatchSizes = self.warp.cgnsgrid.surfacesizes.T
@@ -804,6 +818,7 @@ class USMesh(BaseSolver):
         curNodeIndex = 0
         curCellIndex = 0
         curOffset = 0
+
         for i, patchName in enumerate(fullPatchNames):
             # Get the node and cell sizes
             curNodeSize = fullPatchSizes[i][0] * fullPatchSizes[i][1]
@@ -819,17 +834,14 @@ class USMesh(BaseSolver):
                 conn = conn1 - conn2 + 1
 
                 idxStart = curNodeIndex
-                idxEnd = curNodeIndex + curNodeSize * 3
+                idxEnd = idxStart + curNodeSize * 3
                 pts = fullPts[curNodeIndex : curNodeIndex + curNodeSize * 3]
                 avgNorm = self.warp.averagenormal(pts, conn, 4 * np.ones(curCellSize, "intc"))
 
-                # For axisymmetric mesh warping we need to store the start and
-                # end indices of the pts for this symm patch.  These are in
-                # the warp grid indexing.
-                if self.warp.griddata.axisymm:
-                    planes.append([pts[:3], avgNorm, patchName, (idxStart, idxEnd)])
-                else:
-                    planes.append([pts[:3], avgNorm])
+                # Decode patchName if it's a byte to convert it to a string
+                patchName = patchName.decode("utf-8") if isinstance(patchName, bytes) else patchName
+                patch = MeshPatch(idxStart, idxEnd, pts[:3], avgNorm, curNodeSize, curCellSize, patchName)
+                symmPatches.append(patch)
             else:
                 curOffset += curNodeSize
 
@@ -838,7 +850,7 @@ class USMesh(BaseSolver):
 
         self._checkUsedFamilies(usedFams, symmFamilies)
 
-        return planes, usedFams
+        return symmPatches, usedFams
 
     def _checkUsedFamilies(self, usedFams, symmFamilies):
         if usedFams < symmFamilies:
@@ -912,8 +924,7 @@ class USMesh(BaseSolver):
             # Initialize these variables on all procs
             pts = []
             normals = []
-            mirrorPts = []
-            mirrorNormal = []
+            mirrorFamName = None
             if self.comm.rank == 0:
                 if self.getOption("symmetryPlanes") is not None:
                     raise Error(
@@ -937,40 +948,34 @@ class USMesh(BaseSolver):
                     raise Error("Must specify an axiMirrorSurface for axisymmetric mesh warping.")
 
                 # We need the information for all symm planes for axisymmetric warping
-                planes, _ = self._getSymmetryPlanesFromGeometry()
-                uniquePlanes = self._getUniquePlanes(planes)
+                symmPatches, usedFams = self._getSymmetryPlanesFromGeometry()
 
                 # Should only have two symmetry planes for an axisymm mesh
-                if len(uniquePlanes) != 2:
+                if len(usedFams) != 2:
                     raise Error("Could not detect 2 unique symmetry planes for an axisymmetric mesh.")
 
-                # Get the two symmetry planes
-                plane1 = uniquePlanes[0]
-                plane2 = uniquePlanes[1]
+                mirrorPatches = [patch for patch in symmPatches if patch.patchName == mirrorFamName]
+                rotPatches = [patch for patch in symmPatches if patch.patchName != mirrorFamName]
 
-                self._printSymmetryPlanes([plane1[0], plane2[0]], [plane1[1], plane2[1]])
+                # Get the first two patches to represent the symmetry planes
+                plane1 = mirrorPatches[0]
+                plane2 = rotPatches[0]
 
-                if plane1[2] == mirrorFamName:
-                    mirrorPts = plane1[0]
-                    mirrorNormal = plane1[1]
-                    self.warp.griddata.rotplaneidxs = np.array(plane2[3]) + 1
-                    self.warp.griddata.mirrorplaneidxs = np.array(plane1[3]) + 1
-                elif plane2[2] == mirrorFamName:
-                    mirrorPts = plane2[0]
-                    mirrorNormal = plane2[1]
-                    self.warp.griddata.rotplaneidxs = np.array(plane1[3]) + 1
-                    self.warp.griddata.mirrorplaneidxs = np.array(plane2[3]) + 1
+                pts.append(plane1.point)
+                normals.append(plane1.normal)
 
-            # Broadcast the mirror and rotated plane start/end indices to all procs
-            self.warp.griddata.mirrorplaneidxs = self.comm.bcast(self.warp.griddata.mirrorplaneidxs)
-            self.warp.griddata.rotplaneidxs = self.comm.bcast(self.warp.griddata.rotplaneidxs)
+                self._printSymmetryPlanes([plane1.point, plane2.point], [plane1.normal, plane2.normal])
+
+            # Broadcast the mirror family name to all procs
+            mirrorFamName = self.comm.bcast(mirrorFamName)
+            self.warp.griddata.setmirrorfamily(mirrorFamName)
 
             # We only want to set the mirror plane as the symmetry plane in the
             # fortran layer.  This "tricks" the mesh warping algorithm so that
             # the mirroring will get equal weights to preserve the symmetry plane
             # warping.
-            pts = self.comm.bcast(np.array([mirrorPts]))
-            normals = self.comm.bcast(np.array([mirrorNormal]))
+            pts = self.comm.bcast(np.array(pts))
+            normals = self.comm.bcast(np.array(normals))
             axiPlane = self.getOption("axiSymmPlane")
             if axiPlane is None:
                 raise Error(
@@ -978,8 +983,7 @@ class USMesh(BaseSolver):
                     "'axiSymmPlane' option to perform axisymmetric mesh warping."
                 )
 
-            # We also need to set a "phantom" plane that preserves zero-warping
-            # along the axisymmetric wedge BC
+            # Set a "phantom" plane that preserves zero-warping along the degenerate line BC
             pts = np.vstack((pts, axiPlane[0]))
             normals = np.vstack((normals, axiPlane[1]))
 
