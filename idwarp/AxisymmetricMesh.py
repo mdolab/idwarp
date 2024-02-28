@@ -94,6 +94,7 @@ class AxisymmetricMesh(BaseSolver):
             # General options
             "gridFile": [(str, type(None)), None],
             "fileType": [str, ["CGNS"]],
+            "specifiedSurfaces": [(list, type(None)), None],
             "aExp": [float, 3.0],
             "bExp": [float, 5.0],
             "LdefFact": [float, 1.0],
