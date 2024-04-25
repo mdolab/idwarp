@@ -108,7 +108,7 @@ class AxisymmetricMesh(BaseSolver):
             "restartFile": [(str, type(None)), None],
             "bucketSize": [int, 8],
             # Axisymmetric only options
-            "axiSymmetric": [bool, False],
+            "axiSymmetric": [bool, True],
             "axiAngle": [float, 0.0],
             "axiAxis": [list, [1.0, 0.0, 0.0]],
             "axiPlane": [(list, type(None)), None],
