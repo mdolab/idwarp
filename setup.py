@@ -30,8 +30,8 @@ setup(
     ],
     package_data={"idwarp": ["*.so"]},
     install_requires=[
-        "numpy>=1.16",
-        "mpi4py>=3.0",
+        "numpy>=1.21",
+        "mpi4py>=3.1.5",
         "mdolab-baseclasses>=1.4",
     ],
     extras_require={
