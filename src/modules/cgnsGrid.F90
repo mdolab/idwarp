@@ -45,6 +45,9 @@ module cgnsGrid
     ! List of the zones
     type(zoneDataType), dimension(:), allocatable :: zones
 
+    ! All BC types (Need this for axisymmetric meshes)
+    integer(kind=intType), dimension(:), allocatable :: bocoTypes
+
     ! Deduced information of the surfaces
     real(kind=realType), dimension(:), allocatable :: surfacePoints
     logical, dimension(:), allocatable :: surfaceIsWall

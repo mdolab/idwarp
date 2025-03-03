@@ -11,6 +11,7 @@ include ${RULES_FILE}
 vpath %.o $(OBJDIR)
 
 FILES_TO_COMPLEXIFY = \
+	axisymm.F90\
 	getdXs.F90\
 	getElementProps.F90\
 	getSurfaceCoordinates.F90\

@@ -1,0 +1,476 @@
+subroutine copyRotateVolumeCoordinates()
+    use precision
+    use gridData
+    use cgnsGrid
+    implicit none
+
+    ! Working variables
+    integer(kind=intType) :: i, j, k, ii, jj, istart, iend, ierr, iiLocal
+    integer(kind=intType) :: iZone, nZones, iBoco, ptRange(3, 2), rotDir, iPlane
+    integer(kind=intType) :: iNode, dir1, dir2, rotOffset, nNodes, mirrorIdx
+    integer(kind=intType), dimension(:), allocatable :: insertIdxs
+    real(kind=realType) :: Mi(3, 3), coords(3), rotCoords(3)
+    real(kind=realType), dimension(:), allocatable :: insertCoords
+    real(kind=realType), dimension(:), pointer :: coordsLocal
+
+    nZones = size(zones)
+
+    ! Get the rotation matrix
+    call getRotationMatrixAngleAxis(axiSymmAngle, axiSymmAxis, Mi)
+
+    ! Get the range of the volume nodes on this proc
+    call VecGetOwnershipRange(Xv, istart, iend, ierr)
+    istart = istart + 1  ! Convert to 1-based indexing
+    call EChk(ierr, __FILE__, __LINE__)
+
+    ! Get the local array of coordinates
+    call VecGetArrayF90(Xv, coordsLocal, ierr)
+    call EChk(ierr, __FILE__, __LINE__)
+
+    ii = 0
+    jj = 0
+    ! Loop over the zones in the grid
+    zoneLoop: do iZone = 1, nZones
+        rotDir = 0 ! Reset the rotation direction
+
+        ! Loop over the BCs to see if there is a mirror plane BC
+        bocoLoop: do iBoco = 1, size(zones(iZone)%bocos)
+            ! Check if the BCs for this zone contain the mirror family
+            if (zones(iZone)%bocos(iBoco)%family .eq. mirrorFamily) then
+                ! Determine the rotation direction
+                ! This is the direction in which the zone is one cell wide
+                ! The point range for the BC will be equal in this direction
+                ! signifying that the zone is one cell wide in this direction
+                ptRange = zones(iZone)%bocos(iBoco)%ptRange
+                if (ptRange(1, 1) == ptRange(1, 2)) then
+                    mirrorIdx = ptRange(1, 1)
+                    rotDir = 1 ! i-direction
+                else if (ptRange(2, 1) == ptRange(2, 2)) then
+                    mirrorIdx = ptRange(2, 1)
+                    rotDir = 2 ! j-direction
+                else if (ptRange(3, 1) == ptRange(3, 2)) then
+                    mirrorIdx = ptRange(3, 1)
+                    rotDir = 3 ! k-direction
+                end if
+            end if
+        end do bocoLoop
+
+        if (rotDir == 0) then
+            ! No mirror plane BC found, skip this zone
+            cycle zoneLoop
+        end if
+
+        ! Determine the plane directions to loop over and set the rotation
+        ! plane offset (These come from the loop structure in readStructuredCGNS.F90)
+        if (rotDir == 1) then
+            ! The zone is one cell wide in the i-direction (final loop in readStructuredCGNS.F90)
+            dir1 = zones(izone)%jl
+            dir2 = zones(izone)%kl
+            rotOffset = 1
+        else if (rotDir == 2) then
+            ! The zone is one cell wide in the j-direction (second loop in readStructuredCGNS.F90)
+            dir1 = zones(iZone)%il
+            dir2 = zones(iZone)%kl
+            rotOffset = zones(iZone)%il
+        else if (rotDir == 3) then
+            ! The zone is one cell wide in the k-direction (first loop in readStructuredCGNS.F90)
+            dir1 = zones(izone)%il
+            dir2 = zones(izone)%jl
+            rotOffset = zones(iZone)%il * zones(iZone)%jl
+        end if
+
+        ! Number of nodes on a single plane for this zone
+        nNodes = dir1 * dir2
+
+        ! Loop over the nodes on both planes in this zone (mirror and rotated)
+        nodeLoop: do iNode = 1, 2 * nNodes
+            ii = ii + 1  ! Global index
+
+            if (3 * ii - 2 .lt. istart .or. 3 * ii .gt. iend) then
+                ! ii is not in the local ownership range so skip
+                cycle nodeLoop
+            end if
+
+            ! Determine if the node is on the first or second plane (1 or 0)
+            iPlane = mod((iNode - 1) / rotOffset + 1, 2)
+            if (mirrorIdx .eq. 1 .and. iPlane .eq. 1) then
+                ! Mirror plane is the first plane and we are on the mirror plane
+                jj = ii + rotOffset
+            else if (mirrorIdx .eq. 2 .and. iPlane .eq. 0) then
+                ! Mirror plane is the second plane and we are on the mirror plane
+                jj = ii - rotOffset
+            else
+                ! This node is on the rot plane so skip
+                cycle nodeLoop
+            end if
+
+            ! Adjust ii to be in the local indexing
+            iiLocal = 3 * ii - istart + 1
+
+            ! Copy the x, y, z coordinates
+            coords(1) = coordsLocal(iiLocal - 2) ! x
+            coords(2) = coordsLocal(iiLocal - 1) ! y
+            coords(3) = coordsLocal(iiLocal)     ! z
+
+            ! Apply the rotation
+            rotCoords = matmul(Mi, coords)
+
+            ! Add the rotated coords to the array of coords to insert
+            ! into the global vector
+            if (.not. allocated(insertCoords)) then
+                allocate (insertCoords(3))
+                insertCoords = rotCoords
+            else
+                insertCoords = [insertCoords, rotCoords]
+            end if
+
+            ! Add the index to the array of indices to insert
+            ! into the global vector
+            if (.not. allocated(insertIdxs)) then
+                allocate (insertIdxs(3))
+                insertIdxs = (/3 * jj - 2, 3 * jj - 1, 3 * jj/)
+            else
+                insertIdxs = [insertIdxs, (/3 * jj - 2, 3 * jj - 1, 3 * jj/)]
+            end if
+
+        end do nodeLoop
+
+    end do zoneLoop
+
+    ! Insert the rotated coordinates into the global vector
+    ! We only do this collective communication once at the end if insertCoords is allocated
+    if (allocated(insertCoords)) then
+        call VecSetValues(Xv, size(insertCoords), insertIdxs - 1, insertCoords, INSERT_VALUES, ierr)
+        call EChk(ierr, __FILE__, __LINE__)
+    end if
+
+    ! Need to call VecAssemblyBegin/End
+    call VecAssemblyBegin(Xv, ierr)
+    call EChk(ierr, __FILE__, __LINE__)
+    call VecAssemblyEnd(Xv, ierr)
+    call EChk(ierr, __FILE__, __LINE__)
+
+    ! Restore the array to deallocate the coordsLocal pointer
+    call VecRestoreArrayF90(Xv, coordsLocal, ierr)
+    call EChk(ierr, __FILE__, __LINE__)
+
+end subroutine copyRotateVolumeCoordinates
+
+subroutine copyRotateVolumeCoordinates_d()
+    use precision
+    use gridData
+    use cgnsGrid
+    implicit none
+
+    ! Working variables
+    integer(kind=intType) :: i, j, k, ii, jj, istart, iend, ierr, iiLocal
+    integer(kind=intType) :: iZone, nZones, iBoco, ptRange(3, 2), rotDir, iPlane
+    integer(kind=intType) :: iNode, dir1, dir2, rotOffset, nNodes, mirrorIdx
+    integer(kind=intType), dimension(:), allocatable :: insertIdxs
+    real(kind=realType) :: Mi(3, 3), coords_d(3), rotCoords_d(3)
+    real(kind=realType), dimension(:), allocatable :: insertCoords_d
+    real(kind=realType), dimension(:), pointer :: coordsLocal_d
+
+    nZones = size(zones)
+
+    ! Get the rotation matrix
+    call getRotationMatrixAngleAxis(axiSymmAngle, axiSymmAxis, Mi)
+
+    ! Get the range of the volume nodes on this proc
+    call VecGetOwnershipRange(dXv, istart, iend, ierr)
+    istart = istart + 1  ! Convert to 1-based indexing
+    call EChk(ierr, __FILE__, __LINE__)
+
+    ! Get the local array of coordinates
+    call VecGetArrayF90(dXv, coordsLocal_d, ierr)
+    call EChk(ierr, __FILE__, __LINE__)
+
+    ii = 0
+    jj = 0
+    ! Loop over the zones in the grid
+    zoneLoop: do iZone = 1, nZones
+        rotDir = 0 ! Reset the rotation direction
+
+        ! Loop over the BCs to see if there is a mirror plane BC
+        bocoLoop: do iBoco = 1, size(zones(iZone)%bocos)
+            ! Check if the BCs for this zone contain the mirror family
+            if (zones(iZone)%bocos(iBoco)%family .eq. mirrorFamily) then
+                ! Determine the rotation direction
+                ! This is the direction in which the zone is one cell wide
+                ! The point range for the BC will be equal in this direction
+                ! signifying that the zone is one cell wide in this direction
+                ptRange = zones(iZone)%bocos(iBoco)%ptRange
+                if (ptRange(1, 1) == ptRange(1, 2)) then
+                    mirrorIdx = ptRange(1, 1)
+                    rotDir = 1 ! i-direction
+                else if (ptRange(2, 1) == ptRange(2, 2)) then
+                    mirrorIdx = ptRange(2, 1)
+                    rotDir = 2 ! j-direction
+                else if (ptRange(3, 1) == ptRange(3, 2)) then
+                    mirrorIdx = ptRange(3, 1)
+                    rotDir = 3 ! k-direction
+                end if
+            end if
+        end do bocoLoop
+
+        if (rotDir == 0) then
+            ! No mirror plane BC found, skip this zone
+            cycle zoneLoop
+        end if
+
+        ! Determine the plane directions to loop over and set the rotation
+        ! plane offset (These come from the loop structure in readStructuredCGNS.F90)
+        if (rotDir == 1) then
+            ! The zone is one cell wide in the i-direction (final loop in readStructuredCGNS.F90)
+            dir1 = zones(izone)%jl
+            dir2 = zones(izone)%kl
+            rotOffset = 1
+        else if (rotDir == 2) then
+            ! The zone is one cell wide in the j-direction (second loop in readStructuredCGNS.F90)
+            dir1 = zones(iZone)%il
+            dir2 = zones(iZone)%kl
+            rotOffset = zones(iZone)%il
+        else if (rotDir == 3) then
+            ! The zone is one cell wide in the k-direction (first loop in readStructuredCGNS.F90)
+            dir1 = zones(izone)%il
+            dir2 = zones(izone)%jl
+            rotOffset = zones(iZone)%il * zones(iZone)%jl
+        end if
+
+        ! Number of nodes on a single plane for this zone
+        nNodes = dir1 * dir2
+
+        ! Loop over the nodes on both planes in this zone (mirror and rotated)
+        nodeLoop: do iNode = 1, 2 * nNodes
+            ii = ii + 1  ! Global index
+
+            if (3 * ii - 2 .lt. istart .or. 3 * ii .gt. iend) then
+                ! ii is not in the local ownership range so skip
+                cycle nodeLoop
+            end if
+
+            ! Determine if the node is on the mirror plane or the rotated plane (1 or 0)
+            iPlane = mod((iNode - 1) / rotOffset + 1, 2)
+            if (mirrorIdx .eq. 1 .and. iPlane .eq. 1) then
+                ! Mirror plane is the first plane and we are on the mirror plane
+                jj = ii + rotOffset
+            else if (mirrorIdx .eq. 2 .and. iPlane .eq. 0) then
+                ! Mirror plane is the second plane and we are on the mirror plane
+                jj = ii - rotOffset
+            else
+                ! This node is on the rot plane so skip
+                cycle nodeLoop
+            end if
+
+            ! Adjust ii to be in the local indexing
+            iiLocal = 3 * ii - istart + 1
+
+            ! Copy the x, y, z coordinates
+            coords_d(1) = coordsLocal_d(iiLocal - 2) ! x
+            coords_d(2) = coordsLocal_d(iiLocal - 1) ! y
+            coords_d(3) = coordsLocal_d(iiLocal)     ! z
+
+            ! Apply the rotation
+            rotCoords_d = matmul(Mi, coords_d)
+
+            ! Add the rotated coords to the array of coords to insert
+            ! into the global vector
+            if (.not. allocated(insertCoords_d)) then
+                allocate (insertCoords_d(3))
+                insertCoords_d = rotCoords_d
+            else
+                insertCoords_d = [insertCoords_d, rotCoords_d]
+            end if
+
+            ! Add the index to the array of indices to insert
+            ! into the global vector
+            if (.not. allocated(insertIdxs)) then
+                allocate (insertIdxs(3))
+                insertIdxs = (/3 * jj - 2, 3 * jj - 1, 3 * jj/)
+            else
+                insertIdxs = [insertIdxs, (/3 * jj - 2, 3 * jj - 1, 3 * jj/)]
+            end if
+
+        end do nodeLoop
+
+    end do zoneLoop
+
+    ! Insert the rotated coordinates into the global vector
+    ! We only do this collective communication once at the end if insertCoords is allocated
+    if (allocated(insertCoords_d)) then
+        call VecSetValues(dXv, size(insertCoords_d), insertIdxs - 1, insertCoords_d, INSERT_VALUES, ierr)
+        call EChk(ierr, __FILE__, __LINE__)
+    end if
+
+    ! Need to call VecAssemblyBegin/End
+    call VecAssemblyBegin(dXv, ierr)
+    call EChk(ierr, __FILE__, __LINE__)
+    call VecAssemblyEnd(dXv, ierr)
+    call EChk(ierr, __FILE__, __LINE__)
+
+    ! Restore the array to deallocate the coordsLocal pointer
+    call VecRestoreArrayF90(dXv, coordsLocal_d, ierr)
+    call EChk(ierr, __FILE__, __LINE__)
+
+end subroutine copyRotateVolumeCoordinates_d
+
+subroutine copyRotateVolumeCoordinates_b()
+    use precision
+    use gridData
+    use cgnsGrid
+    implicit none
+
+    ! Working variables
+    integer(kind=intType) :: i, j, k, ii, jj, istart, iend, ierr, iiLocal
+    integer(kind=intType) :: iZone, nZones, iBoco, ptRange(3, 2), rotDir, iPlane
+    integer(kind=intType) :: iNode, dir1, dir2, rotOffset, nNodes, mirrorIdx
+    integer(kind=intType), dimension(:), allocatable :: insertIdxs
+    real(kind=realType) :: Mi(3, 3), coords_b(3), rotCoords_b(3)
+    real(kind=realType), dimension(:), allocatable :: insertCoords_b
+    real(kind=realType), dimension(:), pointer :: coordsLocal_b
+
+    nZones = size(zones)
+
+    ! Get the rotation matrix for the reverse rotation (-angle)
+    call getRotationMatrixAngleAxis(-axiSymmAngle, axiSymmAxis, Mi)
+
+    ! Get the range of the volume nodes on this proc
+    call VecGetOwnershipRange(dXv, istart, iend, ierr)
+    istart = istart + 1  ! Convert to 1-based indexing
+    call EChk(ierr, __FILE__, __LINE__)
+
+    ! Get the local array of coordinates
+    call VecGetArrayF90(dXv, coordsLocal_b, ierr)
+    call EChk(ierr, __FILE__, __LINE__)
+
+    ii = 0
+    jj = 0
+    ! Loop over the zones in the grid
+    zoneLoop: do iZone = 1, nZones
+        rotDir = 0 ! Reset the rotation direction
+
+        ! Loop over the BCs to see if there is a mirror plane BC
+        bocoLoop: do iBoco = 1, size(zones(iZone)%bocos)
+            ! Check if the BCs for this zone contain the mirror family
+            if (zones(iZone)%bocos(iBoco)%family .eq. mirrorFamily) then
+                ! Determine the rotation direction
+                ! This is the direction in which the zone is one cell wide
+                ! The point range for the BC will be equal in this direction
+                ! signifying that the zone is one cell wide in this direction
+                ptRange = zones(iZone)%bocos(iBoco)%ptRange
+                if (ptRange(1, 1) == ptRange(1, 2)) then
+                    mirrorIdx = ptRange(1, 1)
+                    rotDir = 1 ! i-direction
+                else if (ptRange(2, 1) == ptRange(2, 2)) then
+                    mirrorIdx = ptRange(2, 1)
+                    rotDir = 2 ! j-direction
+                else if (ptRange(3, 1) == ptRange(3, 2)) then
+                    mirrorIdx = ptRange(3, 1)
+                    rotDir = 3 ! k-direction
+                end if
+            end if
+        end do bocoLoop
+
+        if (rotDir == 0) then
+            ! No mirror plane BC found, skip this zone
+            cycle zoneLoop
+        end if
+
+        ! Determine the plane directions to loop over and set the rotation
+        ! plane offset (These come from the loop structure in readStructuredCGNS.F90)
+        if (rotDir == 1) then
+            ! The zone is one cell wide in the i-direction (final loop in readStructuredCGNS.F90)
+            dir1 = zones(izone)%jl
+            dir2 = zones(izone)%kl
+            rotOffset = 1
+        else if (rotDir == 2) then
+            ! The zone is one cell wide in the j-direction (second loop in readStructuredCGNS.F90)
+            dir1 = zones(iZone)%il
+            dir2 = zones(iZone)%kl
+            rotOffset = zones(iZone)%il
+        else if (rotDir == 3) then
+            ! The zone is one cell wide in the k-direction (first loop in readStructuredCGNS.F90)
+            dir1 = zones(izone)%il
+            dir2 = zones(izone)%jl
+            rotOffset = zones(iZone)%il * zones(iZone)%jl
+        end if
+
+        ! Number of nodes on a single plane for this zone
+        nNodes = dir1 * dir2
+
+        ! Loop over the nodes on both planes in this zone (mirror and rotated)
+        nodeLoop: do iNode = 1, 2 * nNodes
+            ii = ii + 1  ! Global index
+
+            if (3 * ii - 2 .lt. istart .or. 3 * ii .gt. iend) then
+                ! ii is not in the local ownership range so skip
+                cycle nodeLoop
+            end if
+
+            ! Determine if the node is on plane 1 or 2 (1 or 0)
+            iPlane = mod((iNode - 1) / rotOffset + 1, 2)
+            if (mirrorIdx .eq. 2 .and. iPlane .eq. 1) then
+                ! On a rotated plane that is plane 1, offset forward
+                jj = ii + rotOffset
+            else if (mirrorIdx .eq. 1 .and. iPlane .eq. 0) then
+                ! On a rotated plane this is plane 0, offset backward
+                jj = ii - rotOffset
+            else
+                ! This node is on the rot plane so skip
+                cycle nodeLoop
+            end if
+
+            ! Adjust ii to be in the local indexing
+            iiLocal = 3 * ii - istart + 1
+
+            ! Copy the x, y, z coordinates
+            coords_b(1) = coordsLocal_b(iiLocal - 2) ! x
+            coords_b(2) = coordsLocal_b(iiLocal - 1) ! y
+            coords_b(3) = coordsLocal_b(iiLocal)     ! z
+
+            ! Set the local coords on the rotated plane to zero after the copy
+            coordsLocal_b(iiLocal - 2:iiLocal) = zero
+
+            ! Apply the rotation
+            rotCoords_b = matmul(Mi, coords_b)
+
+            ! Add the rotated coords to the array of coords to insert
+            ! into the global vector
+            if (.not. allocated(insertCoords_b)) then
+                allocate (insertCoords_b(3))
+                insertCoords_b = rotCoords_b
+            else
+                insertCoords_b = [insertCoords_b, rotCoords_b]
+            end if
+
+            ! Add the index to the array of indices to insert
+            ! into the global vector
+            if (.not. allocated(insertIdxs)) then
+                allocate (insertIdxs(3))
+                insertIdxs = (/3 * jj - 2, 3 * jj - 1, 3 * jj/)
+            else
+                insertIdxs = [insertIdxs, (/3 * jj - 2, 3 * jj - 1, 3 * jj/)]
+            end if
+
+        end do nodeLoop
+
+    end do zoneLoop
+
+    ! Add the rotated coordinates into the global vector
+    ! We only do this collective communication once at the end if insertCoords is allocated
+    if (allocated(insertCoords_b)) then
+        call VecSetValues(dXv, size(insertCoords_b), insertIdxs - 1, insertCoords_b, ADD_VALUES, ierr)
+        call EChk(ierr, __FILE__, __LINE__)
+    end if
+
+    ! Need to call VecAssemblyBegin/End
+    call VecAssemblyBegin(dXv, ierr)
+    call EChk(ierr, __FILE__, __LINE__)
+    call VecAssemblyEnd(dXv, ierr)
+    call EChk(ierr, __FILE__, __LINE__)
+
+    ! Restore the array to deallocate the coordsLocal pointer
+    call VecRestoreArrayF90(dXv, coordsLocal_b, ierr)
+    call EChk(ierr, __FILE__, __LINE__)
+
+end subroutine copyRotateVolumeCoordinates_b

@@ -1637,7 +1637,7 @@ Contains
             else
                 ! Now get the rotation Matrix
                 if (useRotations .and. .not. tp%isCorner(i)) then
-                    call getRotationMatrix3d(tp%normals0(:, i), tp%normals(:, i), tp%Mi(:, :, i))
+                    call getRotationMatrixVecVec(tp%normals0(:, i), tp%normals(:, i), tp%Mi(:, :, i))
                 else
                     ! Set identity
                     tp%Mi(:, :, i) = zero

@@ -48,6 +48,25 @@ subroutine warpDeriv(dXv_f, ndof_warp)
     ! dXv_f is the actual reverse seed so copy:
     XvPtrb(:) = dXv_f
 
+    if (axiSymm) then
+        call VecGetOwnershipRange(dXv, istart, iend, ierr)
+        call EChk(ierr, __FILE__, __LINE__)
+
+        call VecSetValues(dXv, ndof_warp, (/(j, j=istart, iend)/), dXv_f, INSERT_VALUES, ierr)
+        call EChk(ierr, __FILE__, __LINE__)
+
+        call VecAssemblyBegin(dXv, ierr)
+        call EChk(ierr, __FILE__, __LINE__)
+        call VecAssemblyEnd(dXv, ierr)
+        call EChk(ierr, __FILE__, __LINE__)
+
+        call copyRotateVolumeCoordinates_b()
+
+        ! Copy the rotated seeds into XvPtrb
+        call VecGetArrayF90(dXv, XvPtrb, ierr)
+        call EChk(ierr, __FILE__, __LINE__)
+    end if
+
     ! Zero the output surface derivative vector dXs
     call vecZeroEntries(dXs, ierr)
     call EChk(ierr, __FILE__, __LINE__)
@@ -75,7 +94,7 @@ subroutine warpDeriv(dXv_f, ndof_warp)
             ! Numerator derivative
             oden = one / denominator(j)
 
-            numb = xvptrb(3 * j - 2:3 * j) * oden
+            numb = XvPtrb(3 * j - 2:3 * j) * oden
             call getMirrorNumerator_b(numb, kk)
 
             if (evalMode == EVAL_EXACT) then
@@ -113,9 +132,12 @@ subroutine warpDeriv(dXv_f, ndof_warp)
     deallocate (dxssummed)
 
     ! Deallocate the extra space
-    deallocate (XvPtrb, XsPtrb)
+    deallocate (XsPtrb)
 
     ! Restore all the arrays
+    call VecRestoreArrayF90(dXv, XvPtrb, ierr)
+    call EChk(ierr, __FILE__, __LINE__)
+
     call VecRestoreArrayF90(XsLocal, XsPtr, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 

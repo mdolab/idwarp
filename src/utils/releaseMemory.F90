@@ -106,6 +106,11 @@ subroutine releaseMemory
         ! Delete zone array itself
         deallocate (zones)
 
+        ! Delete the boco types array
+        if (allocated(bocoTypes)) then
+            deallocate (bocoTypes)
+        end if
+
         ! Delete the surface-stuff in the cgns grid if necessary
         if (allocated(surfacePoints)) then
             deallocate (surfacePoints)

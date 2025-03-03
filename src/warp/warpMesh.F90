@@ -79,5 +79,10 @@ subroutine warpMesh()
     call VecRestoreArrayF90(Xv, XvPtr, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
+    ! If we have an axisymmetric mesh we need to rotate and copy
+    if (axiSymm) then
+        call copyRotateVolumeCoordinates()
+    end if
+
 end subroutine warpMesh
 

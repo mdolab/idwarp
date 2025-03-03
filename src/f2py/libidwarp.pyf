@@ -165,12 +165,20 @@ python module libidwarp ! in
          use constants
          integer(kind=inttype) :: warpmeshdof
          integer(kind=inttype) :: solvermeshdof
-         integer(Kind=inttype) :: commonmeshdof
+         integer(kind=inttype) :: commonmeshdof
+         logical, optional :: axisymm=.false.
+         real(kind=realtype) :: axisymmangle
+         real(kind=realtype) dimension(3) :: axisymmaxis
+
+         subroutine setmirrorfamily(famname) ! in :idwarp:../modules/gridData.f90
+           character*(*) intent(in) :: famname
+         end subroutine setmirrorfamily
        end module griddata
 
        module cgnsgrid
          real(kind=realtype), dimension(:), allocatable :: surfacepoints
          integer(kind=inttype), dimension(:), allocatable :: surfaceconn
+         integer(kind=inttype), dimension(:), allocatable :: bocoTypes
          logical, dimension(:), allocatable :: surfaceiswall
          logical, dimension(:), allocatable :: surfaceissymm
          integer(kind=inttype), dimension(:,:), allocatable :: surfacesizes
@@ -204,7 +212,6 @@ python module libidwarp ! in
        module kd_tree
          integer(kind=inttype) :: bucket_size
        end module kd_tree
-       
     end interface 
 #ifdef USE_COMPLEX
 end python module libidwarp_cs

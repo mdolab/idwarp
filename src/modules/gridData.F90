@@ -39,7 +39,7 @@ module gridData
 
 #ifndef USE_TAPENADE
     real(kind=realType), pointer, dimension(:) :: XsPtrb, XsPtrd
-    real(kind=realType), pointer, dimension(:) :: XvPtrb, XVPtrd
+    real(kind=realType), pointer, dimension(:) :: XvPtrb, XvPtrd
 #endif
 
     ! Sizes of the three different mesh sizes:
@@ -60,6 +60,18 @@ module gridData
     integer(kind=intType) :: nLoop
     real(kind=realType), dimension(:, :), allocatable :: symmPts, symmNormals
 
+    ! Axisymmetric Information
+    logical :: axiSymm = .false.
+    real(kind=realType) :: axiSymmAngle
+    real(kind=realType) :: axiSymmAxis(3)
+    character(len=maxStringLen) :: mirrorFamily
+
+contains
+
+    subroutine setMirrorFamily(famName)
+        character(len=*), intent(in) :: famName
+        mirrorFamily = famName
+    end subroutine setMirrorFamily
 end module gridData
 
 module plot3dSurface

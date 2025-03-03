@@ -28,8 +28,9 @@ subroutine readStructuredCGNS(cg)
 #endif
     integer(kind=intType), dimension(:), allocatable :: surfaceNodes, localSurfaceNodes
     integer(kind=intType), dimension(:, :), allocatable :: sizes
-    integer(kind=intType) :: nSurf, nodeCount, nConn, ni, nj, nx, ny, nz
+    integer(kind=intType) :: nSurf, nodeCount, nConn, ni, nj, nx, ny, nz, bocoIdx
     integer(kind=intType) :: status(MPI_STATUS_SIZE)
+    integer(kind=intType) :: nTotalBocos
     logical :: lowFace
 
     ! Only do reading on root proc:
@@ -66,6 +67,8 @@ subroutine readStructuredCGNS(cg)
 
         nSurf = 0
         nConn = 0
+        nTotalBocos = 0
+        bocoIdx = 0
         zoneLoop1: do iZone = 1, nZones
             call cg_zone_read_f(cg, base, iZone, zoneName, dims, ierr)
             if (ierr .eq. CG_ERROR) call cg_error_exit_f
@@ -77,6 +80,7 @@ subroutine readStructuredCGNS(cg)
             call cg_nbocos_f(cg, base, iZone, nbocos, ierr)
             if (ierr .eq. ERROR) call cg_error_exit_f
             allocate (zones(iZone)%bocos(nbocos))
+            nTotalBocos = nTotalBocos + nbocos
 
             bocoLoop1: do boco = 1, nbocos
 
@@ -137,6 +141,9 @@ subroutine readStructuredCGNS(cg)
         allocate (surfacePoints(3 * nSurf))
         allocate (surfaceConn(4 * nConn))
 
+        ! Allocate the flattened BC types storage
+        allocate (bocoTypes(nTotalBocos))
+
         ! Reset the counters here
         nSurf = 0
         offSet = 0
@@ -191,7 +198,9 @@ subroutine readStructuredCGNS(cg)
             end do
 
             bocoLoop2: do boco = 1, size(zones(iZone)%bocos)
+                bocoIdx = bocoIdx + 1
                 bocoType = zones(iZone)%bocos(boco)%type
+                bocoTypes(bocoIdx) = bocoType
                 pts = zones(iZone)%bocos(boco)%ptRange
 
                 ! Flag the surface nodes
@@ -284,13 +293,80 @@ subroutine readStructuredCGNS(cg)
         if (ierr .eq. CG_ERROR) call cg_error_exit_f
         deallocate (sizes)
     else
-        ! Allocate these to zero so we can just blindly dealloc later
+        !Allocate these to zero so we can just blindly dealloc later
         allocate (surfacePoints(0), surfaceConn(0))
     end if rootProc
 
     ! Communicate the total number of nodes to everyone
     call MPI_bcast(nNodes, 1, MPI_INTEGER, 0, warp_comm_world, ierr)
     call EChk(ierr, __FILE__, __LINE__)
+
+    ! For axisymm cases we need to communicate some of the zone data to every proc
+    axisymmetric: if (axisymm) then
+        ! Total number of zones
+        call MPI_bcast(nZones, 1, MPI_INTEGER, 0, warp_comm_world, ierr)
+        call EChk(ierr, __FILE__, __LINE__)
+
+        ! Allocate the zones
+        if (myid /= 0) then
+            allocate (zones(nZones))
+        end if
+
+        ! Communicate the zone data
+        do i = 1, nZones
+            ! Communicate the zone data
+            call MPI_bcast(zones(i)%il, 1, MPI_INTEGER, 0, warp_comm_world, ierr)
+            call EChk(ierr, __FILE__, __LINE__)
+            call MPI_bcast(zones(i)%jl, 1, MPI_INTEGER, 0, warp_comm_world, ierr)
+            call EChk(ierr, __FILE__, __LINE__)
+            call MPI_bcast(zones(i)%kl, 1, MPI_INTEGER, 0, warp_comm_world, ierr)
+            call EChk(ierr, __FILE__, __LINE__)
+            call MPI_bcast(zones(i)%name, maxCGNSNameLen, MPI_CHARACTER, 0, warp_comm_world, ierr)
+            call EChk(ierr, __FILE__, __LINE__)
+            call MPI_bcast(zones(i)%nVertices, 1, MPI_INTEGER, 0, warp_comm_world, ierr)
+            call EChk(ierr, __FILE__, __LINE__)
+            call MPI_bcast(zones(i)%nElements, 1, MPI_INTEGER, 0, warp_comm_world, ierr)
+            call EChk(ierr, __FILE__, __LINE__)
+
+            ! Get the number of bocos for this zone from the root proc
+            if (myID == 0) nbocos = size(zones(i)%bocos)
+
+            ! Communicate the number of bocos
+            call MPI_bcast(nbocos, 1, MPI_INTEGER, 0, warp_comm_world, ierr)
+            call EChk(ierr, __FILE__, __LINE__)
+
+            if (myid /= 0) then
+                allocate (zones(i)%bocos(nbocos))
+
+                ! Nullify section pointers since we won't have any for structured mesh
+                nullify (zones(i)%sections)
+            end if
+
+            do j = 1, nbocos
+                ! Communicate all boco data
+                call MPI_bcast(zones(i)%bocos(j)%name, maxCGNSNameLen, MPI_CHARACTER, 0, warp_comm_world, ierr)
+                call EChk(ierr, __FILE__, __LINE__)
+                call MPI_bcast(zones(i)%bocos(j)%type, 1, MPI_INTEGER, 0, warp_comm_world, ierr)
+                call EChk(ierr, __FILE__, __LINE__)
+                call MPI_bcast(zones(i)%bocos(j)%ptRange, 6, MPI_INTEGER, 0, warp_comm_world, ierr)
+                call EChk(ierr, __FILE__, __LINE__)
+                call MPI_bcast(zones(i)%bocos(j)%family, maxCGNSNameLen, MPI_CHARACTER, 0, warp_comm_world, ierr)
+                call EChk(ierr, __FILE__, __LINE__)
+                call MPI_bcast(zones(i)%bocos(j)%nBCElem, 1, MPI_INTEGER, 0, warp_comm_world, ierr)
+                call EChk(ierr, __FILE__, __LINE__)
+                call MPI_bcast(zones(i)%bocos(j)%nBCNodes, 1, MPI_INTEGER, 0, warp_comm_world, ierr)
+                call EChk(ierr, __FILE__, __LINE__)
+
+                ! Allocate empty data so we don't get errors trying to deallocate later
+                if (myid /= 0) then
+                    allocate (zones(i)%bocos(j)%BCElements(0))
+                    nullify (zones(i)%bocos(j)%elemPtr)
+                    nullify (zones(i)%bocos(j)%elemConn)
+                    allocate (zones(i)%bocos(j)%elemNodes(0, 0))
+                end if
+            end do
+        end do
+    end if axisymmetric
 
     rootProc2: if (myid == 0) then
 
