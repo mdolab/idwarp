@@ -28,7 +28,7 @@ subroutine getMag(V, mag)
 
 end subroutine getMag
 
-subroutine getRotationMatrix3d(v1, v2, Mi)
+subroutine getRotationMatrixVecVec(v1, v2, Mi)
     use precision
     use constants
     implicit none
@@ -100,4 +100,54 @@ subroutine getRotationMatrix3d(v1, v2, Mi)
 
     Mi = Mi + sin(angle) * A + (one - cos(angle)) * C
 
-end subroutine getRotationMatrix3d
+end subroutine getRotationMatrixVecVec
+
+subroutine getRotationMatrixAngleAxis(angle, axis, Mi)
+    use precision
+    use constants
+    implicit none
+
+    ! Input variables
+    real(kind=realType), intent(in) :: axis(3), angle
+
+    ! Output variables
+    real(kind=realType), intent(out) :: Mi(3, 3)
+
+    ! Working variables
+    real(kind=realType), dimension(3, 3) :: A, C
+    real(kind=realType) :: overNorm, axisNorm(3), axisMag
+
+    call getMag(axis, axisMag)
+    overNorm = 1 / axisMag
+    axisNorm = axis * overNorm
+
+    ! Compute the rotation matrix
+    A(1, 1) = zero
+    A(1, 2) = -axisNorm(3)
+    A(1, 3) = axisNorm(2)
+    A(2, 1) = axisNorm(3)
+    A(2, 2) = zero
+    A(2, 3) = -axisNorm(1)
+    A(3, 1) = -axisNorm(2)
+    A(3, 2) = axisNorm(1)
+    A(3, 3) = zero
+
+    !C = A*A
+    C(1, 1) = A(1, 1) * A(1, 1) + A(1, 2) * A(2, 1) + A(1, 3) * A(3, 1)
+    C(1, 2) = A(1, 1) * A(1, 2) + A(1, 2) * A(2, 2) + A(1, 3) * A(3, 2)
+    C(1, 3) = A(1, 1) * A(1, 3) + A(1, 2) * A(2, 3) + A(1, 3) * A(3, 3)
+    C(2, 1) = A(2, 1) * A(1, 1) + A(2, 2) * A(2, 1) + A(2, 3) * A(3, 1)
+    C(2, 2) = A(2, 1) * A(1, 2) + A(2, 2) * A(2, 2) + A(2, 3) * A(3, 2)
+    C(2, 3) = A(2, 1) * A(1, 3) + A(2, 2) * A(2, 3) + A(2, 3) * A(3, 3)
+    C(3, 1) = A(3, 1) * A(1, 1) + A(3, 2) * A(2, 1) + A(3, 3) * A(3, 1)
+    C(3, 2) = A(3, 1) * A(1, 2) + A(3, 2) * A(2, 2) + A(3, 3) * A(3, 2)
+    C(3, 3) = A(3, 1) * A(1, 3) + A(3, 2) * A(2, 3) + A(3, 3) * A(3, 3)
+
+    ! Rodrigues formula for the rotation matrix
+    Mi = zero
+    Mi(1, 1) = one
+    Mi(2, 2) = one
+    Mi(3, 3) = one
+
+    Mi = Mi + sin(angle) * A + (one - cos(angle)) * C
+end subroutine getRotationMatrixAngleAxis
