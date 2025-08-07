@@ -19,7 +19,8 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
     ! Working
     integer(kind=intType) :: nNodesTotal, ierr, iStart, iEnd, iProc
     integer(kind=intType) :: i, j, ii, kk
-    real(kind=realType), dimension(:), allocatable :: costs, procEndCosts, cumNodesProc
+    integer(kind=intType), pointer :: cumNodesProc(:)
+    real(kind=realType), dimension(:), allocatable :: costs, procEndCosts
     integer(kind=intType), dimension(:), allocatable :: procSplits, procSplitsLocal
     real(kind=realType), dimension(:), allocatable :: denominator0Copy
     real(kind=realtype) :: costOffset, totalCost, averageCost, c, tmp, r(3)
@@ -87,8 +88,9 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
     costs = zero
 
     ! Get the ownership ranges for common grid vector, we need that to
-    ! determine where to write things.
+    ! determine where to write things. Use zero-based indexing to match to rank
     allocate (cumNodesProc(0:nProc))
+    cumNodesProc = zero
 
     call VecGetOwnershipRanges(commonGridVec, cumNodesProc, ierr)
     call EChk(ierr, __FILE__, __LINE__)
