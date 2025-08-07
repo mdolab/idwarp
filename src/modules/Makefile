@@ -20,6 +20,7 @@ FF90_OBJECTS_3 = gridInput.o\
 		 communication.o\
 
 FF90_OBJECTS_4 = gridData.o\
+		 petscCompat.o\
 
 FF90_OBJECTS_5 = kd_tree.o\
 		 kd_tree2.o\

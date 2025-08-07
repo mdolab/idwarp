@@ -5,6 +5,7 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
     use communication
     use kd_tree
     use gridData
+    use petscCompat, only: compatVecGetArray, compatVecRestoreArray
     implicit none
 
     ! Input
@@ -75,7 +76,7 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
     ! 3. Load balance file name is supplied and exists. Load and check a few
     !    If they don't match, do regular dry run
 
-    call VecGetArrayF90(commonGridVec, Xv0Ptr, ierr)
+    call compatVecGetArray(commonGridVec, Xv0Ptr, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
     ! Allocate the denominator estimate and costs. These may be loaded
@@ -312,7 +313,7 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
     end if
 
     ! Don't forget to restore arrays!
-    call VecRestoreArrayF90(commonGridVec, Xv0Ptr, ierr)
+    call compatVecRestoreArray(commonGridVec, Xv0Ptr, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
     ! Now put the costs in cumulative format

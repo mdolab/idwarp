@@ -1552,6 +1552,7 @@ Contains
         use gridInput
         use gridData
         use communication
+        use petscCompat, only: compatVecGetArray, compatVecRestoreArray
         implicit none
 
         Type(tree_master_record), Pointer :: tp
@@ -1565,14 +1566,14 @@ Contains
         call EChk(ierr, __FILE__, __LINE__)
 
         ! Extract a pointer from Xs to use in the main routine
-        call VecGetArrayF90(XsLocal, XsPtr, ierr)
+        call compatVecGetArray(XsLocal, XsPtr, ierr)
         call EChk(ierr, __FILE__, __LINE__)
 
         call computeNodalProperties(tp, .True.)
         call determineCorners(tp)
 
         ! Restore all the arrays
-        call VecRestoreArrayF90(XsLocal, XsPtr, ierr)
+        call compatVecRestoreArray(XsLocal, XsPtr, ierr)
         call EChk(ierr, __FILE__, __LINE__)
 
     end subroutine initNodalProperties

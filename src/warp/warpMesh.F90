@@ -8,6 +8,7 @@ subroutine warpMesh()
     use gridData
     use gridInput
     use kd_tree
+    use petscCompat, only: compatVecGetArray, compatVecRestoreArray
 
     implicit none
 
@@ -24,14 +25,14 @@ subroutine warpMesh()
     call EChk(ierr, __FILE__, __LINE__)
 
     ! Extract a pointer from Xs to use in the main routine
-    call VecGetArrayF90(XsLocal, XsPtr, ierr)
+    call compatVecGetArray(XsLocal, XsPtr, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
     ! Extract the pointers for the volume nodes that we wish to operate on
-    call VecGetArrayF90(Xv0, Xv0Ptr, ierr)
+    call compatVecGetArray(Xv0, Xv0Ptr, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
-    call VecGetArrayF90(Xv, XvPtr, ierr)
+    call compatVecGetArray(Xv, XvPtr, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
     nVol = size(XvPtr) / 3
@@ -70,13 +71,13 @@ subroutine warpMesh()
     end do updateLoop
 
     ! Restore all the arrays
-    call VecRestoreArrayF90(XsLocal, XsPtr, ierr)
+    call compatVecRestoreArray(XsLocal, XsPtr, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
-    call VecRestoreArrayF90(Xv0, Xv0Ptr, ierr)
+    call compatVecRestoreArray(Xv0, Xv0Ptr, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
-    call VecRestoreArrayF90(Xv, XvPtr, ierr)
+    call compatVecRestoreArray(Xv, XvPtr, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
 end subroutine warpMesh
