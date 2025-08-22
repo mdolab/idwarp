@@ -2,6 +2,11 @@ config/config.mk
 src/warp/warpingTapenade/*
 src/warp/temp_forward/*
 src/warp/temp_reverse/*
+
+# Ignore ruff and pre-commit config files
+ruff.toml
+.pre-commit-config.yaml
+
 *.so
 *.o
 *.pyc
