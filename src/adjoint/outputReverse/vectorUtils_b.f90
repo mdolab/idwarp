@@ -199,4 +199,3 @@
    vb(2) = vb(2) + 2*v(2)*tempb
    vb(3) = vb(3) + 2*v(3)*tempb
    END SUBROUTINE GETMAG_B
-   

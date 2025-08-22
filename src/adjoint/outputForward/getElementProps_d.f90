@@ -92,4 +92,3 @@
    normalb = (normalb-normal*result1b/result1)/result1
    normal = normal/result1
    END SUBROUTINE GETELEMENTPROPS_D
-   

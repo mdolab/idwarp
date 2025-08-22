@@ -5,6 +5,7 @@ src/warp/temp_reverse/*
 
 # Ignore ruff and pre-commit config files
 .pre-commit-config.yaml
+ruff.toml-global
 
 *.so
 *.o

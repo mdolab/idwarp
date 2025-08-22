@@ -21,6 +21,7 @@ History
 -------
     v. 1.0 - Initial Class Creation (JPJ, 2017)
 """
+
 # =============================================================================
 # Imports
 # =============================================================================
@@ -70,7 +71,7 @@ class MultiUSMesh(object):
 
         # Check if cs was imported correctly:
         if cs is None:
-            raise Error("cgns_utils could not be loaded correctly. MultiUSMesh " "requires cgns_utils to function.")
+            raise Error("cgns_utils could not be loaded correctly. MultiUSMesh requires cgns_utils to function.")
 
         # Assign communicator if we do not have one yet
         if comm is None:
@@ -78,7 +79,7 @@ class MultiUSMesh(object):
 
         # Check if warp has already been set by the complex version
         try:
-            self.warp
+            _ = self.warp
         except AttributeError:
             curDir = os.path.basename(os.path.dirname(os.path.realpath(__file__)))
             self.warp = MExt("libidwarp", curDir, debug=debug)._module
@@ -885,6 +886,7 @@ class MultiUSMesh(object):
 
     def __del__(self):
         """Release all the mesh warping memory. This should be called
-        automatically when the object is garbage collected."""
+        automatically when the object is garbage collected.
+        """
         for mesh in self.meshes:
             mesh.warp.releasememory()

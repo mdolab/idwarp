@@ -10,7 +10,7 @@ IDWarp
 =============
 
 ``IDWarp`` is a tool for performing mesh manipulation of 3-dimensional
-multi-block, overset and unstructured meshes. 
+multi-block, overset and unstructured meshes.
 
 .. toctree::
    :maxdepth: 2
@@ -34,4 +34,3 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-

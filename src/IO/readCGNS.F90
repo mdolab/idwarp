@@ -66,7 +66,7 @@ subroutine readCGNS(cgns_file)
             stop
         end if
 
-        call cg_nzones_f(cg, base, nZones, ierr); 
+        call cg_nzones_f(cg, base, nZones, ierr);
         if (ierr .eq. CG_ERROR) call cg_error_exit_f
         print *, '   -> Number of Zones:', nzones
 

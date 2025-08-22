@@ -61,4 +61,3 @@ subroutine setCommonVolumeCoordinates(gridNodes, nDOF)
     call EChk(ierr, __FILE__, __LINE__)
 
 end subroutine setCommonVolumeCoordinates
-
