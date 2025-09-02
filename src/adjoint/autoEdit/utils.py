@@ -26,7 +26,7 @@ def processFiles(EXT, DIR_ORI, DIR_MOD, LINE_ID, STR_OLD, STR_NEW, STR_REPLACE_A
                 print(f"\nParsing input file {file_object_ori.name}")
 
                 # open modified file in write mode
-                file_object_mod = open(os.path.join(DIR_ORI, f), "w")
+                file_object_mod = open(os.path.join(DIR_MOD, f), "w")
 
                 # read the original file, line-by-line
                 nEdits = len(LINE_ID)
