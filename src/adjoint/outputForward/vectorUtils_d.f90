@@ -174,3 +174,4 @@
    END IF
    mag = temp
    END SUBROUTINE GETMAG_D
+   
