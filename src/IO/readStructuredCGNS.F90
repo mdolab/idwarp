@@ -38,7 +38,7 @@ subroutine readStructuredCGNS(cg)
         ! Always the first base
         base = 1_intType
 
-        call cg_nzones_f(cg, base, nZones, ierr); 
+        call cg_nzones_f(cg, base, nZones, ierr);
         if (ierr .eq. CG_ERROR) call cg_error_exit_f
         allocate (zones(nZones))
 

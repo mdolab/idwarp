@@ -30,15 +30,15 @@ def eval_warp(handler, test_name, meshOptions, iscomplex):
 
             h = 1e-40
             mesh = USMesh_C(options=meshOptions, debug=True)
-        except ImportError:
-            raise unittest.SkipTest("Skipping because you do not have complex idwarp compiled")
+        except ImportError as err:
+            raise unittest.SkipTest("Skipping because you do not have complex idwarp compiled") from err
     else:
         try:
             from idwarp import libidwarp  # noqa: F401
 
             mesh = USMesh(options=meshOptions)
-        except ImportError:
-            raise unittest.SkipTest("Skipping because you do not have real idwarp compiled")
+        except ImportError as err:
+            raise unittest.SkipTest("Skipping because you do not have real idwarp compiled") from err
 
     # --- Extract Surface Coordinates ---
     coords0 = mesh.getSurfaceCoordinates()
@@ -149,8 +149,8 @@ class Test_USmesh(unittest.TestCase):
     def train_comesh(self, train=True):
         try:
             self.test_comesh(train=train)
-        except AttributeError:
-            raise unittest.SkipTest()
+        except AttributeError as err:
+            raise unittest.SkipTest() from err
 
     def test_comesh(self, train=False):
         ref_file = os.path.join(baseDir, f"ref/test_comesh{self.ref_app}.ref")
@@ -169,8 +169,8 @@ class Test_USmesh(unittest.TestCase):
     def train_omesh(self, train=True):
         try:
             self.test_omesh(train=train)
-        except AttributeError:
-            raise unittest.SkipTest()
+        except AttributeError as err:
+            raise unittest.SkipTest() from err
 
     def test_omesh(self, train=False):
         ref_file = os.path.join(baseDir, f"ref/test_omesh{self.ref_app}.ref")
@@ -189,8 +189,8 @@ class Test_USmesh(unittest.TestCase):
     def train_sym_mesh(self, train=True):
         try:
             self.test_sym_mesh(train=train)
-        except AttributeError:
-            raise unittest.SkipTest()
+        except AttributeError as err:
+            raise unittest.SkipTest() from err
 
     def test_sym_mesh(self, train=False):
         ref_file = os.path.join(baseDir, f"ref/test_sym_mesh{self.ref_app}.ref")
@@ -214,8 +214,8 @@ class Test_USmesh(unittest.TestCase):
     def train_inflate_cube(self, train=True):
         try:
             self.test_inflate_cube(train=train)
-        except AttributeError:
-            raise unittest.SkipTest()
+        except AttributeError as err:
+            raise unittest.SkipTest() from err
 
     def test_inflate_cube(self, train=False):
         ref_file = os.path.join(baseDir, f"ref/test_inflate_cube{self.ref_app}.ref")
