@@ -30,15 +30,15 @@ def eval_warp(handler, test_name, gridFile, optionsDict, isComplex, N_PROCS):
 
             h = 1e-200
             mesh = MultiUSMesh_C(gridFile, optionsDict)
-        except ImportError:
-            raise unittest.SkipTest("Skipping because you do not have complex idwarp compiled")
+        except ImportError as err:
+            raise unittest.SkipTest("Skipping because you do not have complex idwarp compiled") from err
     else:
         try:
             from idwarp import libidwarp  # noqa: F401
 
             mesh = MultiUSMesh(gridFile, optionsDict)
-        except ImportError:
-            raise unittest.SkipTest("Skipping because you do not have real idwarp compiled")
+        except ImportError as err:
+            raise unittest.SkipTest("Skipping because you do not have real idwarp compiled") from err
 
     # Get mesh data from JSON file to avoid needing ADflow for the test
     jsonFile = os.path.join(baseDir, "../input_files/onera_m6.json")

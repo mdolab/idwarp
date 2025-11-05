@@ -5,4 +5,4 @@ USMesh
 .. currentmodule:: idwarp.UnstructuredMesh
 
 .. autoclass:: idwarp.UnstructuredMesh.USMesh
-    :members: 
+    :members:

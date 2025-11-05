@@ -2,6 +2,17 @@ config/config.mk
 src/warp/warpingTapenade/*
 src/warp/temp_forward/*
 src/warp/temp_reverse/*
+
+# Ignore ruff and pre-commit config files
+.pre-commit-config.yaml
+ruff.toml-global
+
+# Ignore everything in the src_cs directory except the f2py makefile
+src_cs/
+!src_cs/f2py/Makefile
+src/f2py/libidwarp.pyf.autogen
+src/f2py/libidwarp-f2pywrappers2.f90
+
 *.so
 *.o
 *.pyc
@@ -12,6 +23,7 @@ src/warp/temp_reverse/*
 *.pyf
 *.cgns
 *.a
+*.f
 *.dat
 *.mk
 *.xyz
@@ -20,11 +32,6 @@ src/warp/temp_reverse/*
 *.lay
 *.plt
 *.html
-src_cs/f2py/libidwarp.pyf.autogen
-src/f2py/libidwarp.pyf.autogen
-src/f2py/libidwarp-f2pywrappers2.f90
-src_cs/f2py/libidwarp_cs-f2pywrappers2.f90
-src_cs/f2py/get_f2py.py
 idwarp.egg-info
 input_files/*/
 input_files/*.tar.gz

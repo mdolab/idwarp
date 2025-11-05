@@ -118,5 +118,4 @@ And finally to produce an updated grid file we can write the grid::
 
 The warped grid file 'warped.cgns' will contain all the boundary
 condition/connectivity/auxiliary information as the original cgns
-file. Only the coordinates are updated to their new positions. 
-
+file. Only the coordinates are updated to their new positions.

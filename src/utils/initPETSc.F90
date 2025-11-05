@@ -20,4 +20,3 @@ subroutine initPETSc(comm)
     call MPI_Comm_rank(warp_comm_world, myid, ierr)
 
 end subroutine initPETSc
-

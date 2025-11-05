@@ -36,7 +36,7 @@ default:
 	else make -f Makefile_CS warp;\
 	fi;
 
-dirs:	
+dirs:
 	mkdir -p obj_cs
 	mkdir -p mod_cs
 	@for subdir in $(SUBDIR_SRC) ; \
@@ -79,4 +79,3 @@ warp:
 	(cd lib_cs && make)
 	(cd src/f2py && make complexify)
 	(cd src_cs/f2py && make)
-

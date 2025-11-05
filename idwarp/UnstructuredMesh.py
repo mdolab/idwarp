@@ -21,6 +21,7 @@ History
 -------
     v. 1.0 - Initial Class Creation (CAM, 2014)
 """
+
 # =============================================================================
 # Imports
 # =============================================================================
@@ -89,7 +90,7 @@ class USMesh(BaseSolver):
         # Check if warp has already been set if this has been
         # inherited to complex version
         try:
-            self.warp
+            _ = self.warp
         except AttributeError:
             curDir = os.path.basename(os.path.dirname(os.path.realpath(__file__)))
             self.warp = MExt("libidwarp", curDir, debug=debug)._module
@@ -459,7 +460,8 @@ class USMesh(BaseSolver):
 
     def verifyWarpDeriv(self, dXv=None, solverVec=True, dofStart=0, dofEnd=10, h=1e-6, randomSeed=314):
         """Run an internal verification of the solid warping
-        derivatives"""
+        derivatives
+        """
 
         if dXv is None:
             np.random.seed(randomSeed)  # 'Random' seed to ensure runs are same
@@ -491,7 +493,7 @@ class USMesh(BaseSolver):
         """
         if self.fileType in ["CGNS", "PLOT3D"]:
             if fileName is None:
-                raise Error("fileName is not optional for writeGrid with " "gridType of CGNS or PLOT3D")
+                raise Error("fileName is not optional for writeGrid with gridType of CGNS or PLOT3D")
 
             if self.fileType == "CGNS":
                 # Copy the default and then write
@@ -519,7 +521,7 @@ class USMesh(BaseSolver):
             Filename to use. Should end in .dat for tecplot ascii file.
         """
         if not self.OFData:
-            raise ValueError("Cannot write OpenFOAM tecplot file since there is " "no OpenFOAM data present")
+            raise ValueError("Cannot write OpenFOAM tecplot file since there is no OpenFOAM data present")
 
         if self.comm.size == 1:
             f = open(fileName, "w")
@@ -1048,7 +1050,8 @@ class USMesh(BaseSolver):
 
     def _setMeshOptions(self):
         """Private function to set the options currently in
-        self.options to the corresponding place in Fortran"""
+        self.options to the corresponding place in Fortran
+        """
 
         self.warp.gridinput.ldeffact = self.getOption("LdefFact")
         self.warp.gridinput.alpha = self.getOption("alpha")
@@ -1067,7 +1070,8 @@ class USMesh(BaseSolver):
 
     def _processFortranStringArray(self, strArray):
         """Getting arrays of strings out of Fortran can be kinda nasty. This
-        takes the array and returns a nice python list of strings"""
+        takes the array and returns a nice python list of strings
+        """
         shp = strArray.shape
         arr = strArray.reshape((shp[1], shp[0]), order="F")
         tmp = []
@@ -1082,5 +1086,6 @@ class USMesh(BaseSolver):
 
     def __del__(self):
         """Release all the mesh warping memory. This should be called
-        automatically when the object is garbage collected."""
+        automatically when the object is garbage collected.
+        """
         self.warp.releasememory()

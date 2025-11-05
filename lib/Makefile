@@ -21,4 +21,3 @@ makelib:
 	@echo
 	@echo "        library libidwarp.a created."
 	@echo
-

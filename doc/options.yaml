@@ -19,7 +19,7 @@ specifiedSurfaces:
     If a non-None value is given it should be list of families the use wants to use to generate the surface definition.
 
 symmetrySurfaces:
-  desc: > 
+  desc: >
     This option is used to specify which surfaces are used to determine symmetry planes.
     If None, IDwarp will automatically use the ``BCSymmetryPlane`` conditions in the CGNS files.
     This option is only valid for structured CGNS files.
@@ -62,9 +62,9 @@ alpha:
     Typical values are between 0.1 and 0.3.
     A lower value prioritizes full blending and may result in quality reduction in the near-wall boundary layer.
     Higher values will tend maintain near wall quality better, but may give unacceptable skewness in the transition region between where ``bExp`` is most significant to where ``aExp`` is more significant.
-    
+
 errTol:
-  desc: > 
+  desc: >
     This is the relative tolerance used for the fast sum approximation.
     A larger tolerance is faster, but may result in small mesh imperfections away from the surface.
     If mesh edge lengths grow uniformly away from the body, small "errors" in the node position are not an issue.
@@ -76,7 +76,7 @@ evalMode:
   exact: This is typically used only for debugging or comparison purposes.
 
 symmTol:
-  desc: > 
+  desc: >
     Possibly deprecated option.
     IDWarp currently uses the BC info in the CGNS meshes to figure out which nodes are on the symmetry plane.
     This option seems to be a leftover from older implementations.

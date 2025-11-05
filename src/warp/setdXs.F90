@@ -31,4 +31,3 @@ subroutine setdXs(indices, idof, in_vec, ndof)
     call EChk(ierr, __FILE__, __LINE__)
 
 end subroutine setdXs
-
