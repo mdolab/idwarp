@@ -5,7 +5,8 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
     use communication
     use kd_tree
     use gridData
-    use petscCompat, only: compatVecGetArray, compatVecRestoreArray
+    use petscCompat, only: VecGetArrayCompat, VecRestoreArrayCompat, &
+                           VecGetOwnershipRangesCompat, VecRestoreOwnershipRangesCompat
     implicit none
 
     ! Input
@@ -20,6 +21,7 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
     integer(kind=intType) :: nNodesTotal, ierr, iStart, iEnd, iProc
     integer(kind=intType) :: i, j, ii, kk
     integer(kind=intType), pointer :: cumNodesProc(:)
+    real(kind=realType), pointer :: numerator1D(:)
     real(kind=realType), dimension(:), allocatable :: costs, procEndCosts
     integer(kind=intType), dimension(:), allocatable :: procSplits, procSplitsLocal
     real(kind=realType), dimension(:), allocatable :: denominator0Copy
@@ -77,7 +79,7 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
     ! 3. Load balance file name is supplied and exists. Load and check a few
     !    If they don't match, do regular dry run
 
-    call compatVecGetArray(commonGridVec, Xv0Ptr, ierr)
+    call VecGetArrayCompat(commonGridVec, Xv0Ptr, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
     ! Allocate the denominator estimate and costs. These may be loaded
@@ -88,11 +90,8 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
     costs = zero
 
     ! Get the ownership ranges for common grid vector, we need that to
-    ! determine where to write things. Use zero-based indexing to match to rank
-    allocate (cumNodesProc(0:nProc))
-    cumNodesProc = zero
-
-    call VecGetOwnershipRanges(commonGridVec, cumNodesProc, ierr)
+    ! determine where to write things.
+    call VecGetOwnershipRangesCompat(commonGridVec, cumNodesProc, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
     ! Divide that by 3 since that includes the 3 dof per popint
@@ -315,7 +314,11 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
     end if
 
     ! Don't forget to restore arrays!
-    call compatVecRestoreArray(commonGridVec, Xv0Ptr, ierr)
+    call VecRestoreArrayCompat(commonGridVec, Xv0Ptr, ierr)
+    call EChk(ierr, __FILE__, __LINE__)
+
+    ! Release the ownership ranges
+    call VecRestoreOwnershipRangesCompat(commonGridVec, cumNodesProc, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
     ! Now put the costs in cumulative format
@@ -461,6 +464,9 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
 
     ! We can now also allocate the final space for the denominator
     allocate (numerator(3, newDOFProc / 3))
+    ! We alias the numerator using the pointer numerator1D so we can pass it directly to VecPlaceArray
+    numerator1D(1:size(numerator)) => numerator
+
     allocate (denominator(newDOFProc / 3))
     allocate (denominator0Copy(nVol * 3))
     do i = 1, nVol
@@ -474,7 +480,7 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
     call VecPlaceArray(commonGridVec, denominator0Copy, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
-    call VecPlaceArray(Xv, numerator, ierr)
+    call VecPlaceArray(Xv, numerator1D, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
     ! Actual scatter
@@ -501,7 +507,6 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
     commonMeshDOF = nVol * 3
 
     ! Deallocate the memory from this subroutine
-    deallocate (cumNodesProc)
     deallocate (costs, procEndCosts, procSplits, procSplitsLocal, denominator0Copy)
 
     if (myid == 0) then

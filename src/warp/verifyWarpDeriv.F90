@@ -4,7 +4,7 @@ subroutine verifyWarpDeriv(dXv_f, ndof_warp, dof_start, dof_end, h)
     use gridData
     use gridInput
     use communication
-    use petscCompat, only: compatVecGetArray, compatVecRestoreArray
+    use petscCompat, only: VecGetArrayCompat, VecRestoreArrayCompat
 
     implicit none
 
@@ -69,12 +69,12 @@ subroutine verifyWarpDeriv(dXv_f, ndof_warp, dof_start, dof_end, h)
         call warpMesh()
 
         ! Copy what is is Xv into Xplus
-        call compatVecGetArray(Xv, XvPtr, ierr)
+        call VecGetArrayCompat(Xv, XvPtr, ierr)
         call EChk(ierr, __FILE__, __LINE__)
 
         xplus = XvPtr
 
-        call compatVecRestoreArray(Xv, XvPtr, ierr)
+        call VecRestoreArrayCompat(Xv, XvPtr, ierr)
         call EChk(ierr, __FILE__, __LINE__)
 
         ! Subtract 2h from dof to get x(dof)-h
@@ -93,12 +93,12 @@ subroutine verifyWarpDeriv(dXv_f, ndof_warp, dof_start, dof_end, h)
         call warpMesh()
 
         ! Copy what is is Xv into Xminus
-        call compatVecGetArray(Xv, XvPtr, ierr)
+        call VecGetArrayCompat(Xv, XvPtr, ierr)
         call EChk(ierr, __FILE__, __LINE__)
 
         xminus = XvPtr
 
-        call compatVecRestoreArray(Xv, XvPtr, ierr)
+        call VecRestoreArrayCompat(Xv, XvPtr, ierr)
         call EChk(ierr, __FILE__, __LINE__)
 
         ! reset the original value

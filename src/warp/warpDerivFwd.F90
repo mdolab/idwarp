@@ -3,7 +3,7 @@ subroutine warpDerivFwd(Xsdot, cDof, Xvdot, meshDOF)
     use gridData
     use gridInput
     use kd_tree
-    use petscCompat, only: compatVecGetArray, compatVecRestoreArray
+    use petscCompat, only: VecGetArrayCompat, VecRestoreArrayCompat
 
     implicit none
 
@@ -46,14 +46,14 @@ subroutine warpDerivFwd(Xsdot, cDof, Xvdot, meshDOF)
     call EChk(ierr, __FILE__, __LINE__)
 
     ! Extract a pointer from XsLocal and XsLoacld to use in the main routine
-    call compatVecGetArray(XsLocal, XsPtr, ierr)
+    call VecGetArrayCompat(XsLocal, XsPtr, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
-    call compatVecGetArray(dXsLocal, XsPtrd, ierr)
+    call VecGetArrayCompat(dXsLocal, XsPtrd, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
     ! Extract the pointers for the volume nodes that we wish to operate on
-    call compatVecGetArray(Xv0, Xv0Ptr, ierr)
+    call VecGetArrayCompat(Xv0, Xv0Ptr, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
     call allocDerivValues(mytrees(1)%tp)
@@ -100,13 +100,13 @@ subroutine warpDerivFwd(Xsdot, cDof, Xvdot, meshDOF)
     end do updateLoop
 
     ! Restore all the arrays
-    call compatVecRestoreArray(XsLocal, XsPtr, ierr)
+    call VecRestoreArrayCompat(XsLocal, XsPtr, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
-    call compatVecRestoreArray(dXsLocal, dXsPtr, ierr)
+    call VecRestoreArrayCompat(dXsLocal, dXsPtr, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
-    call compatVecRestoreArray(Xv0, Xv0Ptr, ierr)
+    call VecRestoreArrayCompat(Xv0, Xv0Ptr, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 #endif
 end subroutine warpDerivFwd
