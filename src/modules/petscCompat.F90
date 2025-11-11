@@ -19,7 +19,7 @@ module petscCompat
 contains
 
     subroutine VecGetArrayCompat(v, array, ierr)
-        ! PETSc compatability routine to get array from vector
+        ! PETSc compatibility routine to get array from vector
         implicit none
         Vec :: v
         real(kind=realType), pointer :: array(:)
@@ -34,7 +34,7 @@ contains
     end subroutine VecGetArrayCompat
 
     subroutine VecRestoreArrayCompat(v, array, ierr)
-        ! PETSc compatability routine to restore array
+        ! PETSc compatibility routine to restore array
         implicit none
         Vec :: v
         real(kind=realType), pointer :: array(:)
@@ -48,12 +48,12 @@ contains
 
     end subroutine VecRestoreArrayCompat
 
-    subroutine VecCreateMPIWithArrayCompat(comm, bs, nlocal, nglobal, array, v, ierr)
-        ! PETSc compatability routine to create a MPI vector with an array.
+    subroutine VecCreateMPIWithArrayCompat(comm, bs, n, nGlobal, array, v, ierr)
+        ! PETSc compatibility routine to create a MPI vector with an array.
         ! In some cases array is not supplied so it supports optional array argument.
         implicit none
         integer(kind=intType), intent(in) :: comm, bs
-        integer(kind=intType), intent(in) :: nlocal, nglobal
+        integer(kind=intType), intent(in) :: n, nGlobal
         real(kind=realType), dimension(:), intent(in), optional :: array
         Vec :: v
         integer(kind=intType) :: ierr
@@ -61,23 +61,23 @@ contains
 #if PETSC_VERSION_GE(3,22,0)
         ! PETSc >= 3.22, need to use PETSC_NULL_SCALAR_ARRAY
         if (present(array)) then
-            call VecCreateMPIWithArray(comm, bs, nlocal, nglobal, array, v, ierr)
+            call VecCreateMPIWithArray(comm, bs, n, nGlobal, array, v, ierr)
         else
-            call VecCreateMPIWithArray(comm, bs, nlocal, nglobal, PETSC_NULL_SCALAR_ARRAY, v, ierr)
+            call VecCreateMPIWithArray(comm, bs, n, nGlobal, PETSC_NULL_SCALAR_ARRAY, v, ierr)
         end if
 #else
         ! Older PETSc, use PETSC_NULL_SCALAR for older versions
         if (present(array)) then
-            call VecCreateMPIWithArray(comm, bs, nlocal, nglobal, array, v, ierr)
+            call VecCreateMPIWithArray(comm, bs, n, nGlobal, array, v, ierr)
         else
-            call VecCreateMPIWithArray(comm, bs, nlocal, nglobal, PETSC_NULL_SCALAR, v, ierr)
+            call VecCreateMPIWithArray(comm, bs, n, nGlobal, PETSC_NULL_SCALAR, v, ierr)
         end if
 #endif
 
     end subroutine VecCreateMPIWithArrayCompat
 
     subroutine VecGetOwnershipRangesCompat(v, ptr, ierr)
-        ! PETSc compatability routine to get ownership ranges
+        ! PETSc compatibility routine to get ownership ranges
         Vec :: v
         integer(kind=intType), pointer :: ptr(:)
         integer(kind=intType), intent(out) :: ierr
@@ -106,7 +106,7 @@ contains
     end subroutine VecGetOwnershipRangesCompat
 
     subroutine VecRestoreOwnershipRangesCompat(v, ptr, ierr)
-        ! PETSc compatability routine to restore ownership ranges pointer
+        ! PETSc compatibility routine to restore ownership ranges pointer
         Vec :: v
         integer(kind=intType), pointer :: ptr(:)
         integer(kind=intType), intent(out) :: ierr

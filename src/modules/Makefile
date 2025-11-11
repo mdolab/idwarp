@@ -31,6 +31,7 @@ FILES_TO_COMPLEXIFY =	precision.F90\
 			gridInput.f90\
 			communication.f90\
 			gridData.F90\
+			petscCompat.F90\
 			kd_tree.F90\
 			cgnsGrid.F90\
 			kd_tree2.f90\
