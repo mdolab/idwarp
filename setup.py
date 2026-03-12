@@ -29,6 +29,7 @@ setup(
         "idwarp",
     ],
     package_data={"idwarp": ["*.so"]},
+    python_requires=">=3.11",
     install_requires=[
         "numpy>=1.25",
         "mpi4py>=3.1.5",
