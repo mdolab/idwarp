@@ -4,6 +4,7 @@ subroutine verifyWarpDeriv(dXv_f, ndof_warp, dof_start, dof_end, h)
     use gridData
     use gridInput
     use communication
+    use petscCompat, only: VecGetArrayCompat, VecRestoreArrayCompat
 
     implicit none
 
@@ -52,15 +53,11 @@ subroutine verifyWarpDeriv(dXv_f, ndof_warp, dof_start, dof_end, h)
 
         ! add h to dof
         if (dof >= istart .and. dof < iend) then
-#if PETSC_VERSION_GE(3,14,0)
-            call VecGetValues(Xs, 1, dof, orig_value, ierr)
-#else
-            call VecGetValues(Xs, 1, (/dof/), orig_value, ierr)
-#endif
+            call VecGetValues(Xs, 1, [dof], orig_value, ierr)
             call EChk(ierr, __FILE__, __LINE__)
 
             val = orig_value(1) + h
-            call VecSetValue(Xs, (/dof/), val, INSERT_VALUES, ierr)
+            call VecSetValue(Xs, dof, val, INSERT_VALUES, ierr)
             call EChk(ierr, __FILE__, __LINE__)
         end if
 
@@ -72,18 +69,18 @@ subroutine verifyWarpDeriv(dXv_f, ndof_warp, dof_start, dof_end, h)
         call warpMesh()
 
         ! Copy what is is Xv into Xplus
-        call VecGetArrayF90(Xv, XvPtr, ierr)
+        call VecGetArrayCompat(Xv, XvPtr, ierr)
         call EChk(ierr, __FILE__, __LINE__)
 
         xplus = XvPtr
 
-        call VecRestoreArrayF90(Xv, XvPtr, ierr)
+        call VecRestoreArrayCompat(Xv, XvPtr, ierr)
         call EChk(ierr, __FILE__, __LINE__)
 
         ! Subtract 2h from dof to get x(dof)-h
         if (dof >= istart .and. dof < iend) then
             val = orig_value(1) - h
-            call VecSetValue(Xs, (/dof/), val, INSERT_VALUES, ierr)
+            call VecSetValue(Xs, dof, val, INSERT_VALUES, ierr)
             call EChk(ierr, __FILE__, __LINE__)
         end if
 
@@ -96,17 +93,17 @@ subroutine verifyWarpDeriv(dXv_f, ndof_warp, dof_start, dof_end, h)
         call warpMesh()
 
         ! Copy what is is Xv into Xminus
-        call VecGetArrayF90(Xv, XvPtr, ierr)
+        call VecGetArrayCompat(Xv, XvPtr, ierr)
         call EChk(ierr, __FILE__, __LINE__)
 
         xminus = XvPtr
 
-        call VecRestoreArrayF90(Xv, XvPtr, ierr)
+        call VecRestoreArrayCompat(Xv, XvPtr, ierr)
         call EChk(ierr, __FILE__, __LINE__)
 
         ! reset the original value
         if (dof >= istart .and. dof < iend) then
-            call VecSetValue(Xs, (/dof/), orig_value(1), INSERT_VALUES, ierr)
+            call VecSetValue(Xs, dof, orig_value(1), INSERT_VALUES, ierr)
             call EChk(ierr, __FILE__, __LINE__)
         end if
 
@@ -128,11 +125,7 @@ subroutine verifyWarpDeriv(dXv_f, ndof_warp, dof_start, dof_end, h)
         call EChk(ierr, __FILE__, __LINE__)
 
         if (dof >= istart .and. dof < iend) then
-#if PETSC_VERSION_GE(3,14,0)
-            call VecGetValues(dXs, 1, dof, ADvalue, ierr)
-#else
-            call VecGetValues(dXs, 1, (/dof/), ADvalue, ierr)
-#endif
+            call VecGetValues(dXs, 1, [dof], ADvalue, ierr)
             call EChk(ierr, __FILE__, __LINE__)
             if (abs(half * (FDValue + ADValue(1))) < 1e-16) then
                 err = 1e-16

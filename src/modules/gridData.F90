@@ -54,7 +54,7 @@ module gridData
 
     real(kind=realType), dimension(:), allocatable :: d2wall
     real(kind=realType), dimension(:), allocatable :: denominator, denominator0
-    real(kind=realType), dimension(:, :), allocatable :: numerator
+    real(kind=realType), dimension(:, :), allocatable, target :: numerator
 
     ! Symmetry Information
     integer(kind=intType) :: nLoop

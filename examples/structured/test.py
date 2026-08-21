@@ -1,10 +1,14 @@
 # this is a simple script to test the IDWarp module
+import os
 from mpi4py import MPI
 from idwarp import USMesh
 
+# Get the path of this file
+baseDir = os.path.dirname(os.path.abspath(__file__))
+
 options = {
     "fileType": "CGNS",
-    "gridFile": "../../input_files/o_mesh.cgns",
+    "gridFile": os.path.join(baseDir,"../../input_files/o_mesh.cgns"),
     "aExp": 3.0,
     "bExp": 5.0,
     "LdefFact": 100.0,

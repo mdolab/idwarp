@@ -20,6 +20,7 @@ FF90_OBJECTS_3 = gridInput.o\
 		 communication.o\
 
 FF90_OBJECTS_4 = gridData.o\
+		 petscCompat.o\
 
 FF90_OBJECTS_5 = kd_tree.o\
 		 kd_tree2.o\
@@ -30,6 +31,7 @@ FILES_TO_COMPLEXIFY =	precision.F90\
 			gridInput.f90\
 			communication.f90\
 			gridData.F90\
+			petscCompat.F90\
 			kd_tree.F90\
 			cgnsGrid.F90\
 			kd_tree2.f90\
