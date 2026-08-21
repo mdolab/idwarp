@@ -97,7 +97,7 @@ class MultiUSMesh(object):
         self.dtype = dtype
 
         # Set a random prefix to avoid I/O clashes between instances
-        prefix = f"tmp{randint(1, 1e5)}"
+        prefix = f"tmp{randint(1, int(1e5))}"
 
         # Only the root processor will take the combined CGNS file
         # and explode it by instance.
