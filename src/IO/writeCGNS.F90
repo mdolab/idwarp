@@ -4,7 +4,6 @@ subroutine writeCGNS(cgns_file)
     use communication
     use CGNSGrid
     use gridData
-    use petscCompat, only: VecGetArrayCompat, VecRestoreArrayCompat
     implicit none
 
     ! Input Arguments
@@ -31,7 +30,7 @@ subroutine writeCGNS(cgns_file)
     ! Only do writing on root proc:
     rootProc: if (myid == 0) then
 
-        call VecGetArrayCompat(XvLocal, xx, ierr)
+        call VecGetArray(XvLocal, xx, ierr)
         call EChk(ierr, __FILE__, __LINE__)
 
         ! Open and get the number of zones:
@@ -80,7 +79,7 @@ subroutine writeCGNS(cgns_file)
         call cg_close_f(cg, ierr)
         if (ierr .eq. CG_ERROR) call cg_error_exit_f
 
-        call VecRestoreArrayCompat(XvLocal, xx, ierr)
+        call VecRestoreArray(XvLocal, xx, ierr)
         call EChk(ierr, __FILE__, __LINE__)
 
     end if rootProc

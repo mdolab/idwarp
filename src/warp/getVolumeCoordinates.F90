@@ -2,7 +2,6 @@
 subroutine getVolumeCoordinates(gridNodes, nDOF)
 
     use gridData
-    use petscCompat, only: VecGetArrayCompat, VecRestoreArrayCompat
     implicit none
 
     ! Subroutine variables
@@ -12,13 +11,13 @@ subroutine getVolumeCoordinates(gridNodes, nDOF)
     integer(kind=intType) :: ierr
 
     ! No error checking here!
-    call VecGetArrayCompat(Xv, xx, ierr)
+    call VecGetArray(Xv, xx, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
     ! Perform copy
     gridNodes = xx
 
-    call VecRestoreArrayCompat(Xv, xx, ierr)
+    call VecRestoreArray(Xv, xx, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
 end subroutine getVolumeCoordinates
@@ -26,7 +25,6 @@ end subroutine getVolumeCoordinates
 subroutine setVolumeCoordinates(gridNodes, nDOF)
 
     use gridData
-    use petscCompat, only: VecGetArrayCompat, VecRestoreArrayCompat
     implicit none
 
     ! Subroutine variables
@@ -36,13 +34,13 @@ subroutine setVolumeCoordinates(gridNodes, nDOF)
     integer(kind=intType) :: ierr
 
     ! No error checking here!
-    call VecGetArrayCompat(Xv, xx, ierr)
+    call VecGetArray(Xv, xx, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
     ! Perform copy
     xx = gridNodes
 
-    call VecRestoreArrayCompat(Xv, xx, ierr)
+    call VecRestoreArray(Xv, xx, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
 end subroutine setVolumeCoordinates

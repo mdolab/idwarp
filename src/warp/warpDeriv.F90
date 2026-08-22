@@ -8,7 +8,6 @@ subroutine warpDeriv(dXv_f, ndof_warp)
     use gridInput
     use communication
     use kd_tree
-    use petscCompat, only: VecGetArrayCompat, VecRestoreArrayCompat
     implicit none
 
     ! Input
@@ -30,17 +29,17 @@ subroutine warpDeriv(dXv_f, ndof_warp)
     call EChk(ierr, __FILE__, __LINE__)
 
     ! Extract a pointer from Xs to use in the main routine
-    call VecGetArrayCompat(XsLocal, XsPtr, ierr)
+    call VecGetArray(XsLocal, XsPtr, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
     ! Extract the pointers for the volume nodes that we wish to operate on
-    call VecGetArrayCompat(Xv0, Xv0Ptr, ierr)
+    call VecGetArray(Xv0, Xv0Ptr, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
-    call VecGetArrayCompat(Xv, XvPtr, ierr)
+    call VecGetArray(Xv, XvPtr, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
-    call VecGetArrayCompat(dXs, dXsPtr, ierr)
+    call VecGetArray(dXs, dXsPtr, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
     ! Allocate the extra data we need for the warping derivative:
@@ -117,16 +116,16 @@ subroutine warpDeriv(dXv_f, ndof_warp)
     deallocate (XvPtrb, XsPtrb)
 
     ! Restore all the arrays
-    call VecRestoreArrayCompat(XsLocal, XsPtr, ierr)
+    call VecRestoreArray(XsLocal, XsPtr, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
-    call VecRestoreArrayCompat(Xv0, Xv0Ptr, ierr)
+    call VecRestoreArray(Xv0, Xv0Ptr, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
-    call VecRestoreArrayCompat(Xv, XvPtr, ierr)
+    call VecRestoreArray(Xv, XvPtr, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
-    call VecRestoreArrayCompat(dXs, dXsPtr, ierr)
+    call VecRestoreArray(dXs, dXsPtr, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 #endif
 end subroutine warpDeriv

@@ -4,7 +4,6 @@ subroutine verifyWarpDeriv(dXv_f, ndof_warp, dof_start, dof_end, h)
     use gridData
     use gridInput
     use communication
-    use petscCompat, only: VecGetArrayCompat, VecRestoreArrayCompat
 
     implicit none
 
@@ -53,6 +52,9 @@ subroutine verifyWarpDeriv(dXv_f, ndof_warp, dof_start, dof_end, h)
 
         ! add h to dof
         if (dof >= istart .and. dof < iend) then
+            ! VecGetValues takes an index *array*: the [dof] constructor matches its
+            ! PetscInt :: ix(*) dummy. VecSetValue below is the singular form and takes
+            ! a bare scalar. Do not make these two look alike.
             call VecGetValues(Xs, 1, [dof], orig_value, ierr)
             call EChk(ierr, __FILE__, __LINE__)
 
@@ -69,12 +71,12 @@ subroutine verifyWarpDeriv(dXv_f, ndof_warp, dof_start, dof_end, h)
         call warpMesh()
 
         ! Copy what is is Xv into Xplus
-        call VecGetArrayCompat(Xv, XvPtr, ierr)
+        call VecGetArray(Xv, XvPtr, ierr)
         call EChk(ierr, __FILE__, __LINE__)
 
         xplus = XvPtr
 
-        call VecRestoreArrayCompat(Xv, XvPtr, ierr)
+        call VecRestoreArray(Xv, XvPtr, ierr)
         call EChk(ierr, __FILE__, __LINE__)
 
         ! Subtract 2h from dof to get x(dof)-h
@@ -93,12 +95,12 @@ subroutine verifyWarpDeriv(dXv_f, ndof_warp, dof_start, dof_end, h)
         call warpMesh()
 
         ! Copy what is is Xv into Xminus
-        call VecGetArrayCompat(Xv, XvPtr, ierr)
+        call VecGetArray(Xv, XvPtr, ierr)
         call EChk(ierr, __FILE__, __LINE__)
 
         xminus = XvPtr
 
-        call VecRestoreArrayCompat(Xv, XvPtr, ierr)
+        call VecRestoreArray(Xv, XvPtr, ierr)
         call EChk(ierr, __FILE__, __LINE__)
 
         ! reset the original value

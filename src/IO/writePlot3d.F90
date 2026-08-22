@@ -4,7 +4,6 @@ subroutine writePlot3d(plot3d_file)
     use communication
     use CGNSGrid
     use gridData
-    use petscCompat, only: VecGetArrayCompat, VecRestoreArrayCompat
     implicit none
 
     ! Input Arguments
@@ -30,7 +29,7 @@ subroutine writePlot3d(plot3d_file)
     ! Only do writing on root proc:
     rootProc: if (myid == 0) then
 
-        call VecGetArrayCompat(XvLocal, xx, ierr)
+        call VecGetArray(XvLocal, xx, ierr)
         call EChk(ierr, __FILE__, __LINE__)
 
         ! Open the new file
@@ -80,7 +79,7 @@ subroutine writePlot3d(plot3d_file)
             deallocate (coorX, coorY, coorZ)
         end do
 
-        call VecRestoreArrayCompat(XvLocal, xx, ierr)
+        call VecRestoreArray(XvLocal, xx, ierr)
         call EChk(ierr, __FILE__, __LINE__)
 
         ! Close the output file
