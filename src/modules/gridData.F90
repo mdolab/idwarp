@@ -8,6 +8,11 @@ module gridData
 #ifndef USE_TAPENADE
 
 #include <petsc/finclude/petsc.h>
+
+#if PETSC_VERSION_LT(3,23,0)
+#error "IDWarp requires PETSc 3.23 or newer"
+#endif
+
     use petsc
     implicit none
 
