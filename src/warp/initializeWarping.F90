@@ -5,7 +5,6 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
     use communication
     use kd_tree
     use gridData
-    use petscCompat, only: VecGetOwnershipRangesCompat, VecRestoreOwnershipRangesCompat
     implicit none
 
     ! Input
@@ -19,7 +18,8 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
     ! Working
     integer(kind=intType) :: nNodesTotal, ierr, iStart, iEnd, iProc
     integer(kind=intType) :: i, j, ii, kk
-    integer(kind=intType), pointer :: cumNodesProc(:)
+    integer(kind=intType), dimension(:), allocatable :: cumNodesProc
+    integer(kind=intType), pointer :: petscRanges(:)
     real(kind=realType), pointer :: numerator1D(:)
     real(kind=realType), dimension(:), allocatable :: costs, procEndCosts
     integer(kind=intType), dimension(:), allocatable :: procSplits, procSplitsLocal
@@ -89,12 +89,20 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
     costs = zero
 
     ! Get the ownership ranges for common grid vector, we need that to
-    ! determine where to write things.
-    call VecGetOwnershipRangesCompat(commonGridVec, cumNodesProc, ierr)
+    ! determine where to write things. VecGetOwnershipRanges returns a pointer
+    ! into the vector's own PetscLayout, indexed 1:nProc+1, so copy it into our
+    ! own 0:nProc array before scaling: writing through the PETSc pointer would
+    ! corrupt the layout and every scatter subsequently built from the vector.
+    ! The assignment rebases by position, putting petscRanges(1) in cumNodesProc(0).
+    ! The /3 is because the ranges are in DOF and we want nodes.
+    call VecGetOwnershipRanges(commonGridVec, petscRanges, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
-    ! Divide that by 3 since that includes the 3 dof per popint
-    cumNodesProc = cumNodesProc / 3
+    allocate (cumNodesProc(0:nProc))
+    cumNodesProc = petscRanges / 3
+
+    call VecRestoreOwnershipRanges(commonGridVec, petscRanges, ierr)
+    call EChk(ierr, __FILE__, __LINE__)
 
     if (trim(restartFile) == "") then
         loadFile = .False.
@@ -316,10 +324,6 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
     call VecRestoreArray(commonGridVec, Xv0Ptr, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
-    ! Release the ownership ranges
-    call VecRestoreOwnershipRangesCompat(commonGridVec, cumNodesProc, ierr)
-    call EChk(ierr, __FILE__, __LINE__)
-
     ! Now put the costs in cumulative format
     do j = 2, nVol
         costs(j) = costs(j) + costs(j - 1)
@@ -463,7 +467,10 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
 
     ! We can now also allocate the final space for the denominator
     allocate (numerator(3, newDOFProc / 3))
-    ! We alias the numerator using the pointer numerator1D so we can pass it directly to VecPlaceArray
+    ! Alias numerator as a rank-1 pointer so it can be passed to VecPlaceArray. Since PETSc
+    ! 3.23 VecPlaceArray is a named generic interface, and generic resolution matches rank
+    ! before sequence association applies, so passing the rank-2 array directly does not
+    ! compile. This alias is required, not a convenience.
     numerator1D(1:size(numerator)) => numerator
 
     allocate (denominator(newDOFProc / 3))
@@ -506,7 +513,7 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
     commonMeshDOF = nVol * 3
 
     ! Deallocate the memory from this subroutine
-    deallocate (costs, procEndCosts, procSplits, procSplitsLocal, denominator0Copy)
+    deallocate (cumNodesProc, costs, procEndCosts, procSplits, procSplitsLocal, denominator0Copy)
 
     if (myid == 0) then
         print *, 'Finished Mesh Initialization.'
