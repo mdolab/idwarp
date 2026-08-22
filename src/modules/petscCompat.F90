@@ -12,9 +12,12 @@ module petscCompat
     implicit none
     save
 
-    ! Internal static array needed for PETSc <3.23 VecGetOwnershipRanges
-    integer(kind=intType), allocatable, target :: array(:)
-    logical :: arrayAllocated = .false.
+    ! Private copy of the ownership ranges handed out by VecGetOwnershipRangesCompat.
+    ! PETSc >=3.23 returns a pointer that aliases the vector's internal PetscLayout and is
+    ! indexed from 1, whereas older versions copied into an array the caller allocated. We
+    ! always hand back a private 0:nProc copy so that callers see the same bounds on every
+    ! PETSc version and can never write through to PETSc's own layout.
+    integer(kind=intType), allocatable, target :: ownershipRanges(:)
 
 contains
 
@@ -59,14 +62,14 @@ contains
         integer(kind=intType) :: ierr
 
 #if PETSC_VERSION_GE(3,22,0)
-        ! PETSc >= 3.22, need to use PETSC_NULL_SCALAR_ARRAY
+        ! PETSc >= 3.22, need to use PETSC_NULL_SCALAR_ARRAY if array is not present
         if (present(array)) then
             call VecCreateMPIWithArray(comm, bs, n, nGlobal, array, v, ierr)
         else
             call VecCreateMPIWithArray(comm, bs, n, nGlobal, PETSC_NULL_SCALAR_ARRAY, v, ierr)
         end if
 #else
-        ! Older PETSc, use PETSC_NULL_SCALAR for older versions
+        ! Older PETSc, use PETSC_NULL_SCALAR if array is not present
         if (present(array)) then
             call VecCreateMPIWithArray(comm, bs, n, nGlobal, array, v, ierr)
         else
@@ -77,54 +80,57 @@ contains
     end subroutine VecCreateMPIWithArrayCompat
 
     subroutine VecGetOwnershipRangesCompat(v, ptr, ierr)
-        ! PETSc compatibility routine to get ownership ranges
+        ! PETSc compatibility routine to get ownership ranges.
+        ! On every PETSc version this returns a pointer to a private copy indexed 0:nProc,
+        ! so that ptr(iProc) is the first index owned by rank iProc and ptr(nProc) is the
+        ! global size. The caller may modify the copy freely and must release it with
+        ! VecRestoreOwnershipRangesCompat.
         Vec :: v
         integer(kind=intType), pointer :: ptr(:)
         integer(kind=intType), intent(out) :: ierr
 
 #if PETSC_VERSION_GE(3,23,0)
-        ! PETSc >= 3.23, directly get pointer
-        call VecGetOwnershipRanges(v, ptr, ierr)
-#else
-        ! Older PETSc, allocate array that gets passed to PETSc and set pointer
-        integer(kind=intType), allocatable, target, save :: array(:)
+        integer(kind=intType), pointer :: petscRanges(:)
+#endif
 
-        ! Check if we already have an allocated array
-        if (allocated(array)) then
-            deallocate (array)
+        ! Discard any copy left over from a previous call
+        if (allocated(ownershipRanges)) then
+            deallocate (ownershipRanges)
         end if
         ! Use zero-based indexing to match to rank
-        allocate (array(0:nProc))
-        array = zero
-        arrayAllocated = .true.
+        allocate (ownershipRanges(0:nProc))
 
-        ! Get the ownership ranges into the static array and set the pointer
-        call VecGetOwnershipRanges(v, array, ierr)
-        ptr => array
+#if PETSC_VERSION_GE(3,23,0)
+        ! PETSc >= 3.23 hands back a pointer aliasing its own PetscLayout, indexed from 1.
+        ! Copy it out and give it straight back, rebasing to 0:nProc as we go. Writing
+        ! through the PETSc pointer would silently corrupt the vector's layout.
+        call VecGetOwnershipRanges(v, petscRanges, ierr)
+        if (ierr == 0) then
+            ownershipRanges = petscRanges
+            call VecRestoreOwnershipRanges(v, petscRanges, ierr)
+        end if
+#else
+        ! Older PETSc copies into an array we own, so hand it ours directly
+        call VecGetOwnershipRanges(v, ownershipRanges, ierr)
 #endif
+
+        ptr => ownershipRanges
 
     end subroutine VecGetOwnershipRangesCompat
 
     subroutine VecRestoreOwnershipRangesCompat(v, ptr, ierr)
-        ! PETSc compatibility routine to restore ownership ranges pointer
+        ! PETSc compatibility routine to release the ownership ranges copy.
+        ! The PETSc-owned pointer was already returned inside VecGetOwnershipRangesCompat,
+        ! so on all versions this just frees our private copy.
         Vec :: v
         integer(kind=intType), pointer :: ptr(:)
         integer(kind=intType), intent(out) :: ierr
 
-#if PETSC_VERSION_GE(3,23,0)
-        ! PETSc >= 3.23, just restore ranges using the pointer
-        call VecRestoreOwnershipRanges(v, ptr, ierr)
-#else
-        ! Older PETSc, deallocate the internal static array and nullify pointer
-        if (arrayAllocated) then
-            if (allocated(array)) then
-                deallocate (array)
-            end if
-            nullify (ptr)
-            arrayAllocated = .false.
+        if (allocated(ownershipRanges)) then
+            deallocate (ownershipRanges)
         end if
+        nullify (ptr)
         ierr = 0
-#endif
 
     end subroutine VecRestoreOwnershipRangesCompat
 
