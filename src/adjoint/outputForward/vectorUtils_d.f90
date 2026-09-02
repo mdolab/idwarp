@@ -14,118 +14,91 @@
    REAL(kind=realtype), DIMENSION(3, 3), INTENT(OUT) :: mi
    REAL(kind=realtype), DIMENSION(3, 3), INTENT(OUT) :: mib
    ! Local Variables
-   REAL(kind=realtype), DIMENSION(3) :: axis, vv1, vv2
-   REAL(kind=realtype), DIMENSION(3) :: axisb, vv2b
-   REAL(kind=realtype) :: magv1, magv2, axismag, angle, arg
-   REAL(kind=realtype) :: magv2b, axismagb, angleb, argb
-   REAL(kind=realtype), DIMENSION(3, 3) :: a, c
-   REAL(kind=realtype), DIMENSION(3, 3) :: ab, cb
-   REAL(kind=realtype), PARAMETER :: tol=1.4901161193847656e-08
-   INTRINSIC MIN
-   INTRINSIC ACOS
-   INTRINSIC SIN
-   INTRINSIC COS
+   REAL(kind=realtype), DIMENSION(3) :: a
+   REAL(kind=realtype), DIMENSION(3) :: ab
+   REAL(kind=realtype) :: magv1, magv2, s, dot, denom2
+   REAL(kind=realtype) :: magv2b, sb, dotb, denom2b
+   REAL(kind=realtype), DIMENSION(3, 3) :: p, c
+   REAL(kind=realtype), DIMENSION(3, 3) :: pb, cb
+   REAL(kind=realtype), PARAMETER :: dtol=1.0e-10
    REAL(kind=realtype), DIMENSION(3) :: v1b
-   REAL(kind=realtype) :: temp
-   REAL(kind=realtype) :: temp0
+   ! Rotation taking the direction of v1 to the direction of v2, in a
+   ! smooth branch-free form.  With theta the angle between v1 and v2,
+   ! a = v1 x v2 and s = |v1||v2|, the two axis-angle pieces of the
+   ! Rodrigues formula reduce EXACTLY (for 0 <= theta < pi) to
+   !     sin(theta) * Ahat        = skew(a) / s
+   !     (1-cos(theta)) * Ahat^2  = skew(a)^2 / (s^2 + s*(v1.v2))
+   ! so no normalized axis, no acos and no angle are ever formed.  The
+   ! axis-angle version this replaces needed an axisMag < tol branch at
+   ! theta = 0, and BOTH AD derivatives (_b and _d) of that branch were
+   ! identically zero while the true derivative there is finite: every
+   ! surface node of an UNDEFORMED mesh evaluates at exactly theta = 0,
+   ! so warpDeriv/warpDerivFwd silently dropped the entire rotation
+   ! contribution when linearized at the baseline configuration.  This
+   ! form has a removable limit at theta = 0 (a = 0 makes the rotation
+   ! terms vanish smoothly) and differentiates correctly there by
+   ! construction.  Only theta -> pi (anti-parallel normals, a folded
+   ! surface) is guarded, where the rotation genuinely is not unique.
    CALL GETMAG(v1, magv1)
    CALL GETMAG_D(v2, v2b, magv2, magv2b)
-   ! Start by determining the rotation axis by getting the
-   ! cross product between v1, v2
-   axisb = 0.0_8
-   v1b = 0.0_8
-   CALL CROSS_PRODUCT_3D_D(v1, v1b, v2, v2b, axis, axisb)
-   ! Now Normalize
-   CALL GETMAG_D(axis, axisb, axismag, axismagb)
-   ! When axisMag is less that sqrt(eps), the acos 'arg' value will be
-   ! exactly one which will give a nan in complex mode.
-   IF (axismag .LT. tol) THEN
-   ! no rotation at this point, angle is 0
-   angle = zero
-   ! the axis doesn't matter so set to x
-   axis = zero
-   axis(1) = one
-   axisb = 0.0_8
-   angleb = 0.0_8
-   ELSE
-   axisb = (axisb-axis*axismagb/axismag)/axismag
-   axis = axis/axismag
-   ! Now compute the rotation angle about that axis
-   vv1 = v1/magv1
-   vv2b = (v2b-v2*magv2b/magv2)/magv2
-   vv2 = v2/magv2
-   IF (one .GT. vv1(1)*vv2(1) + vv1(2)*vv2(2) + vv1(3)*vv2(3)) THEN
-   argb = vv1(1)*vv2b(1) + vv1(2)*vv2b(2) + vv1(3)*vv2b(3)
-   arg = vv1(1)*vv2(1) + vv1(2)*vv2(2) + vv1(3)*vv2(3)
-   ELSE
-   arg = one
-   argb = 0.0_8
-   END IF
-   IF (arg .EQ. 1.0 .OR. arg .EQ. (-1.0)) THEN
-   angleb = 0.0_8
-   ELSE
-   angleb = -(argb/SQRT(1.0-arg**2))
-   END IF
-   angle = ACOS(arg)
-   END IF
-   ! Now that we have an axis and an angle,build the rotation Matrix
-   ! A skew symmetric representation of the normalized axis
-   a(1, 1) = zero
    ab = 0.0_8
-   ab(1, 2) = -axisb(3)
-   a(1, 2) = -axis(3)
-   ab(1, 3) = axisb(2)
-   a(1, 3) = axis(2)
-   ab(2, 1) = axisb(3)
-   a(2, 1) = axis(3)
-   ab(2, 2) = 0.0_8
-   a(2, 2) = zero
-   ab(2, 3) = -axisb(1)
-   a(2, 3) = -axis(1)
-   ab(3, 1) = -axisb(2)
-   a(3, 1) = -axis(2)
-   ab(3, 2) = axisb(1)
-   a(3, 2) = axis(1)
-   ab(3, 3) = 0.0_8
-   a(3, 3) = zero
-   !C = A*A
+   v1b = 0.0_8
+   CALL CROSS_PRODUCT_3D_D(v1, v1b, v2, v2b, a, ab)
+   sb = magv1*magv2b
+   s = magv1*magv2
+   dotb = v1(1)*v2b(1) + v1(2)*v2b(2) + v1(3)*v2b(3)
+   dot = v1(1)*v2(1) + v1(2)*v2(2) + v1(3)*v2(3)
+   denom2b = (2*s+dot)*sb + s*dotb
+   denom2 = s*s + s*dot
+   IF (denom2 .LT. dtol*s*s) THEN
+   denom2b = dtol*2*s*sb
+   denom2 = dtol*s*s
+   END IF
+   ! P = skew(a)
+   p(1, 1) = zero
+   pb = 0.0_8
+   pb(1, 2) = -ab(3)
+   p(1, 2) = -a(3)
+   pb(1, 3) = ab(2)
+   p(1, 3) = a(2)
+   pb(2, 1) = ab(3)
+   p(2, 1) = a(3)
+   pb(2, 2) = 0.0_8
+   p(2, 2) = zero
+   pb(2, 3) = -ab(1)
+   p(2, 3) = -a(1)
+   pb(3, 1) = -ab(2)
+   p(3, 1) = -a(2)
+   pb(3, 2) = ab(1)
+   p(3, 2) = a(1)
+   pb(3, 3) = 0.0_8
+   p(3, 3) = zero
+   ! C = P*P = a a^T - (a.a) I
    cb = 0.0_8
-   cb(1, 1) = 2*a(1, 1)*ab(1, 1) + a(2, 1)*ab(1, 2) + a(1, 2)*ab(2, 1) + &
-   &   a(3, 1)*ab(1, 3) + a(1, 3)*ab(3, 1)
-   c(1, 1) = a(1, 1)*a(1, 1) + a(1, 2)*a(2, 1) + a(1, 3)*a(3, 1)
-   cb(1, 2) = a(1, 2)*ab(1, 1) + (a(1, 1)+a(2, 2))*ab(1, 2) + a(1, 2)*ab(&
-   &   2, 2) + a(3, 2)*ab(1, 3) + a(1, 3)*ab(3, 2)
-   c(1, 2) = a(1, 1)*a(1, 2) + a(1, 2)*a(2, 2) + a(1, 3)*a(3, 2)
-   cb(1, 3) = a(1, 3)*ab(1, 1) + (a(1, 1)+a(3, 3))*ab(1, 3) + a(2, 3)*ab(&
-   &   1, 2) + a(1, 2)*ab(2, 3) + a(1, 3)*ab(3, 3)
-   c(1, 3) = a(1, 1)*a(1, 3) + a(1, 2)*a(2, 3) + a(1, 3)*a(3, 3)
-   cb(2, 1) = (a(1, 1)+a(2, 2))*ab(2, 1) + a(2, 1)*ab(1, 1) + a(2, 1)*ab(&
-   &   2, 2) + a(3, 1)*ab(2, 3) + a(2, 3)*ab(3, 1)
-   c(2, 1) = a(2, 1)*a(1, 1) + a(2, 2)*a(2, 1) + a(2, 3)*a(3, 1)
-   cb(2, 2) = a(1, 2)*ab(2, 1) + a(2, 1)*ab(1, 2) + 2*a(2, 2)*ab(2, 2) + &
-   &   a(3, 2)*ab(2, 3) + a(2, 3)*ab(3, 2)
-   c(2, 2) = a(2, 1)*a(1, 2) + a(2, 2)*a(2, 2) + a(2, 3)*a(3, 2)
-   cb(2, 3) = a(1, 3)*ab(2, 1) + a(2, 1)*ab(1, 3) + a(2, 3)*ab(2, 2) + (a&
-   &   (2, 2)+a(3, 3))*ab(2, 3) + a(2, 3)*ab(3, 3)
-   c(2, 3) = a(2, 1)*a(1, 3) + a(2, 2)*a(2, 3) + a(2, 3)*a(3, 3)
-   cb(3, 1) = (a(1, 1)+a(3, 3))*ab(3, 1) + a(3, 1)*ab(1, 1) + a(2, 1)*ab(&
-   &   3, 2) + a(3, 2)*ab(2, 1) + a(3, 1)*ab(3, 3)
-   c(3, 1) = a(3, 1)*a(1, 1) + a(3, 2)*a(2, 1) + a(3, 3)*a(3, 1)
-   cb(3, 2) = a(1, 2)*ab(3, 1) + a(3, 1)*ab(1, 2) + (a(2, 2)+a(3, 3))*ab(&
-   &   3, 2) + a(3, 2)*ab(2, 2) + a(3, 2)*ab(3, 3)
-   c(3, 2) = a(3, 1)*a(1, 2) + a(3, 2)*a(2, 2) + a(3, 3)*a(3, 2)
-   cb(3, 3) = a(1, 3)*ab(3, 1) + a(3, 1)*ab(1, 3) + a(2, 3)*ab(3, 2) + a(&
-   &   3, 2)*ab(2, 3) + 2*a(3, 3)*ab(3, 3)
-   c(3, 3) = a(3, 1)*a(1, 3) + a(3, 2)*a(2, 3) + a(3, 3)*a(3, 3)
-   ! Rodrigues formula for the rotation matrix
+   cb(1, 1) = -(2*a(2)*ab(2)) - 2*a(3)*ab(3)
+   c(1, 1) = -(a(2)*a(2)) - a(3)*a(3)
+   cb(1, 2) = a(2)*ab(1) + a(1)*ab(2)
+   c(1, 2) = a(1)*a(2)
+   cb(1, 3) = a(3)*ab(1) + a(1)*ab(3)
+   c(1, 3) = a(1)*a(3)
+   cb(2, 1) = a(2)*ab(1) + a(1)*ab(2)
+   c(2, 1) = a(1)*a(2)
+   cb(2, 2) = -(2*a(1)*ab(1)) - 2*a(3)*ab(3)
+   c(2, 2) = -(a(1)*a(1)) - a(3)*a(3)
+   cb(2, 3) = a(3)*ab(2) + a(2)*ab(3)
+   c(2, 3) = a(2)*a(3)
+   cb(3, 1) = a(3)*ab(1) + a(1)*ab(3)
+   c(3, 1) = a(1)*a(3)
+   cb(3, 2) = a(3)*ab(2) + a(2)*ab(3)
+   c(3, 2) = a(2)*a(3)
+   cb(3, 3) = -(2*a(1)*ab(1)) - 2*a(2)*ab(2)
+   c(3, 3) = -(a(1)*a(1)) - a(2)*a(2)
    mi = zero
    mi(1, 1) = one
    mi(2, 2) = one
    mi(3, 3) = one
-   temp = SIN(angle)
-   temp0 = one - COS(angle)
-   mib = (a*COS(angle)+c*SIN(angle))*angleb + temp*ab + temp0*cb
-   mi = mi + temp*a + temp0*c
+   mib = (pb-p*sb/s)/s + (cb-c*denom2b/denom2)/denom2
+   mi = mi + p/s + c/denom2
    END SUBROUTINE GETROTATIONMATRIX3D_D
       !  Differentiation of cross_product_3d in forward (tangent) mode (with options noISIZE i4 dr8 r8):
    !   variations   of useful results: cross

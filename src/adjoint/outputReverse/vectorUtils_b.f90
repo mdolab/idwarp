@@ -14,142 +14,105 @@
    REAL(kind=realtype), DIMENSION(3, 3) :: mi
    REAL(kind=realtype), DIMENSION(3, 3) :: mib
    ! Local Variables
-   REAL(kind=realtype), DIMENSION(3) :: axis, vv1, vv2
-   REAL(kind=realtype), DIMENSION(3) :: axisb, vv2b
-   REAL(kind=realtype) :: magv1, magv2, axismag, angle, arg
-   REAL(kind=realtype) :: magv2b, axismagb, angleb, argb
-   REAL(kind=realtype), DIMENSION(3, 3) :: a, c
-   REAL(kind=realtype), DIMENSION(3, 3) :: ab, cb
-   REAL(kind=realtype), PARAMETER :: tol=1.4901161193847656e-08
-   INTRINSIC MIN
-   INTRINSIC ACOS
-   INTRINSIC SIN
-   INTRINSIC COS
+   REAL(kind=realtype), DIMENSION(3) :: a
+   REAL(kind=realtype), DIMENSION(3) :: ab
+   REAL(kind=realtype) :: magv1, magv2, s, dot, denom2
+   REAL(kind=realtype) :: magv2b, sb, dotb, denom2b
+   REAL(kind=realtype), DIMENSION(3, 3) :: p, c
+   REAL(kind=realtype), DIMENSION(3, 3) :: pb, cb
+   REAL(kind=realtype), PARAMETER :: dtol=1.0e-10
    REAL(kind=realtype), DIMENSION(3) :: v1b
    INTEGER :: branch
+   ! Rotation taking the direction of v1 to the direction of v2, in a
+   ! smooth branch-free form.  With theta the angle between v1 and v2,
+   ! a = v1 x v2 and s = |v1||v2|, the two axis-angle pieces of the
+   ! Rodrigues formula reduce EXACTLY (for 0 <= theta < pi) to
+   !     sin(theta) * Ahat        = skew(a) / s
+   !     (1-cos(theta)) * Ahat^2  = skew(a)^2 / (s^2 + s*(v1.v2))
+   ! so no normalized axis, no acos and no angle are ever formed.  The
+   ! axis-angle version this replaces needed an axisMag < tol branch at
+   ! theta = 0, and BOTH AD derivatives (_b and _d) of that branch were
+   ! identically zero while the true derivative there is finite: every
+   ! surface node of an UNDEFORMED mesh evaluates at exactly theta = 0,
+   ! so warpDeriv/warpDerivFwd silently dropped the entire rotation
+   ! contribution when linearized at the baseline configuration.  This
+   ! form has a removable limit at theta = 0 (a = 0 makes the rotation
+   ! terms vanish smoothly) and differentiates correctly there by
+   ! construction.  Only theta -> pi (anti-parallel normals, a folded
+   ! surface) is guarded, where the rotation genuinely is not unique.
    CALL GETMAG(v1, magv1)
    CALL GETMAG(v2, magv2)
-   ! Start by determining the rotation axis by getting the
-   ! cross product between v1, v2
-   CALL CROSS_PRODUCT_3D(v1, v2, axis)
-   ! Now Normalize
-   CALL GETMAG(axis, axismag)
-   ! When axisMag is less that sqrt(eps), the acos 'arg' value will be
-   ! exactly one which will give a nan in complex mode.
-   IF (axismag .LT. tol) THEN
-   ! no rotation at this point, angle is 0
-   angle = zero
-   ! the axis doesn't matter so set to x
-   CALL PUSHREAL8ARRAY(axis, realtype*3/8)
-   axis = zero
-   axis(1) = one
+   CALL CROSS_PRODUCT_3D(v1, v2, a)
+   s = magv1*magv2
+   dot = v1(1)*v2(1) + v1(2)*v2(2) + v1(3)*v2(3)
+   denom2 = s*s + s*dot
+   IF (denom2 .LT. dtol*s*s) THEN
+   denom2 = dtol*s*s
    CALL PUSHCONTROL1B(0)
    ELSE
-   CALL PUSHREAL8ARRAY(axis, realtype*3/8)
-   axis = axis/axismag
-   ! Now compute the rotation angle about that axis
-   vv1 = v1/magv1
-   vv2 = v2/magv2
-   IF (one .GT. vv1(1)*vv2(1) + vv1(2)*vv2(2) + vv1(3)*vv2(3)) THEN
-   arg = vv1(1)*vv2(1) + vv1(2)*vv2(2) + vv1(3)*vv2(3)
-   CALL PUSHCONTROL1B(0)
-   ELSE
-   arg = one
    CALL PUSHCONTROL1B(1)
    END IF
-   angle = ACOS(arg)
-   CALL PUSHCONTROL1B(1)
-   END IF
-   ! Now that we have an axis and an angle,build the rotation Matrix
-   ! A skew symmetric representation of the normalized axis
-   a(1, 1) = zero
-   a(1, 2) = -axis(3)
-   a(1, 3) = axis(2)
-   a(2, 1) = axis(3)
-   a(2, 2) = zero
-   a(2, 3) = -axis(1)
-   a(3, 1) = -axis(2)
-   a(3, 2) = axis(1)
-   a(3, 3) = zero
-   !C = A*A
-   c(1, 1) = a(1, 1)*a(1, 1) + a(1, 2)*a(2, 1) + a(1, 3)*a(3, 1)
-   c(1, 2) = a(1, 1)*a(1, 2) + a(1, 2)*a(2, 2) + a(1, 3)*a(3, 2)
-   c(1, 3) = a(1, 1)*a(1, 3) + a(1, 2)*a(2, 3) + a(1, 3)*a(3, 3)
-   c(2, 1) = a(2, 1)*a(1, 1) + a(2, 2)*a(2, 1) + a(2, 3)*a(3, 1)
-   c(2, 2) = a(2, 1)*a(1, 2) + a(2, 2)*a(2, 2) + a(2, 3)*a(3, 2)
-   c(2, 3) = a(2, 1)*a(1, 3) + a(2, 2)*a(2, 3) + a(2, 3)*a(3, 3)
-   c(3, 1) = a(3, 1)*a(1, 1) + a(3, 2)*a(2, 1) + a(3, 3)*a(3, 1)
-   c(3, 2) = a(3, 1)*a(1, 2) + a(3, 2)*a(2, 2) + a(3, 3)*a(3, 2)
-   c(3, 3) = a(3, 1)*a(1, 3) + a(3, 2)*a(2, 3) + a(3, 3)*a(3, 3)
-   ! Rodrigues formula for the rotation matrix
-   ab = 0.0_8
+   ! P = skew(a)
+   p(1, 1) = zero
+   p(1, 2) = -a(3)
+   p(1, 3) = a(2)
+   p(2, 1) = a(3)
+   p(2, 2) = zero
+   p(2, 3) = -a(1)
+   p(3, 1) = -a(2)
+   p(3, 2) = a(1)
+   p(3, 3) = zero
+   ! C = P*P = a a^T - (a.a) I
+   c(1, 1) = -(a(2)*a(2)) - a(3)*a(3)
+   c(1, 2) = a(1)*a(2)
+   c(1, 3) = a(1)*a(3)
+   c(2, 1) = a(1)*a(2)
+   c(2, 2) = -(a(1)*a(1)) - a(3)*a(3)
+   c(2, 3) = a(2)*a(3)
+   c(3, 1) = a(1)*a(3)
+   c(3, 2) = a(2)*a(3)
+   c(3, 3) = -(a(1)*a(1)) - a(2)*a(2)
+   pb = 0.0_8
    cb = 0.0_8
-   angleb = COS(angle)*SUM(a*mib) + SIN(angle)*SUM(c*mib)
-   ab = SIN(angle)*mib
-   cb = (one-COS(angle))*mib
-   ab(3, 1) = ab(3, 1) + a(1, 3)*cb(3, 3) + a(1, 2)*cb(3, 2) + (a(1, 1)+a&
-   &   (3, 3))*cb(3, 1) + a(2, 3)*cb(2, 1) + a(1, 3)*cb(1, 1)
-   ab(1, 3) = ab(1, 3) + a(3, 1)*cb(3, 3) + a(2, 1)*cb(2, 3) + (a(1, 1)+a&
-   &   (3, 3))*cb(1, 3) + a(3, 2)*cb(1, 2) + a(3, 1)*cb(1, 1)
-   ab(3, 2) = ab(3, 2) + a(2, 3)*cb(3, 3) + (a(2, 2)+a(3, 3))*cb(3, 2) + &
-   &   a(2, 1)*cb(3, 1) + a(2, 3)*cb(2, 2) + a(1, 3)*cb(1, 2)
-   ab(2, 3) = ab(2, 3) + a(3, 2)*cb(3, 3) + (a(2, 2)+a(3, 3))*cb(2, 3) + &
-   &   a(3, 2)*cb(2, 2) + a(3, 1)*cb(2, 1) + a(1, 2)*cb(1, 3)
-   ab(1, 2) = ab(1, 2) + a(3, 1)*cb(3, 2) + a(2, 1)*cb(2, 2) + a(2, 3)*cb&
-   &   (1, 3) + (a(1, 1)+a(2, 2))*cb(1, 2) + a(2, 1)*cb(1, 1)
-   ab(1, 1) = ab(1, 1) + a(3, 1)*cb(3, 1) + a(2, 1)*cb(2, 1) + a(1, 3)*cb&
-   &   (1, 3) + a(1, 2)*cb(1, 2) + 2*a(1, 1)*cb(1, 1)
-   ab(2, 1) = ab(2, 1) + a(3, 2)*cb(3, 1) + a(1, 3)*cb(2, 3) + a(1, 2)*cb&
-   &   (2, 2) + (a(1, 1)+a(2, 2))*cb(2, 1) + a(1, 2)*cb(1, 1)
-   ab(3, 3) = 0.0_8
+   pb = mib/s
+   sb = -(SUM(p*mib)/s**2)
+   cb = mib/denom2
+   denom2b = -(SUM(c*mib)/denom2**2)
+   ab = 0.0_8
+   ab(1) = ab(1) + a(3)*cb(3, 1) - 2*a(1)*cb(3, 3) + a(2)*cb(2, 1) - 2*a(&
+   &   1)*cb(2, 2) + a(3)*cb(1, 3) + a(2)*cb(1, 2) + pb(3, 2) - pb(2, 3)
+   ab(2) = ab(2) + a(3)*cb(3, 2) - 2*a(2)*cb(3, 3) + a(3)*cb(2, 3) + a(1)&
+   &   *cb(2, 1) + a(1)*cb(1, 2) + pb(1, 3) - 2*a(2)*cb(1, 1) - pb(3, 1)
    cb(3, 3) = 0.0_8
-   cb(3, 1) = 0.0_8
-   cb(1, 3) = 0.0_8
-   axisb = 0.0_8
-   axisb(1) = axisb(1) + ab(3, 2) - ab(2, 3)
-   ab(3, 2) = 0.0_8
-   axisb(2) = axisb(2) + ab(1, 3) - ab(3, 1)
-   ab(3, 1) = 0.0_8
-   ab(2, 3) = 0.0_8
-   ab(2, 2) = 0.0_8
+   ab(3) = ab(3) + a(2)*cb(3, 2) + a(1)*cb(3, 1) + a(2)*cb(2, 3) + a(1)*&
+   &   cb(1, 3) - 2*a(3)*cb(2, 2) + pb(2, 1) - 2*a(3)*cb(1, 1) - pb(1, 2)
    cb(3, 2) = 0.0_8
+   cb(3, 1) = 0.0_8
    cb(2, 3) = 0.0_8
    cb(2, 2) = 0.0_8
    cb(2, 1) = 0.0_8
+   cb(1, 3) = 0.0_8
    cb(1, 2) = 0.0_8
-   axisb(3) = axisb(3) + ab(2, 1) - ab(1, 2)
-   ab(2, 1) = 0.0_8
-   ab(1, 3) = 0.0_8
+   pb(3, 3) = 0.0_8
+   pb(3, 2) = 0.0_8
+   pb(3, 1) = 0.0_8
+   pb(2, 3) = 0.0_8
+   pb(2, 2) = 0.0_8
+   pb(2, 1) = 0.0_8
+   pb(1, 3) = 0.0_8
    CALL POPCONTROL1B(branch)
    IF (branch .EQ. 0) THEN
-   CALL POPREAL8ARRAY(axis, realtype*3/8)
-   magv2b = 0.0_8
-   axisb = 0.0_8
-   axismagb = 0.0_8
-   ELSE
-   IF (arg .EQ. 1.0 .OR. arg .EQ. (-1.0)) THEN
-   argb = 0.0_8
-   ELSE
-   argb = -(angleb/SQRT(1.0-arg**2))
+   sb = sb + 2*s*dtol*denom2b
+   denom2b = 0.0_8
    END IF
-   CALL POPCONTROL1B(branch)
-   IF (branch .EQ. 0) THEN
-   vv2b = 0.0_8
-   vv2b(1) = vv2b(1) + vv1(1)*argb
-   vv2b(2) = vv2b(2) + vv1(2)*argb
-   vv2b(3) = vv2b(3) + vv1(3)*argb
-   ELSE
-   vv2b = 0.0_8
-   END IF
-   v2b = v2b + vv2b/magv2
-   magv2b = -(SUM(v2*vv2b)/magv2**2)
-   CALL POPREAL8ARRAY(axis, realtype*3/8)
-   axismagb = -(SUM(axis*axisb)/axismag**2)
-   axisb = axisb/axismag
-   END IF
-   CALL GETMAG_B(axis, axisb, axismag, axismagb)
+   sb = sb + (2*s+dot)*denom2b
+   dotb = s*denom2b
+   v2b(1) = v2b(1) + v1(1)*dotb
+   v2b(2) = v2b(2) + v1(2)*dotb
+   v2b(3) = v2b(3) + v1(3)*dotb
+   magv2b = magv1*sb
    v1b = 0.0_8
-   CALL CROSS_PRODUCT_3D_B(v1, v1b, v2, v2b, axis, axisb)
+   CALL CROSS_PRODUCT_3D_B(v1, v1b, v2, v2b, a, ab)
    CALL GETMAG_B(v2, v2b, magv2, magv2b)
    END SUBROUTINE GETROTATIONMATRIX3D_B
       !  Differentiation of cross_product_3d in reverse (adjoint) mode (with options noISIZE i4 dr8 r8):
