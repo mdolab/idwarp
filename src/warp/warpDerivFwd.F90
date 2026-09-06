@@ -45,14 +45,14 @@ subroutine warpDerivFwd(Xsdot, cDof, Xvdot, meshDOF)
     call EChk(ierr, __FILE__, __LINE__)
 
     ! Extract a pointer from XsLocal and XsLoacld to use in the main routine
-    call VecGetArrayF90(XsLocal, XsPtr, ierr)
+    call VecGetArray(XsLocal, XsPtr, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
-    call VecGetArrayF90(dXsLocal, XsPtrd, ierr)
+    call VecGetArray(dXsLocal, XsPtrd, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
     ! Extract the pointers for the volume nodes that we wish to operate on
-    call VecGetArrayF90(Xv0, Xv0Ptr, ierr)
+    call VecGetArray(Xv0, Xv0Ptr, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
     call allocDerivValues(mytrees(1)%tp)
@@ -99,13 +99,13 @@ subroutine warpDerivFwd(Xsdot, cDof, Xvdot, meshDOF)
     end do updateLoop
 
     ! Restore all the arrays
-    call VecRestoreArrayF90(XsLocal, XsPtr, ierr)
+    call VecRestoreArray(XsLocal, XsPtr, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
-    call VecRestoreArrayF90(dXsLocal, dXsPtr, ierr)
+    call VecRestoreArray(dXsLocal, XsPtrd, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
-    call VecRestoreArrayF90(Xv0, Xv0Ptr, ierr)
+    call VecRestoreArray(Xv0, Xv0Ptr, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 #endif
 end subroutine warpDerivFwd

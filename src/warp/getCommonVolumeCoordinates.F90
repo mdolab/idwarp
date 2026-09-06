@@ -20,13 +20,13 @@ subroutine getCommonVolumeCoordinates(gridNodes, nDOF)
                        INSERT_VALUES, SCATTER_REVERSE, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
-    call VecGetArrayF90(commonGridVec, xx, ierr)
+    call VecGetArray(commonGridVec, xx, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
     ! Perform the actual copy
     gridNodes = xx
 
-    call VecRestoreArrayF90(Xv, xx, ierr)
+    call VecRestoreArray(commonGridVec, xx, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
 end subroutine getCommonVolumeCoordinates
@@ -42,13 +42,13 @@ subroutine setCommonVolumeCoordinates(gridNodes, nDOF)
     real(kind=realType), pointer, dimension(:) :: xx
     integer(kind=intType) :: ierr
 
-    call VecGetArrayF90(commonGridVec, xx, ierr)
+    call VecGetArray(commonGridVec, xx, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
     ! Perform actual copy
     xx = gridNodes
 
-    call VecRestoreArrayF90(commonGridVec, xx, ierr)
+    call VecRestoreArray(commonGridVec, xx, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
     ! Now do the vecScatter: warp_to_common in REVERSE

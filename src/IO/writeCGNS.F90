@@ -30,7 +30,7 @@ subroutine writeCGNS(cgns_file)
     ! Only do writing on root proc:
     rootProc: if (myid == 0) then
 
-        call VecGetArrayF90(XvLocal, xx, ierr)
+        call VecGetArray(XvLocal, xx, ierr)
         call EChk(ierr, __FILE__, __LINE__)
 
         ! Open and get the number of zones:
@@ -79,7 +79,7 @@ subroutine writeCGNS(cgns_file)
         call cg_close_f(cg, ierr)
         if (ierr .eq. CG_ERROR) call cg_error_exit_f
 
-        call VecRestoreArrayF90(XvLocal, xx, ierr)
+        call VecRestoreArray(XvLocal, xx, ierr)
         call EChk(ierr, __FILE__, __LINE__)
 
     end if rootProc

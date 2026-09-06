@@ -11,13 +11,13 @@ subroutine getVolumeCoordinates(gridNodes, nDOF)
     integer(kind=intType) :: ierr
 
     ! No error checking here!
-    call VecGetArrayF90(Xv, xx, ierr)
+    call VecGetArray(Xv, xx, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
     ! Perform copy
     gridNodes = xx
 
-    call VecRestoreArrayF90(Xv, xx, ierr)
+    call VecRestoreArray(Xv, xx, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
 end subroutine getVolumeCoordinates
@@ -34,13 +34,13 @@ subroutine setVolumeCoordinates(gridNodes, nDOF)
     integer(kind=intType) :: ierr
 
     ! No error checking here!
-    call VecGetArrayF90(Xv, xx, ierr)
+    call VecGetArray(Xv, xx, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
     ! Perform copy
     xx = gridNodes
 
-    call VecRestoreArrayF90(Xv, xx, ierr)
+    call VecRestoreArray(Xv, xx, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
 end subroutine setVolumeCoordinates

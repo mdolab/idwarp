@@ -29,7 +29,7 @@ subroutine setExternalMeshIndices(ndof_solver, solver_indices)
     ! Create an 'empty' PETSc vector. This will have an array
     ! vecPlace'd in them for doing the actual scatters.
     call VecCreateMPIWithArray(WARP_COMM_WORLD, 1, ndof_solver, PETSC_DECIDE, &
-                               PETSC_NULL_SCALAR, solverGridVec, ierr)
+                               PETSC_NULL_SCALAR_ARRAY, solverGridVec, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
     ! ~~~~~~~~ Common to Solver Scatter~~~~~~~~~

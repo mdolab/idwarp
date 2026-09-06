@@ -8,7 +8,7 @@ Requirements
 IDWarp depends on the follow libraries:
 
 - CGNS Library
-- PETSc
+- PETSc (3.23 or newer)
 - MPI
 - Complexify (see the `Complex build`_ section)
 
@@ -71,6 +71,10 @@ Complex build
 -------------
 Its possible to build a "complexified" version of IDWarp directly from the real version.
 To build IDWarp in complex mode, a complex version of PETSc and the `Complexify <https://github.com/mdolab/complexify>`__ module and library are required.
+
+If you are rebuilding an existing checkout, run ``make -f Makefile_CS clean`` first.
+``complexify`` only regenerates a file in ``src_cs/`` when its source is newer, so a source file that has been *deleted* upstream is never noticed and its stale copy keeps being built.
+
 Once installed and configured, run the following to build the complexified library
 
 .. prompt:: bash

@@ -18,7 +18,10 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
     ! Working
     integer(kind=intType) :: nNodesTotal, ierr, iStart, iEnd, iProc
     integer(kind=intType) :: i, j, ii, kk
-    real(kind=realType), dimension(:), allocatable :: costs, procEndCosts, cumNodesProc
+    integer(kind=intType), dimension(:), allocatable :: cumNodesProc
+    integer(kind=intType), pointer :: petscRanges(:)
+    real(kind=realType), pointer :: numerator1D(:)
+    real(kind=realType), dimension(:), allocatable :: costs, procEndCosts
     integer(kind=intType), dimension(:), allocatable :: procSplits, procSplitsLocal
     real(kind=realType), dimension(:), allocatable :: denominator0Copy
     real(kind=realtype) :: costOffset, totalCost, averageCost, c, tmp, r(3)
@@ -75,7 +78,7 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
     ! 3. Load balance file name is supplied and exists. Load and check a few
     !    If they don't match, do regular dry run
 
-    call VecGetArrayF90(commonGridVec, Xv0Ptr, ierr)
+    call VecGetArray(commonGridVec, Xv0Ptr, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
     ! Allocate the denominator estimate and costs. These may be loaded
@@ -86,14 +89,20 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
     costs = zero
 
     ! Get the ownership ranges for common grid vector, we need that to
-    ! determine where to write things.
-    allocate (cumNodesProc(0:nProc))
-
-    call VecGetOwnershipRanges(commonGridVec, cumNodesProc, ierr)
+    ! determine where to write things. VecGetOwnershipRanges returns a pointer
+    ! into the vector's own PetscLayout, indexed 1:nProc+1, so copy it into our
+    ! own 0:nProc array before scaling: writing through the PETSc pointer would
+    ! corrupt the layout and every scatter subsequently built from the vector.
+    ! The assignment rebases by position, putting petscRanges(1) in cumNodesProc(0).
+    ! The /3 is because the ranges are in DOF and we want nodes.
+    call VecGetOwnershipRanges(commonGridVec, petscRanges, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
-    ! Divide that by 3 since that includes the 3 dof per popint
-    cumNodesProc = cumNodesProc / 3
+    allocate (cumNodesProc(0:nProc))
+    cumNodesProc = petscRanges / 3
+
+    call VecRestoreOwnershipRanges(commonGridVec, petscRanges, ierr)
+    call EChk(ierr, __FILE__, __LINE__)
 
     if (trim(restartFile) == "") then
         loadFile = .False.
@@ -312,7 +321,7 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
     end if
 
     ! Don't forget to restore arrays!
-    call VecRestoreArrayF90(commonGridVec, Xv0Ptr, ierr)
+    call VecRestoreArray(commonGridVec, Xv0Ptr, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
     ! Now put the costs in cumulative format
@@ -458,6 +467,12 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
 
     ! We can now also allocate the final space for the denominator
     allocate (numerator(3, newDOFProc / 3))
+    ! Alias numerator as a rank-1 pointer so it can be passed to VecPlaceArray. Since PETSc
+    ! 3.23 VecPlaceArray is a named generic interface, and generic resolution matches rank
+    ! before sequence association applies, so passing the rank-2 array directly does not
+    ! compile. This alias is required, not a convenience.
+    numerator1D(1:size(numerator)) => numerator
+
     allocate (denominator(newDOFProc / 3))
     allocate (denominator0Copy(nVol * 3))
     do i = 1, nVol
@@ -471,7 +486,7 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
     call VecPlaceArray(commonGridVec, denominator0Copy, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
-    call VecPlaceArray(Xv, numerator, ierr)
+    call VecPlaceArray(Xv, numerator1D, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
     ! Actual scatter
@@ -498,8 +513,7 @@ subroutine initializeWarping(pts, uniquePts, link, faceSizes, faceConn, &
     commonMeshDOF = nVol * 3
 
     ! Deallocate the memory from this subroutine
-    deallocate (cumNodesProc)
-    deallocate (costs, procEndCosts, procSplits, procSplitsLocal, denominator0Copy)
+    deallocate (cumNodesProc, costs, procEndCosts, procSplits, procSplitsLocal, denominator0Copy)
 
     if (myid == 0) then
         print *, 'Finished Mesh Initialization.'

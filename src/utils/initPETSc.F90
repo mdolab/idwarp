@@ -11,7 +11,7 @@ subroutine initPETSc(comm)
     ! Working variables
     integer(kind=intType) :: ierr
 
-    call PetscInitialize(PETSC_NULL_CHARACTER, ierr)
+    call PetscInitialize(ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
     warp_comm_world = comm

@@ -24,14 +24,14 @@ subroutine warpMesh()
     call EChk(ierr, __FILE__, __LINE__)
 
     ! Extract a pointer from Xs to use in the main routine
-    call VecGetArrayF90(XsLocal, XsPtr, ierr)
+    call VecGetArray(XsLocal, XsPtr, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
     ! Extract the pointers for the volume nodes that we wish to operate on
-    call VecGetArrayF90(Xv0, Xv0Ptr, ierr)
+    call VecGetArray(Xv0, Xv0Ptr, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
-    call VecGetArrayF90(Xv, XvPtr, ierr)
+    call VecGetArray(Xv, XvPtr, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
     nVol = size(XvPtr) / 3
@@ -70,13 +70,13 @@ subroutine warpMesh()
     end do updateLoop
 
     ! Restore all the arrays
-    call VecRestoreArrayF90(XsLocal, XsPtr, ierr)
+    call VecRestoreArray(XsLocal, XsPtr, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
-    call VecRestoreArrayF90(Xv0, Xv0Ptr, ierr)
+    call VecRestoreArray(Xv0, Xv0Ptr, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
-    call VecRestoreArrayF90(Xv, XvPtr, ierr)
+    call VecRestoreArray(Xv, XvPtr, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
 end subroutine warpMesh

@@ -8,6 +8,14 @@ module gridData
 #ifndef USE_TAPENADE
 
 #include <petsc/finclude/petsc.h>
+
+    ! On PETSc 3.22 and older, the post-3.23 Fortran call forms bind silently to the old F77 stubs
+    ! and corrupt the vector layout at runtime instead of failing to link, so this floor must be
+    ! enforced here at compile time, not discovered later by a mysterious runtime failure.
+#if PETSC_VERSION_LT(3,23,0)
+#error "IDWarp requires PETSc 3.23 or newer"
+#endif
+
     use petsc
     implicit none
 
@@ -54,7 +62,9 @@ module gridData
 
     real(kind=realType), dimension(:), allocatable :: d2wall
     real(kind=realType), dimension(:), allocatable :: denominator, denominator0
-    real(kind=realType), dimension(:, :), allocatable :: numerator
+    ! target is required: numerator is rank-remapped to the pointer numerator1D for VecPlaceArray,
+    ! and a pointer target must be declared target.
+    real(kind=realType), dimension(:, :), allocatable, target :: numerator
 
     ! Symmetry Information
     integer(kind=intType) :: nLoop

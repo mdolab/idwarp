@@ -29,7 +29,7 @@ subroutine writePlot3d(plot3d_file)
     ! Only do writing on root proc:
     rootProc: if (myid == 0) then
 
-        call VecGetArrayF90(XvLocal, xx, ierr)
+        call VecGetArray(XvLocal, xx, ierr)
         call EChk(ierr, __FILE__, __LINE__)
 
         ! Open the new file
@@ -79,7 +79,7 @@ subroutine writePlot3d(plot3d_file)
             deallocate (coorX, coorY, coorZ)
         end do
 
-        call VecRestoreArrayF90(XvLocal, xx, ierr)
+        call VecRestoreArray(XvLocal, xx, ierr)
         call EChk(ierr, __FILE__, __LINE__)
 
         ! Close the output file
