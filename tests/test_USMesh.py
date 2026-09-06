@@ -73,7 +73,16 @@ def eval_warp(handler, test_name, meshOptions, iscomplex):
     handler.root_add_val(f"{test_name} - Sum of vCoords Warped:", val, tol=1e-8)
 
     # --- Create a dXv vector to do test the mesh warping with ---
-    dXv_warp = numpy.linspace(0, 1.0, mesh.warp.griddata.warpmeshdof)
+    # Seed from a GLOBAL ramp, not a rank-local one. warpmeshdof is the rank-local DOF count, so
+    # numpy.linspace(0, 1.0, warpmeshdof) would give every rank its own 0->1 ramp and make the
+    # concatenated global seed depend on where the load balancer split the mesh. Any quantity derived
+    # from it would then be partition-dependent and could not be compared against a stored reference.
+    # Each rank instead takes its own contiguous slice of one global ramp, so the global seed vector is
+    # identical on any number of processes and the serial and parallel results agree.
+    localDOF = mesh.warp.griddata.warpmeshdof
+    globalDOF = MPI.COMM_WORLD.allreduce(localDOF, op=MPI.SUM)
+    dofOffset = MPI.COMM_WORLD.scan(localDOF, op=MPI.SUM) - localDOF
+    dXv_warp = numpy.linspace(0, 1.0, globalDOF)[dofOffset : dofOffset + localDOF]
 
     if not iscomplex:
         # --- Computing Warp Derivatives ---
@@ -139,12 +148,6 @@ class Test_USmesh(unittest.TestCase):
             "useRotations": True,
             "bucketSize": 8,
         }
-        # --- Setting the ref file for parallel tests ---
-        self.ref_app = ""
-
-        if self.N_PROCS > 1:
-            # Appendix for the parallel reference files - appended to every ref_file instance
-            self.ref_app = "_par"
 
     def train_comesh(self, train=True):
         try:
@@ -153,7 +156,7 @@ class Test_USmesh(unittest.TestCase):
             raise unittest.SkipTest() from err
 
     def test_comesh(self, train=False):
-        ref_file = os.path.join(baseDir, f"ref/test_comesh{self.ref_app}.ref")
+        ref_file = os.path.join(baseDir, "ref/test_comesh.ref")
         with BaseRegTest(ref_file, train=train) as handler:
             # Test the C-mesh in the input files
             test_name = "Test_co_mesh"
@@ -173,7 +176,7 @@ class Test_USmesh(unittest.TestCase):
             raise unittest.SkipTest() from err
 
     def test_omesh(self, train=False):
-        ref_file = os.path.join(baseDir, f"ref/test_omesh{self.ref_app}.ref")
+        ref_file = os.path.join(baseDir, "ref/test_omesh.ref")
         with BaseRegTest(ref_file, train=train) as handler:
             # --- Test the O-mesh ---
             test_name = "Test_o_mesh"
@@ -193,7 +196,7 @@ class Test_USmesh(unittest.TestCase):
             raise unittest.SkipTest() from err
 
     def test_sym_mesh(self, train=False):
-        ref_file = os.path.join(baseDir, f"ref/test_sym_mesh{self.ref_app}.ref")
+        ref_file = os.path.join(baseDir, "ref/test_sym_mesh.ref")
         with BaseRegTest(ref_file, train=train) as handler:
             # Test the symmetric mesh
             test_name = "Test_sym_mesh"
@@ -218,7 +221,7 @@ class Test_USmesh(unittest.TestCase):
             raise unittest.SkipTest() from err
 
     def test_inflate_cube(self, train=False):
-        ref_file = os.path.join(baseDir, f"ref/test_inflate_cube{self.ref_app}.ref")
+        ref_file = os.path.join(baseDir, "ref/test_inflate_cube.ref")
         with BaseRegTest(ref_file, train=train) as handler:
             # Test the "cube" mesh
             test_name = "Test_inflate_cube"
