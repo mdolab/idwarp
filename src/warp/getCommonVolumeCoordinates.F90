@@ -26,7 +26,7 @@ subroutine getCommonVolumeCoordinates(gridNodes, nDOF)
     ! Perform the actual copy
     gridNodes = xx
 
-    call VecRestoreArray(Xv, xx, ierr)
+    call VecRestoreArray(commonGridVec, xx, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
 end subroutine getCommonVolumeCoordinates

@@ -102,7 +102,7 @@ subroutine warpDerivFwd(Xsdot, cDof, Xvdot, meshDOF)
     call VecRestoreArray(XsLocal, XsPtr, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
-    call VecRestoreArray(dXsLocal, dXsPtr, ierr)
+    call VecRestoreArray(dXsLocal, XsPtrd, ierr)
     call EChk(ierr, __FILE__, __LINE__)
 
     call VecRestoreArray(Xv0, Xv0Ptr, ierr)
