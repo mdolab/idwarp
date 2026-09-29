@@ -39,12 +39,12 @@
    !6311
    ! We use dtol to clip the value of 1/(1+c) when v1 and v2 are close to anti-parallel since in this case c=-1 and
    ! 1 / (1 + c) is undefined. This reflects the fact that there is no unique rotation axis for the anti-parallel case
-   ! Normalize input vectors first so the above formula holds
+   ! Normalize input vectors first so the above formula holds.
    CALL GETMAG(v1, v1mag)
-   v1unit = v1/v1mag
+   v1unit = v1*(one/v1mag)
    CALL GETMAG_D(v2, v2b, v2mag, v2magb)
-   v2unitb = (v2b-v2*v2magb/v2mag)/v2mag
-   v2unit = v2/v2mag
+   v2unitb = one*(v2b-v2*v2magb/v2mag)/v2mag
+   v2unit = v2*(one/v2mag)
    vb = 0.0_8
    v1unitb = 0.0_8
    CALL CROSS_PRODUCT_3D_D(v1unit, v1unitb, v2unit, v2unitb, v, vb)
@@ -100,8 +100,8 @@
    r(1, 1) = one
    r(2, 2) = one
    r(3, 3) = one
-   rb = skewb + (skew2b-skew2*denomb/denom)/denom
-   r = r + skew + skew2/denom
+   rb = skewb + one*(skew2b-skew2*denomb/denom)/denom
+   r = r + skew + skew2*(one/denom)
    END SUBROUTINE GETROTATIONMATRIX3D_D
       !  Differentiation of cross_product_3d in forward (tangent) mode (with options noISIZE i4 dr8 r8):
    !   variations   of useful results: cross

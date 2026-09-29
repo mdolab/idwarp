@@ -29,6 +29,7 @@
    REAL(kind=realtype), DIMENSION(3, 3) :: skew, skew2
    REAL(kind=realtype), DIMENSION(3, 3) :: skewb, skew2b
    REAL(kind=realtype), PARAMETER :: dtol=1.0e-10
+   REAL(kind=realtype), DIMENSION(3) :: tempb
    INTEGER :: branch
    ! Based on Rodrigues formula, the rotation matrix between two unit vectors is:
    ! R = I + skew(v) + 1 / (1 + c) * skew(v)^2
@@ -40,11 +41,11 @@
    !6311
    ! We use dtol to clip the value of 1/(1+c) when v1 and v2 are close to anti-parallel since in this case c=-1 and
    ! 1 / (1 + c) is undefined. This reflects the fact that there is no unique rotation axis for the anti-parallel case
-   ! Normalize input vectors first so the above formula holds
+   ! Normalize input vectors first so the above formula holds.
    CALL GETMAG(v1, v1mag)
-   v1unit = v1/v1mag
+   v1unit = v1*(one/v1mag)
    CALL GETMAG(v2, v2mag)
-   v2unit = v2/v2mag
+   v2unit = v2*(one/v2mag)
    CALL CROSS_PRODUCT_3D(v1unit, v2unit, v)
    c = v1unit(1)*v2unit(1) + v1unit(2)*v2unit(2) + v1unit(3)*v2unit(3)
    denom = one + c
@@ -68,8 +69,8 @@
    skewb = 0.0_8
    skew2b = 0.0_8
    skewb = rb
-   skew2b = rb/denom
-   denomb = -(SUM(skew2*rb)/denom**2)
+   skew2b = one*rb/denom
+   denomb = -(SUM(skew2*rb)*one/denom**2)
    vb = 0.0_8
    vb(1) = vb(1) + v(3)*skew2b(3, 1) - 2*v(1)*skew2b(3, 3) + v(2)*skew2b(&
    &   2, 1) - 2*v(1)*skew2b(2, 2) + v(3)*skew2b(1, 3) + v(2)*skew2b(1, 2) &
@@ -104,8 +105,9 @@
    v2unitb(3) = v2unitb(3) + v1unit(3)*cb
    v1unitb = 0.0_8
    CALL CROSS_PRODUCT_3D_B(v1unit, v1unitb, v2unit, v2unitb, v, vb)
-   v2b = v2b + v2unitb/v2mag
-   v2magb = -(SUM(v2*v2unitb)/v2mag**2)
+   tempb = one*v2unitb/v2mag
+   v2b = v2b + tempb
+   v2magb = -(SUM(v2*tempb)/v2mag)
    CALL GETMAG_B(v2, v2b, v2mag, v2magb)
    END SUBROUTINE GETROTATIONMATRIX3D_B
       !  Differentiation of cross_product_3d in reverse (adjoint) mode (with options noISIZE i4 dr8 r8):

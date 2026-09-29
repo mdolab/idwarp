@@ -62,11 +62,11 @@ subroutine getRotationMatrix3d(v1, v2, R)
     ! We use dtol to clip the value of 1/(1+c) when v1 and v2 are close to anti-parallel since in this case c=-1 and
     ! 1 / (1 + c) is undefined. This reflects the fact that there is no unique rotation axis for the anti-parallel case
 
-    ! Normalize input vectors first so the above formula holds
+    ! Normalize input vectors first so the above formula holds.
     call getMag(v1, v1Mag)
-    v1Unit = v1 / v1Mag
+    v1Unit = v1 * (one / v1Mag)
     call getMag(v2, v2Mag)
-    v2Unit = v2 / v2Mag
+    v2Unit = v2 * (one / v2Mag)
     call cross_product_3d(v1Unit, v2Unit, v)
     c = v1Unit(1) * v2Unit(1) + v1Unit(2) * v2Unit(2) + v1Unit(3) * v2Unit(3)
     denom = one + c
@@ -101,6 +101,6 @@ subroutine getRotationMatrix3d(v1, v2, R)
     R(2, 2) = one
     R(3, 3) = one
 
-    R = R + skew + skew2 / denom
+    R = R + skew + skew2 * (one / denom)
 
 end subroutine getRotationMatrix3d
