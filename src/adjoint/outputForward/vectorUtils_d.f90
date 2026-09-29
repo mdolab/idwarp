@@ -2,103 +2,106 @@
    !  Tapenade 3.16 (develop) - 22 Aug 2023 15:51
    !
    !  Differentiation of getrotationmatrix3d in forward (tangent) mode (with options noISIZE i4 dr8 r8):
-   !   variations   of useful results: mi
+   !   variations   of useful results: r
    !   with respect to varying inputs: v2
-   SUBROUTINE GETROTATIONMATRIX3D_D(v1, v2, v2b, mi, mib)
+   !> @brief Compute the rotation matrix that maps one vector to another
+   !!
+   !! If the two vectors are not unit vectors then the rotation matrix is actually for the transformation between unit
+   !! vectors in the directions of the two input vectors
+   !!
+   !! @param[in]  v1 Source vector
+   !! @param[in]  v2 Target vector
+   !! @param[out] R Rotation matrix
+   SUBROUTINE GETROTATIONMATRIX3D_D(v1, v2, v2b, r, rb)
    USE PRECISION
    USE CONSTANTS
    IMPLICIT NONE
    ! Subroutine Variables
    REAL(kind=realtype), DIMENSION(3), INTENT(IN) :: v1, v2
    REAL(kind=realtype), DIMENSION(3), INTENT(IN) :: v2b
-   REAL(kind=realtype), DIMENSION(3, 3), INTENT(OUT) :: mi
-   REAL(kind=realtype), DIMENSION(3, 3), INTENT(OUT) :: mib
+   REAL(kind=realtype), DIMENSION(3, 3), INTENT(OUT) :: r
+   REAL(kind=realtype), DIMENSION(3, 3), INTENT(OUT) :: rb
    ! Local Variables
-   REAL(kind=realtype), DIMENSION(3) :: a
-   REAL(kind=realtype), DIMENSION(3) :: ab
-   REAL(kind=realtype) :: magv1, magv2, s, dot, denom2
-   REAL(kind=realtype) :: magv2b, sb, dotb, denom2b
-   REAL(kind=realtype), DIMENSION(3, 3) :: p, c
-   REAL(kind=realtype), DIMENSION(3, 3) :: pb, cb
+   REAL(kind=realtype), DIMENSION(3) :: v1unit, v2unit, v
+   REAL(kind=realtype), DIMENSION(3) :: v1unitb, v2unitb, vb
+   REAL(kind=realtype) :: v1mag, v2mag, c, denom
+   REAL(kind=realtype) :: v2magb, cb, denomb
+   REAL(kind=realtype), DIMENSION(3, 3) :: skew, skew2
+   REAL(kind=realtype), DIMENSION(3, 3) :: skewb, skew2b
    REAL(kind=realtype), PARAMETER :: dtol=1.0e-10
-   REAL(kind=realtype), DIMENSION(3) :: v1b
-   ! Rotation taking the direction of v1 to the direction of v2, in a
-   ! smooth branch-free form.  With theta the angle between v1 and v2,
-   ! a = v1 x v2 and s = |v1||v2|, the two axis-angle pieces of the
-   ! Rodrigues formula reduce EXACTLY (for 0 <= theta < pi) to
-   !     sin(theta) * Ahat        = skew(a) / s
-   !     (1-cos(theta)) * Ahat^2  = skew(a)^2 / (s^2 + s*(v1.v2))
-   ! so no normalized axis, no acos and no angle are ever formed.  The
-   ! axis-angle version this replaces needed an axisMag < tol branch at
-   ! theta = 0, and BOTH AD derivatives (_b and _d) of that branch were
-   ! identically zero while the true derivative there is finite: every
-   ! surface node of an UNDEFORMED mesh evaluates at exactly theta = 0,
-   ! so warpDeriv/warpDerivFwd silently dropped the entire rotation
-   ! contribution when linearized at the baseline configuration.  This
-   ! form has a removable limit at theta = 0 (a = 0 makes the rotation
-   ! terms vanish smoothly) and differentiates correctly there by
-   ! construction.  Only theta -> pi (anti-parallel normals, a folded
-   ! surface) is guarded, where the rotation genuinely is not unique.
-   CALL GETMAG(v1, magv1)
-   CALL GETMAG_D(v2, v2b, magv2, magv2b)
-   ab = 0.0_8
-   v1b = 0.0_8
-   CALL CROSS_PRODUCT_3D_D(v1, v1b, v2, v2b, a, ab)
-   sb = magv1*magv2b
-   s = magv1*magv2
-   dotb = v1(1)*v2b(1) + v1(2)*v2b(2) + v1(3)*v2b(3)
-   dot = v1(1)*v2(1) + v1(2)*v2(2) + v1(3)*v2(3)
-   denom2b = (2*s+dot)*sb + s*dotb
-   denom2 = s*s + s*dot
-   IF (denom2 .LT. dtol*s*s) THEN
-   denom2b = dtol*2*s*sb
-   denom2 = dtol*s*s
+   ! Based on Rodrigues formula, the rotation matrix between two unit vectors is:
+   ! R = I + skew(v) + 1 / (1 + c) * skew(v)^2
+   ! Where:
+   ! - v = cross(v1, v2)
+   ! - skew(v) is the cross product matrix of v, such that skew(v)*x = cross(v,x)
+   ! - c = dot(v1, v2)
+   ! Source: https://math.stackexchange.com/questions/180418/calculate-rotation-matrix-to-align-vector-a-to-vector-b-in-3d/476311#47
+   !6311
+   ! We use dtol to clip the value of 1/(1+c) when v1 and v2 are close to anti-parallel since in this case c=-1 and
+   ! 1 / (1 + c) is undefined. This reflects the fact that there is no unique rotation axis for the anti-parallel case
+   ! Normalize input vectors first so the above formula holds
+   CALL GETMAG(v1, v1mag)
+   v1unit = v1/v1mag
+   CALL GETMAG_D(v2, v2b, v2mag, v2magb)
+   v2unitb = (v2b-v2*v2magb/v2mag)/v2mag
+   v2unit = v2/v2mag
+   vb = 0.0_8
+   v1unitb = 0.0_8
+   CALL CROSS_PRODUCT_3D_D(v1unit, v1unitb, v2unit, v2unitb, v, vb)
+   cb = v1unit(1)*v2unitb(1) + v1unit(2)*v2unitb(2) + v1unit(3)*v2unitb(3&
+   &   )
+   c = v1unit(1)*v2unit(1) + v1unit(2)*v2unit(2) + v1unit(3)*v2unit(3)
+   denomb = cb
+   denom = one + c
+   IF (denom .LT. dtol) THEN
+   denom = dtol
+   denomb = 0.0_8
    END IF
-   ! P = skew(a)
-   p(1, 1) = zero
-   pb = 0.0_8
-   pb(1, 2) = -ab(3)
-   p(1, 2) = -a(3)
-   pb(1, 3) = ab(2)
-   p(1, 3) = a(2)
-   pb(2, 1) = ab(3)
-   p(2, 1) = a(3)
-   pb(2, 2) = 0.0_8
-   p(2, 2) = zero
-   pb(2, 3) = -ab(1)
-   p(2, 3) = -a(1)
-   pb(3, 1) = -ab(2)
-   p(3, 1) = -a(2)
-   pb(3, 2) = ab(1)
-   p(3, 2) = a(1)
-   pb(3, 3) = 0.0_8
-   p(3, 3) = zero
-   ! C = P*P = a a^T - (a.a) I
-   cb = 0.0_8
-   cb(1, 1) = -(2*a(2)*ab(2)) - 2*a(3)*ab(3)
-   c(1, 1) = -(a(2)*a(2)) - a(3)*a(3)
-   cb(1, 2) = a(2)*ab(1) + a(1)*ab(2)
-   c(1, 2) = a(1)*a(2)
-   cb(1, 3) = a(3)*ab(1) + a(1)*ab(3)
-   c(1, 3) = a(1)*a(3)
-   cb(2, 1) = a(2)*ab(1) + a(1)*ab(2)
-   c(2, 1) = a(1)*a(2)
-   cb(2, 2) = -(2*a(1)*ab(1)) - 2*a(3)*ab(3)
-   c(2, 2) = -(a(1)*a(1)) - a(3)*a(3)
-   cb(2, 3) = a(3)*ab(2) + a(2)*ab(3)
-   c(2, 3) = a(2)*a(3)
-   cb(3, 1) = a(3)*ab(1) + a(1)*ab(3)
-   c(3, 1) = a(1)*a(3)
-   cb(3, 2) = a(3)*ab(2) + a(2)*ab(3)
-   c(3, 2) = a(2)*a(3)
-   cb(3, 3) = -(2*a(1)*ab(1)) - 2*a(2)*ab(2)
-   c(3, 3) = -(a(1)*a(1)) - a(2)*a(2)
-   mi = zero
-   mi(1, 1) = one
-   mi(2, 2) = one
-   mi(3, 3) = one
-   mib = (pb-p*sb/s)/s + (cb-c*denom2b/denom2)/denom2
-   mi = mi + p/s + c/denom2
+   ! skew(v)
+   skew(1, 1) = zero
+   skewb = 0.0_8
+   skewb(1, 2) = -vb(3)
+   skew(1, 2) = -v(3)
+   skewb(1, 3) = vb(2)
+   skew(1, 3) = v(2)
+   skewb(2, 1) = vb(3)
+   skew(2, 1) = v(3)
+   skewb(2, 2) = 0.0_8
+   skew(2, 2) = zero
+   skewb(2, 3) = -vb(1)
+   skew(2, 3) = -v(1)
+   skewb(3, 1) = -vb(2)
+   skew(3, 1) = -v(2)
+   skewb(3, 2) = vb(1)
+   skew(3, 2) = v(1)
+   skewb(3, 3) = 0.0_8
+   skew(3, 3) = zero
+   ! skew(v)^2 = v v^T - (v.v) I
+   skew2b = 0.0_8
+   skew2b(1, 1) = -(2*v(2)*vb(2)) - 2*v(3)*vb(3)
+   skew2(1, 1) = -(v(2)*v(2)) - v(3)*v(3)
+   skew2b(1, 2) = v(2)*vb(1) + v(1)*vb(2)
+   skew2(1, 2) = v(1)*v(2)
+   skew2b(1, 3) = v(3)*vb(1) + v(1)*vb(3)
+   skew2(1, 3) = v(1)*v(3)
+   skew2b(2, 1) = v(2)*vb(1) + v(1)*vb(2)
+   skew2(2, 1) = v(1)*v(2)
+   skew2b(2, 2) = -(2*v(1)*vb(1)) - 2*v(3)*vb(3)
+   skew2(2, 2) = -(v(1)*v(1)) - v(3)*v(3)
+   skew2b(2, 3) = v(3)*vb(2) + v(2)*vb(3)
+   skew2(2, 3) = v(2)*v(3)
+   skew2b(3, 1) = v(3)*vb(1) + v(1)*vb(3)
+   skew2(3, 1) = v(1)*v(3)
+   skew2b(3, 2) = v(3)*vb(2) + v(2)*vb(3)
+   skew2(3, 2) = v(2)*v(3)
+   skew2b(3, 3) = -(2*v(1)*vb(1)) - 2*v(2)*vb(2)
+   skew2(3, 3) = -(v(1)*v(1)) - v(2)*v(2)
+   r = zero
+   r(1, 1) = one
+   r(2, 2) = one
+   r(3, 3) = one
+   rb = skewb + (skew2b-skew2*denomb/denom)/denom
+   r = r + skew + skew2/denom
    END SUBROUTINE GETROTATIONMATRIX3D_D
       !  Differentiation of cross_product_3d in forward (tangent) mode (with options noISIZE i4 dr8 r8):
    !   variations   of useful results: cross
