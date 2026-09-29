@@ -2,155 +2,113 @@
    !  Tapenade 3.16 (develop) - 22 Aug 2023 15:51
    !
    !  Differentiation of getrotationmatrix3d in reverse (adjoint) mode (with options noISIZE i4 dr8 r8):
-   !   gradient     of useful results: v2 mi
+   !   gradient     of useful results: v2 r
    !   with respect to varying inputs: v2
-   SUBROUTINE GETROTATIONMATRIX3D_B(v1, v2, v2b, mi, mib)
+   !> @brief Compute the rotation matrix that maps one vector to another
+   !!
+   !! If the two vectors are not unit vectors then the rotation matrix is actually for the transformation between unit
+   !! vectors in the directions of the two input vectors
+   !!
+   !! @param[in]  v1 Source vector
+   !! @param[in]  v2 Target vector
+   !! @param[out] R Rotation matrix
+   SUBROUTINE GETROTATIONMATRIX3D_B(v1, v2, v2b, r, rb)
    USE PRECISION
    USE CONSTANTS
    IMPLICIT NONE
    ! Subroutine Variables
    REAL(kind=realtype), DIMENSION(3), INTENT(IN) :: v1, v2
    REAL(kind=realtype), DIMENSION(3) :: v2b
-   REAL(kind=realtype), DIMENSION(3, 3) :: mi
-   REAL(kind=realtype), DIMENSION(3, 3) :: mib
+   REAL(kind=realtype), DIMENSION(3, 3) :: r
+   REAL(kind=realtype), DIMENSION(3, 3) :: rb
    ! Local Variables
-   REAL(kind=realtype), DIMENSION(3) :: axis, vv1, vv2
-   REAL(kind=realtype), DIMENSION(3) :: axisb, vv2b
-   REAL(kind=realtype) :: magv1, magv2, axismag, angle, arg
-   REAL(kind=realtype) :: magv2b, axismagb, angleb, argb
-   REAL(kind=realtype), DIMENSION(3, 3) :: a, c
-   REAL(kind=realtype), DIMENSION(3, 3) :: ab, cb
-   REAL(kind=realtype), PARAMETER :: tol=1.4901161193847656e-08
-   INTRINSIC MIN
-   INTRINSIC ACOS
-   INTRINSIC SIN
-   INTRINSIC COS
-   REAL(kind=realtype), DIMENSION(3) :: v1b
+   REAL(kind=realtype), DIMENSION(3) :: v1unit, v2unit, v
+   REAL(kind=realtype), DIMENSION(3) :: v1unitb, v2unitb, vb
+   REAL(kind=realtype) :: v1mag, v2mag, c, denom
+   REAL(kind=realtype) :: v2magb, cb, denomb
+   REAL(kind=realtype), DIMENSION(3, 3) :: skew, skew2
+   REAL(kind=realtype), DIMENSION(3, 3) :: skewb, skew2b
+   REAL(kind=realtype), PARAMETER :: dtol=1.0e-10
+   REAL(kind=realtype), DIMENSION(3) :: tempb
    INTEGER :: branch
-   CALL GETMAG(v1, magv1)
-   CALL GETMAG(v2, magv2)
-   ! Start by determining the rotation axis by getting the
-   ! cross product between v1, v2
-   CALL CROSS_PRODUCT_3D(v1, v2, axis)
-   ! Now Normalize
-   CALL GETMAG(axis, axismag)
-   ! When axisMag is less that sqrt(eps), the acos 'arg' value will be
-   ! exactly one which will give a nan in complex mode.
-   IF (axismag .LT. tol) THEN
-   ! no rotation at this point, angle is 0
-   angle = zero
-   ! the axis doesn't matter so set to x
-   CALL PUSHREAL8ARRAY(axis, realtype*3/8)
-   axis = zero
-   axis(1) = one
+   ! Based on Rodrigues formula, the rotation matrix between two unit vectors is:
+   ! R = I + skew(v) + 1 / (1 + c) * skew(v)^2
+   ! Where:
+   ! - v = cross(v1, v2)
+   ! - skew(v) is the cross product matrix of v, such that skew(v)*x = cross(v,x)
+   ! - c = dot(v1, v2)
+   ! Source: https://math.stackexchange.com/questions/180418/calculate-rotation-matrix-to-align-vector-a-to-vector-b-in-3d/476311#47
+   !6311
+   ! We use dtol to clip the value of 1/(1+c) when v1 and v2 are close to anti-parallel since in this case c=-1 and
+   ! 1 / (1 + c) is undefined. This reflects the fact that there is no unique rotation axis for the anti-parallel case
+   ! Normalize input vectors first so the above formula holds.
+   CALL GETMAG(v1, v1mag)
+   v1unit = v1*(one/v1mag)
+   CALL GETMAG(v2, v2mag)
+   v2unit = v2*(one/v2mag)
+   CALL CROSS_PRODUCT_3D(v1unit, v2unit, v)
+   c = v1unit(1)*v2unit(1) + v1unit(2)*v2unit(2) + v1unit(3)*v2unit(3)
+   denom = one + c
+   IF (denom .LT. dtol) THEN
+   denom = dtol
    CALL PUSHCONTROL1B(0)
    ELSE
-   CALL PUSHREAL8ARRAY(axis, realtype*3/8)
-   axis = axis/axismag
-   ! Now compute the rotation angle about that axis
-   vv1 = v1/magv1
-   vv2 = v2/magv2
-   IF (one .GT. vv1(1)*vv2(1) + vv1(2)*vv2(2) + vv1(3)*vv2(3)) THEN
-   arg = vv1(1)*vv2(1) + vv1(2)*vv2(2) + vv1(3)*vv2(3)
-   CALL PUSHCONTROL1B(0)
-   ELSE
-   arg = one
    CALL PUSHCONTROL1B(1)
    END IF
-   angle = ACOS(arg)
-   CALL PUSHCONTROL1B(1)
-   END IF
-   ! Now that we have an axis and an angle,build the rotation Matrix
-   ! A skew symmetric representation of the normalized axis
-   a(1, 1) = zero
-   a(1, 2) = -axis(3)
-   a(1, 3) = axis(2)
-   a(2, 1) = axis(3)
-   a(2, 2) = zero
-   a(2, 3) = -axis(1)
-   a(3, 1) = -axis(2)
-   a(3, 2) = axis(1)
-   a(3, 3) = zero
-   !C = A*A
-   c(1, 1) = a(1, 1)*a(1, 1) + a(1, 2)*a(2, 1) + a(1, 3)*a(3, 1)
-   c(1, 2) = a(1, 1)*a(1, 2) + a(1, 2)*a(2, 2) + a(1, 3)*a(3, 2)
-   c(1, 3) = a(1, 1)*a(1, 3) + a(1, 2)*a(2, 3) + a(1, 3)*a(3, 3)
-   c(2, 1) = a(2, 1)*a(1, 1) + a(2, 2)*a(2, 1) + a(2, 3)*a(3, 1)
-   c(2, 2) = a(2, 1)*a(1, 2) + a(2, 2)*a(2, 2) + a(2, 3)*a(3, 2)
-   c(2, 3) = a(2, 1)*a(1, 3) + a(2, 2)*a(2, 3) + a(2, 3)*a(3, 3)
-   c(3, 1) = a(3, 1)*a(1, 1) + a(3, 2)*a(2, 1) + a(3, 3)*a(3, 1)
-   c(3, 2) = a(3, 1)*a(1, 2) + a(3, 2)*a(2, 2) + a(3, 3)*a(3, 2)
-   c(3, 3) = a(3, 1)*a(1, 3) + a(3, 2)*a(2, 3) + a(3, 3)*a(3, 3)
-   ! Rodrigues formula for the rotation matrix
-   ab = 0.0_8
-   cb = 0.0_8
-   angleb = COS(angle)*SUM(a*mib) + SIN(angle)*SUM(c*mib)
-   ab = SIN(angle)*mib
-   cb = (one-COS(angle))*mib
-   ab(3, 1) = ab(3, 1) + a(1, 3)*cb(3, 3) + a(1, 2)*cb(3, 2) + (a(1, 1)+a&
-   &   (3, 3))*cb(3, 1) + a(2, 3)*cb(2, 1) + a(1, 3)*cb(1, 1)
-   ab(1, 3) = ab(1, 3) + a(3, 1)*cb(3, 3) + a(2, 1)*cb(2, 3) + (a(1, 1)+a&
-   &   (3, 3))*cb(1, 3) + a(3, 2)*cb(1, 2) + a(3, 1)*cb(1, 1)
-   ab(3, 2) = ab(3, 2) + a(2, 3)*cb(3, 3) + (a(2, 2)+a(3, 3))*cb(3, 2) + &
-   &   a(2, 1)*cb(3, 1) + a(2, 3)*cb(2, 2) + a(1, 3)*cb(1, 2)
-   ab(2, 3) = ab(2, 3) + a(3, 2)*cb(3, 3) + (a(2, 2)+a(3, 3))*cb(2, 3) + &
-   &   a(3, 2)*cb(2, 2) + a(3, 1)*cb(2, 1) + a(1, 2)*cb(1, 3)
-   ab(1, 2) = ab(1, 2) + a(3, 1)*cb(3, 2) + a(2, 1)*cb(2, 2) + a(2, 3)*cb&
-   &   (1, 3) + (a(1, 1)+a(2, 2))*cb(1, 2) + a(2, 1)*cb(1, 1)
-   ab(1, 1) = ab(1, 1) + a(3, 1)*cb(3, 1) + a(2, 1)*cb(2, 1) + a(1, 3)*cb&
-   &   (1, 3) + a(1, 2)*cb(1, 2) + 2*a(1, 1)*cb(1, 1)
-   ab(2, 1) = ab(2, 1) + a(3, 2)*cb(3, 1) + a(1, 3)*cb(2, 3) + a(1, 2)*cb&
-   &   (2, 2) + (a(1, 1)+a(2, 2))*cb(2, 1) + a(1, 2)*cb(1, 1)
-   ab(3, 3) = 0.0_8
-   cb(3, 3) = 0.0_8
-   cb(3, 1) = 0.0_8
-   cb(1, 3) = 0.0_8
-   axisb = 0.0_8
-   axisb(1) = axisb(1) + ab(3, 2) - ab(2, 3)
-   ab(3, 2) = 0.0_8
-   axisb(2) = axisb(2) + ab(1, 3) - ab(3, 1)
-   ab(3, 1) = 0.0_8
-   ab(2, 3) = 0.0_8
-   ab(2, 2) = 0.0_8
-   cb(3, 2) = 0.0_8
-   cb(2, 3) = 0.0_8
-   cb(2, 2) = 0.0_8
-   cb(2, 1) = 0.0_8
-   cb(1, 2) = 0.0_8
-   axisb(3) = axisb(3) + ab(2, 1) - ab(1, 2)
-   ab(2, 1) = 0.0_8
-   ab(1, 3) = 0.0_8
+   ! skew(v)
+   ! skew(v)^2 = v v^T - (v.v) I
+   skew2(1, 1) = -(v(2)*v(2)) - v(3)*v(3)
+   skew2(1, 2) = v(1)*v(2)
+   skew2(1, 3) = v(1)*v(3)
+   skew2(2, 1) = v(1)*v(2)
+   skew2(2, 2) = -(v(1)*v(1)) - v(3)*v(3)
+   skew2(2, 3) = v(2)*v(3)
+   skew2(3, 1) = v(1)*v(3)
+   skew2(3, 2) = v(2)*v(3)
+   skew2(3, 3) = -(v(1)*v(1)) - v(2)*v(2)
+   skewb = 0.0_8
+   skew2b = 0.0_8
+   skewb = rb
+   skew2b = one*rb/denom
+   denomb = -(SUM(skew2*rb)*one/denom**2)
+   vb = 0.0_8
+   vb(1) = vb(1) + v(3)*skew2b(3, 1) - 2*v(1)*skew2b(3, 3) + v(2)*skew2b(&
+   &   2, 1) - 2*v(1)*skew2b(2, 2) + v(3)*skew2b(1, 3) + v(2)*skew2b(1, 2) &
+   &   + skewb(3, 2) - skewb(2, 3)
+   vb(2) = vb(2) + v(3)*skew2b(3, 2) - 2*v(2)*skew2b(3, 3) + v(3)*skew2b(&
+   &   2, 3) + v(1)*skew2b(2, 1) + v(1)*skew2b(1, 2) + skewb(1, 3) - 2*v(2)&
+   &   *skew2b(1, 1) - skewb(3, 1)
+   skew2b(3, 3) = 0.0_8
+   vb(3) = vb(3) + v(2)*skew2b(3, 2) + v(1)*skew2b(3, 1) + v(2)*skew2b(2&
+   &   , 3) + v(1)*skew2b(1, 3) - 2*v(3)*skew2b(2, 2) + skewb(2, 1) - 2*v(3&
+   &   )*skew2b(1, 1) - skewb(1, 2)
+   skew2b(3, 2) = 0.0_8
+   skew2b(3, 1) = 0.0_8
+   skew2b(2, 3) = 0.0_8
+   skew2b(2, 2) = 0.0_8
+   skew2b(2, 1) = 0.0_8
+   skew2b(1, 3) = 0.0_8
+   skew2b(1, 2) = 0.0_8
+   skewb(3, 3) = 0.0_8
+   skewb(3, 2) = 0.0_8
+   skewb(3, 1) = 0.0_8
+   skewb(2, 3) = 0.0_8
+   skewb(2, 2) = 0.0_8
+   skewb(2, 1) = 0.0_8
+   skewb(1, 3) = 0.0_8
    CALL POPCONTROL1B(branch)
-   IF (branch .EQ. 0) THEN
-   CALL POPREAL8ARRAY(axis, realtype*3/8)
-   magv2b = 0.0_8
-   axisb = 0.0_8
-   axismagb = 0.0_8
-   ELSE
-   IF (arg .EQ. 1.0 .OR. arg .EQ. (-1.0)) THEN
-   argb = 0.0_8
-   ELSE
-   argb = -(angleb/SQRT(1.0-arg**2))
-   END IF
-   CALL POPCONTROL1B(branch)
-   IF (branch .EQ. 0) THEN
-   vv2b = 0.0_8
-   vv2b(1) = vv2b(1) + vv1(1)*argb
-   vv2b(2) = vv2b(2) + vv1(2)*argb
-   vv2b(3) = vv2b(3) + vv1(3)*argb
-   ELSE
-   vv2b = 0.0_8
-   END IF
-   v2b = v2b + vv2b/magv2
-   magv2b = -(SUM(v2*vv2b)/magv2**2)
-   CALL POPREAL8ARRAY(axis, realtype*3/8)
-   axismagb = -(SUM(axis*axisb)/axismag**2)
-   axisb = axisb/axismag
-   END IF
-   CALL GETMAG_B(axis, axisb, axismag, axismagb)
-   v1b = 0.0_8
-   CALL CROSS_PRODUCT_3D_B(v1, v1b, v2, v2b, axis, axisb)
-   CALL GETMAG_B(v2, v2b, magv2, magv2b)
+   IF (branch .EQ. 0) denomb = 0.0_8
+   cb = denomb
+   v2unitb = 0.0_8
+   v2unitb(1) = v2unitb(1) + v1unit(1)*cb
+   v2unitb(2) = v2unitb(2) + v1unit(2)*cb
+   v2unitb(3) = v2unitb(3) + v1unit(3)*cb
+   v1unitb = 0.0_8
+   CALL CROSS_PRODUCT_3D_B(v1unit, v1unitb, v2unit, v2unitb, v, vb)
+   tempb = one*v2unitb/v2mag
+   v2b = v2b + tempb
+   v2magb = -(SUM(v2*tempb)/v2mag)
+   CALL GETMAG_B(v2, v2b, v2mag, v2magb)
    END SUBROUTINE GETROTATIONMATRIX3D_B
       !  Differentiation of cross_product_3d in reverse (adjoint) mode (with options noISIZE i4 dr8 r8):
    !   gradient     of useful results: cross v1 v2
